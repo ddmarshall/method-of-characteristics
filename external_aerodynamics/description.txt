@@ -1,0 +1,1 @@
+This folder is for modeling the external aerodynamics of a supersonic body.
