@@ -1,5 +1,6 @@
 import unittest 
-import unit_processes as unit_processes 
+import unit_processes_ZH as unit_processes 
+#import unit_processes as unit_processes
 """
 unit testing script to verify output of various method of characteristics operators is within expected bounds
 """
@@ -25,7 +26,7 @@ class Test_Operators(unittest.TestCase):
         self.assertAlmostEqual(res[1], expected_res[1], places=1) #v4
         self.assertAlmostEqual(res[2], expected_res[2], places=4) #x4
         self.assertAlmostEqual(res[3], expected_res[3], places=4) #y4 
-
+    
     #Testing Direct Wall Operator
     def test_dirWall(self):
 
@@ -47,7 +48,7 @@ class Test_Operators(unittest.TestCase):
         self.assertAlmostEqual(res[1], expected_res[1], places=4)
         self.assertAlmostEqual(res[2], expected_res[2], places=1)
         self.assertAlmostEqual(res[3], expected_res[3], places=1)
-
+    
     #Testing Inverse Wall Operator 
     def test_invWall(self):
 
