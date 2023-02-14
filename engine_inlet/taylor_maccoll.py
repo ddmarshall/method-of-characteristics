@@ -9,24 +9,24 @@ class TaylorMaccoll_Cone:
     """
     This class calculates the Taylor-Maccoll flowfield for an infinite, straight cone 
     """
-    def __init__(self, cone_ang, M_inf, gam):
+    def __init__(self, cone_ang, M_inf, gam, R, T0):
         """
         cone_ang = cone half angle in radians 
         M_inf = free-stream Mach number 
         gam = specific heat ratio (calorically perfect)
-        
         """
-        self.cone_ang = cone_ang 
-        self.M_inf = M_inf
-        self.gam = gam
+        self.cone_ang = cone_ang #cone half angle
+        self.M_inf = M_inf #freestream mach number 
+        self.gam = gam #specific heat ratio 
+        self.R = R #ideal gas constant
+        self.T0 = T0 #freestream stagnation temperature 
 
         #solve tmc flow and obtain ratios
-        self.solve_TMC_flow(math.radians(0.1))
+        self.solve_TMC_flow()
         self.obtain_flow_properties()
+        self.convert_velocity_to_rectangular()
        
-    def solve_TMC_flow(self, t_step): 
-
-        self.t_step = t_step
+    def solve_TMC_flow(self): 
 
         def TMC_flow(thet, V, gam):
             #Specifies system of ODEs for numerical solver to integrate (verified, don't touch)
@@ -39,6 +39,7 @@ class TaylorMaccoll_Cone:
 
         def TMC_cone_guess(shock_ang, cone_ang, M_inf, gam, ret):
             """
+            TODO: Fix issue where IVP fails to capture cone surface with certain inputs (make process more robust)
             Solves TMC cone flow using prescribed shock angle. Returns cone angle error or solution
             shock_ang: prescribed shock wave angle (rads)
             cone_ang: true cone half-angle (rads)
@@ -78,7 +79,7 @@ class TaylorMaccoll_Cone:
             else: 
                 raise ValueError("Invalid ret specified")
 
-        def TMC_cone_flow(cone_ang, M_inf, gam, plotting=None):
+        def TMC_cone_flow(cone_ang, M_inf, gam):
             """
             Computes the flow solution for taylor maccoll flow around an infinite cone
             cone_ang = cone half angle (rads)
@@ -98,33 +99,22 @@ class TaylorMaccoll_Cone:
             solution = TMC_cone_guess(shock_ang, cone_ang, M_inf, gam, "solution")
             return [solution, shock_ang]
 
-        [self.numerical_solution, self.shock_ang] = TMC_cone_flow(self.cone_ang, self.M_inf, self.gam)
-
-    def plot_TMC_flow(self):
-        """
-        Plots the continuous solution between the shock and cone surface
-        """
-        dense_output = self.numerical_solution.sol
-        #create a plot of V_theta, V_R vs theta
-        n = 100 #number of theta slices 
+        self.numerical_solution, self.shock_ang = TMC_cone_flow(self.cone_ang, self.M_inf, self.gam)
     
-        theta_arr = np.linspace(self.cone_ang, self.shock_ang, n)
-
-        V_R_arr = np.array([dense_output(thet)[0] for thet in theta_arr])
-        V_thet_arr = np.array([dense_output(thet)[1] for thet in theta_arr])
-
-        plt.figure(), plt.grid()
-        plt.plot([math.degrees(theta) for theta in theta_arr], V_R_arr, label="V_R")
-        plt.plot([math.degrees(theta) for theta in theta_arr], V_thet_arr, label="V_thet")
-        plt.show()
-
     def obtain_flow_properties(self):
         """
+        TODO add functions to find flow properties for variable angle theta 
         Obtains isentropic pressure, density, and temperature relations given a velocity solution
         Equations from Anderson Intro to Aerodynamics Ch 8
         """
         #Mach Number on Cone Surface and directly behind shock: 
         Mach = lambda V_R, V_thet, gam: math.sqrt((2/(gam-1))/(-1 + 1/(math.sqrt(V_R**2 + V_thet**2)**2)))#anderson eq 13.81 rearranged
+        
+        def Mach_thet(thet):
+            Vrp, Vthetp = self.numerical_solution.sol(thet)
+            return Mach(Vrp, Vthetp, self.gam)
+
+        self.f_mach = Mach_thet #function to continuously get mach number
 
         [V_R_c, V_thet_c] = self.numerical_solution.sol(self.cone_ang)
         M_c = Mach(V_R_c, V_thet_c, self.gam) 
@@ -136,27 +126,28 @@ class TaylorMaccoll_Cone:
 
         #Pressure: 
         p0_p = lambda M, gam: (1 + M**2*(gam-1)/2)**(gam/(gam-1)) #isentropic total:static pressure ratio
-        p2_p1_normal = lambda M, gam: 1 + (2*gam/(gam+1))*(M**2 - 1) #normal shock static pressure ratio 
+        def p0_p_thet(thet):
+            M = Mach_thet(thet)
+            return p0_p(M, self.gam)
+        self.f_p0_p = p0_p_thet
 
+        p2_p1_normal = lambda M, gam: 1 + (2*gam/(gam+1))*(M**2 - 1) #normal shock static pressure ratio 
         p01_p1 = p0_p(self.M_inf, self.gam)
         p02_p2 = p0_p(M_2, self.gam)
         M1_n = self.M_inf*math.sin(self.shock_ang)#get freestream normal mach component 
         p2_p1 = p2_p1_normal(M1_n, self.gam) #static pressure ratio across shock
         p02_p01 = p02_p2*p2_p1/p01_p1 #stagnation pressure ratio across shock 
-
         p0c_pc = p0_p(M_c, self.gam)
         pc_p1 = (1/p0c_pc)*p02_p2*p2_p1 #cone surface static pressure vs freestream static pressure 
         p0c_p01 = pc_p1*p0c_pc*(1/p01_p1) #cone surface total pressure vs freestream total pressure 
 
-        #def p_p1(thet): #do this for temperature, density, flow turn angle,...
-            #get Mach Number at postion: 
-
-            #get static to stagnation pressure ratio at position: 
-
-            #multiply by constants and return 
-
         #temperature 
         T0_T = lambda M, gam: 1 + (gam-1)*M**2/2
+        def T0_T_thet(thet): #function to continuously get stagnation to static temperature ratio 
+            M = Mach_thet(thet)
+            return T0_T(M, self.gam)
+        self.f_T0_T = T0_T_thet
+
         T2_T1_normal = lambda M,gam: (1+2*gam*(M**2-1)/(gam+1))*(2 + (gam-1)*M**2)/((gam+1)*M**2)
         
         T02_T2 = T0_T(M_2, self.gam)
@@ -166,6 +157,11 @@ class TaylorMaccoll_Cone:
 
         #density
         rho0_rho = lambda M, gam: (1 + (gam-1)*M**2/2)**(1/(gam-1))
+        def rho0_rho_thet(thet):
+            M = Mach(thet)
+            return rho0_rho(M, self.gam)
+        self.f_rho0_rho = rho0_rho_thet
+
         rho2_rho1_normal = lambda M, gam: (gam+1)*M**2/(2 + (gam-1)*M**2)
 
         rho02_rho2 = rho0_rho(M_2, self.gam)
@@ -183,4 +179,61 @@ class TaylorMaccoll_Cone:
         self.rho2_rho1 = rho2_rho1
         self.rhoc_rho1 = rhoc_rho1
         self.T2_T1 = T2_T1
-        self.Tc_T1 = Tc_T1 
+        self.Tc_T1 = Tc_T1
+
+    def convert_velocity_to_rectangular(self):
+        """
+        TODO clean up this function (stagnation temperature doesn't change from the shock)
+        returns a function which finds the rectangular velocity components u and v at any point in the flow field
+        """ 
+        gam = self.gam
+        R = self.R
+        shock_ang = self.shock_ang
+        #determine temperature just upstream of cone shock assuming isentropic acceleration
+        T1 = self.T0/(1 + 0.5*(gam-1)*self.M_inf**2) #static temperature of freestream
+        T2 = T1*self.T2_T1 #temperature immediately behind shock
+        M2 = self.f_mach(shock_ang) #mach number immediately behind shock 
+        T0 = T2*(1 + 0.5*(gam-1)*M2**2) #get stagnation temperature
+
+        #define function to convert velocities
+        def get_veloc_uv(thet): 
+            [Vrp, Vthetp] = self.numerical_solution.sol(thet)
+            M = self.f_mach(thet)
+            T = T0/(1 + 0.5*(gam-1)*M**2)
+            a = math.sqrt(gam*R*T)
+            V = M*a
+            Vmax = math.sqrt(2*(a**2/(gam-1) + V**2/2))
+            Vr, Vthet = Vrp*Vmax, Vthetp*Vmax
+            u = Vr*math.cos(thet) - Vthet*math.sin(thet)
+            v = Vr*math.sin(thet) + Vthet*math.cos(thet) 
+            return u,v
+
+        self.f_veloc_uv = get_veloc_uv
+        
+if __name__ == "__main__":
+
+    cone_ang = math.radians(30)
+    M_inf = 3
+    gam, R, T0 = 1.4, 287.05, 288.15
+
+    def plot_TMC_flow(cone_obj):
+        """
+        Plots the continuous solution between the shock and cone surface
+        cone_obj: taylor maccoll solved flow object
+        """
+        dense_output = cone_obj.numerical_solution.sol
+        #create a plot of V_theta, V_R vs theta
+        n = 100 #number of theta slices 
+    
+        theta_arr = np.linspace(cone_obj.cone_ang, cone_obj.shock_ang, n)
+
+        V_R_arr = np.array([dense_output(thet)[0] for thet in theta_arr])
+        V_thet_arr = np.array([dense_output(thet)[1] for thet in theta_arr])
+
+        plt.figure(), plt.grid()
+        plt.plot([math.degrees(theta) for theta in theta_arr], V_R_arr, label="V_R")
+        plt.plot([math.degrees(theta) for theta in theta_arr], V_thet_arr, label="V_thet")
+        plt.show()
+    cone = TaylorMaccoll_Cone(cone_ang, M_inf, gam, R, T0)
+    res = cone.f_veloc_uv(0.5*(cone.cone_ang+cone.shock_ang))
+    

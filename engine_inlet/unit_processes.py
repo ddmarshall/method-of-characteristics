@@ -148,7 +148,7 @@ def direct_wall(pt1, y_x, dydx, gasProps, delta, vel_TOL, funcs):
     return [x3, y3, u3, v3] 
 
 def inverse_wall(pt1, pt2, pt3, gasProps, delta, vel_TOL, funcs):
-
+    #!Not Working
     #unpacking input data
     u1, v1, x1, y1 = pt1.u, pt1.v, pt1.x, pt1.y
     u2, v2, x2, y2 = pt2.u, pt2.v, pt2.x, pt2.y
@@ -186,12 +186,14 @@ def inverse_wall(pt1, pt2, pt3, gasProps, delta, vel_TOL, funcs):
         pfpx_3 = -math.tan(thet3)
         pfpy_3 = 1
 
-        coeffMat = np.array([[lam12,-1,0,0,0,0], [lama3,-1,0,0,0,0], [-S12,0,Q12,R12,0,0], [-Sa3,0,Qa3,Ra3,-Qa3,-Ra3], [v2-v2,0,0,-(x2-x1),0,0], [0,0,0,0,pfpx_3, pfpy_3]])
+        coeffMat = np.array([[lam12,-1,0,0,0,0], [lama3,-1,0,0,0,0], [-S12,0,Q12,R12,0,0], [-Sa3,0,Qa3,Ra3,-Qa3,-Ra3], [v2-v1,0,0,-(x2-x1),0,0], [0,0,0,0,pfpx_3, pfpy_3]])
         RHSvec = np.array([lam12*x1-y1, lama3*x3-y3, -S12*x1+Q12*u1+R12*v1, -Sa3*x3, (v2-v1)*x1-(x2-x1)*v1,0])
         return np.linalg.solve(coeffMat, RHSvec) #[xa, ya ua, va, u3, v3]
 
     #first iteration values
     xa, ya, ua, va = 0.5*(x1+x2), 0.5*(y1+y2), 0.5*(u1+u2), 0.5*(v1+v2)
+    #ua = u2 #! what zh does
+    #va = v2 #! what zh does
     u3, v3 = u2, v2
 
     #iterate until solution converges:
@@ -251,6 +253,13 @@ def symmetry_boundary(pt2, gasProps, delta, vel_TOL, funcs):
 
     return [x3, y3, u3, v3]
 
+def obtain_convergence(X):
+    """"""
+    if len(X) < 2: return None
+    range = max(X) - min(X)
+    delta = abs(X[-1] - X[1])
+    return delta/range
+
 if __name__  == "__main__":
     #Execute if file is run directly: 
     #Initial Values: 
@@ -274,11 +283,11 @@ if __name__  == "__main__":
     pt1 = point_data(1967.1, 1141.3, 0.06048, 0.059625)
     y_x = lambda x : 0.0221852 + 0.71568*x - 1.0787*x**2 #wall y function 
     dydx = lambda x : 0.71568 - 2*1.0787*x #wall slope function 
-    [x3, y3, u3, v3] = direct_wall(pt1, y_x, dydx, gas, delta, 0.0001, moc_funcs)
+    #[x3, y3, u3, v3] = direct_wall(pt1, y_x, dydx, gas, delta, 0.0001, moc_funcs)
 
     #Testing Axis of Symmetry Operator
     pt2 = point_data(2306.1, 35.7, 0.079625, 0.001290)
-    [x3, y3, u3, v3] = symmetry_boundary(pt2, gas, delta, 0.001, moc_funcs)
+    #[x3, y3, u3, v3] = symmetry_boundary(pt2, gas, delta, 0.001, moc_funcs)
 
     #Testing Inverse Wall Operator 
     pt1 = point_data(1578.3, 705.7, 0.005495, 0.02602) 
