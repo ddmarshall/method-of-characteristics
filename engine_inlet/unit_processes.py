@@ -259,6 +259,7 @@ def obtain_convergence(X):
     delta = abs(X[-1] - X[1])
     return delta/range
 
+"""
 if __name__  == "__main__":
     #TODO remove once module is a complete
     #Execute if file is run directly: 
@@ -293,4 +294,5 @@ if __name__  == "__main__":
     pt1 = point_data(1578.3, 705.7, 0.005495, 0.02602) 
     pt2 = point_data(1577.5, 702.3, 0.005085, 0.02608)
     pt3 = point_data(None, None, 0.005283, 0.02617, thet=math.radians(25)) 
-    [xa, ya, ua, va, u3, y3] = inverse_wall(pt1, pt2, pt3, gas, delta, 0.0001, moc_funcs)    
+    [xa, ya, ua, va, u3, y3] = inverse_wall(pt1, pt2, pt3, gas, delta, 0.0001, moc_funcs)
+"""

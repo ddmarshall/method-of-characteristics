@@ -1,0 +1,5 @@
+The following modules are required
+
+    scipy 
+    numpy 
+    matplotlib

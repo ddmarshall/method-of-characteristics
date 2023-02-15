@@ -209,20 +209,21 @@ class TaylorMaccoll_Cone:
             return u,v
 
         self.f_veloc_uv = get_veloc_uv
-        
+
+"""     
 if __name__ == "__main__":
-    """
-    TODO: Get rid of this section when module is functional
-    """
+    
+    #TODO: Get rid of this section when module is functional
+    
     cone_ang = math.radians(30)
     M_inf = 3
     gam, R, T0 = 1.4, 287.05, 288.15
 
     def plot_TMC_flow(cone_obj):
-        """
-        Plots the continuous solution between the shock and cone surface
-        cone_obj: taylor maccoll solved flow object
-        """
+        
+        #Plots the continuous solution between the shock and cone surface
+        #cone_obj: taylor maccoll solved flow object
+        
         dense_output = cone_obj.numerical_solution.sol
         #create a plot of V_theta, V_R vs theta
         n = 100 #number of theta slices 
@@ -238,4 +239,4 @@ if __name__ == "__main__":
         plt.show()
 
     cone = TaylorMaccoll_Cone(cone_ang, M_inf, gam, R, T0) 
-    
+"""
