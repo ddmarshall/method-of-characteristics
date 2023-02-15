@@ -88,16 +88,24 @@ class generate_tmc_initial_data_line:
         self.u_idl = ulist
         self.v_idl = vlist
 
-def plot_tmc_idl(idl,coneSol, xinterval, annotate=False):
+def plot_tmc_idl(idl, inletGeom, coneSol, xinterval, annotate=False):
+    
+    plt.style.use('dark_background')
     plt.figure(figsize=(16,9)), plt.title(f"M = {coneSol.M_inf}, \u03B3 = {coneSol.gam}, R = {coneSol.R} J/(kg*K), T_0 = {coneSol.T0} K")
-    #cone surface
-    xint = np.linspace(xinterval[0], xinterval[1], 2)
 
-    plt.plot(xint, [x*math.tan(coneSol.cone_ang) for x in xint], label=f'cone = {round(math.degrees(coneSol.cone_ang),2)} deg', color='k')
-    plt.hlines(0, 0, xinterval[1], color='k')
-    plt.vlines(xinterval[1],0, math.tan(coneSol.cone_ang)*xinterval[1], color = 'k')
-    plt.plot(xint, [x*math.tan(coneSol.shock_ang) for x in xint], label=f'shock = {round(math.degrees(coneSol.shock_ang),2)} deg', color='r')
-    plt.plot(idl.x_idl, idl.y_idl, '-o', label="idl")
+    #plot incident shock
+    xint = np.linspace(xinterval[0], xinterval[1], 2)
+    plt.plot(xint, [x*math.tan(coneSol.shock_ang) for x in xint], label=f'shock = {round(math.degrees(coneSol.shock_ang),2)} deg', color='r', linewidth=0.7)
+    
+    #plot inlet geometry: 
+    x_cowl = np.linspace(inletGeom.cowl_bounds[0], inletGeom.cowl_bounds[1], 1000)
+    plt.plot(x_cowl, [inletGeom.y_cowl(x) for x in x_cowl], '-w', linewidth=1.3)
+    x_cb = np.linspace(inletGeom.centerbody_bounds[0], inletGeom.centerbody_bounds[1], 1000)
+    plt.plot(x_cb, [inletGeom.y_centerbody(x) for x in x_cb], '-w', linewidth=1.3)
+    plt.axhline(0, color='w', linestyle='dashdot', linewidth=1)
+
+    #plot idl 
+    plt.plot(idl.x_idl, idl.y_idl, '-o', label="idl", linewidth=0.5, markersize=2, color='gold')
 
     if annotate: 
         for i,x in enumerate(idl.x_idl):
@@ -105,12 +113,13 @@ def plot_tmc_idl(idl,coneSol, xinterval, annotate=False):
             xy = (x,idl.y_idl[i])
             plt.annotate(text, xy)
 
-    plt.xlabel('x'), plt.ylabel('y'), plt.legend(), plt.show()
+    plt.xlabel('x'), plt.ylabel('y'), plt.legend(), plt.grid(linewidth=0.3, color='grey'), plt.show()
 
 if __name__ == "__main__":
+    import example_geometry as geom 
     gam = 1.4
-    cone_ang = math.radians(30)
-    M_inf = 2
+    cone_ang = math.radians(12.5)
+    M_inf = 2.5
     R = 287.05
     T0 = 288.15
     cone = tmc.TaylorMaccoll_Cone(cone_ang, M_inf, gam, R, T0) 
@@ -118,8 +127,14 @@ if __name__ == "__main__":
     class make_curve:
         def __init__(self, y_x, dist, endpoints):
             self.y_x, self.dist, self.endpoints = y_x, dist, endpoints
-    dist = [0, 0.1, 0.2, 0.25, 0.30, 0.6, 0.8, 1]
-    curve =  make_curve(lambda x: 0.5*(x-5)**2+3, dist, (3.6,5))
+
+    #dist = [0, 0.1, 0.2, 0.30, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+    dist = [0, 0.2, 0.4, 0.6, 0.8, 1]
+
+    curve =  make_curve(lambda x: 4*(x-2.5)**2, dist, (2.01,2.15))
+    inletGeom = geom.inletGeom() 
+
     idl = generate_tmc_initial_data_line(cone, curve)
-    plot_tmc_idl(idl, cone, (0,6), annotate=True)
+
+    plot_tmc_idl(idl, inletGeom, cone, (0,4.2), annotate=True)
     pass
