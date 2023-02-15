@@ -3,3 +3,6 @@ The following modules are required
     scipy 
     numpy 
     matplotlib
+
+Please ensure current working directory is set to .../Engine_Inlet when running files in subfolders. 
+Example: run a file like this: python testing/testing_taylor_maccoll.py, not like this: python testing_taylor_maccoll.py

@@ -5,9 +5,7 @@ import sys
 import os
 import unittest
 import math
-
-#add path to access taylor_maccoll module 
-sys.path.append(os.getcwd())
+sys.path.append(os.getcwd() + "\\taylor_maccoll_cone") #add path to taylor maccoll module
 import taylor_maccoll
 
 class Test_Taylor_Maccoll(unittest.TestCase):

@@ -93,7 +93,7 @@ class TaylorMaccoll_Cone:
             shock_ang = float(fsolve_output[0])          
             #TODO switch to root_scalar 
 
-            print(f"found shock angle: {round(math.degrees(shock_ang),3)} (deg)")
+            #print(f"found shock angle: {round(math.degrees(shock_ang),3)} (deg)")
             
             #run function with correct shock angle:
             solution = TMC_cone_guess(shock_ang, cone_ang, M_inf, gam, "solution")

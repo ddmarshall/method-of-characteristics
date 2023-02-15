@@ -1,9 +1,13 @@
+import os 
+import sys 
+sys.path.append(os.getcwd() + "\\taylor_maccoll_cone") #add path to taylor maccoll module
 import taylor_maccoll as tmc
 import math 
 import scipy.optimize as scp_opt
 import scipy.interpolate as scp_int
 import numpy as np 
 import matplotlib.pyplot as plt
+
 """
 Playing around with taylor maccoll function and generating an initial data line for moc computations
 """
@@ -79,10 +83,10 @@ class generate_tmc_initial_data_line:
             y_alpha = curve.y_x(x_alpha)
         
         #x&y and u&v discrete points on data line
-        self.x = xlist
-        self.y =  ylist
-        self.u = ulist
-        self.v = vlist
+        self.x_idl = xlist
+        self.y_idl =  ylist
+        self.u_idl = ulist
+        self.v_idl = vlist
 
 def plot_tmc_idl(idl,coneSol, xinterval, annotate=False):
     plt.figure(figsize=(16,9)), plt.title(f"M = {coneSol.M_inf}, \u03B3 = {coneSol.gam}, R = {coneSol.R} J/(kg*K), T_0 = {coneSol.T0} K")
@@ -93,12 +97,12 @@ def plot_tmc_idl(idl,coneSol, xinterval, annotate=False):
     plt.hlines(0, 0, xinterval[1], color='k')
     plt.vlines(xinterval[1],0, math.tan(coneSol.cone_ang)*xinterval[1], color = 'k')
     plt.plot(xint, [x*math.tan(coneSol.shock_ang) for x in xint], label=f'shock = {round(math.degrees(coneSol.shock_ang),2)} deg', color='r')
-    plt.plot(idl.x, idl.y, '-o', label="idl")
+    plt.plot(idl.x_idl, idl.y_idl, '-o', label="idl")
 
     if annotate: 
-        for i,x in enumerate(idl.x):
-            text = f"V={round(idl.u[i],1)}, {round(idl.v[i],1)}"
-            xy = (x,idl.y[i])
+        for i,x in enumerate(idl.x_idl):
+            text = f"V={round(idl.u_idl[i],1)}, {round(idl.v_idl[i],1)}"
+            xy = (x,idl.y_idl[i])
             plt.annotate(text, xy)
 
     plt.xlabel('x'), plt.ylabel('y'), plt.legend(), plt.show()
