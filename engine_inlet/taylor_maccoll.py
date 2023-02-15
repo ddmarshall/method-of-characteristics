@@ -211,7 +211,9 @@ class TaylorMaccoll_Cone:
         self.f_veloc_uv = get_veloc_uv
         
 if __name__ == "__main__":
-
+    """
+    TODO: Get rid of this section when module is functional
+    """
     cone_ang = math.radians(30)
     M_inf = 3
     gam, R, T0 = 1.4, 287.05, 288.15
@@ -234,6 +236,6 @@ if __name__ == "__main__":
         plt.plot([math.degrees(theta) for theta in theta_arr], V_R_arr, label="V_R")
         plt.plot([math.degrees(theta) for theta in theta_arr], V_thet_arr, label="V_thet")
         plt.show()
-    cone = TaylorMaccoll_Cone(cone_ang, M_inf, gam, R, T0)
-    res = cone.f_veloc_uv(0.5*(cone.cone_ang+cone.shock_ang))
+
+    cone = TaylorMaccoll_Cone(cone_ang, M_inf, gam, R, T0) 
     

@@ -3,8 +3,7 @@ import numpy as np
 import scipy.optimize
 
 """
-Testing out Marshall's system of equations approach to solving for the flow field properties of an interior point
-Assumptions: supersonic, irrotational, isentropic flow 
+Method of characteristics operator functions for irrotational, isentropic axisymmetric/2D flow. 
 """
 
 class operator_functions: 
@@ -261,6 +260,7 @@ def obtain_convergence(X):
     return delta/range
 
 if __name__  == "__main__":
+    #TODO remove once module is a complete
     #Execute if file is run directly: 
     #Initial Values: 
     class point_data: 
@@ -293,6 +293,4 @@ if __name__  == "__main__":
     pt1 = point_data(1578.3, 705.7, 0.005495, 0.02602) 
     pt2 = point_data(1577.5, 702.3, 0.005085, 0.02608)
     pt3 = point_data(None, None, 0.005283, 0.02617, thet=math.radians(25)) 
-    [xa, ya, ua, va, u3, y3] = inverse_wall(pt1, pt2, pt3, gas, delta, 0.0001, moc_funcs)
-    #expecting [u3 = 1583.4, v3 = 738.3]
-    pass
+    [xa, ya, ua, va, u3, y3] = inverse_wall(pt1, pt2, pt3, gas, delta, 0.0001, moc_funcs)    

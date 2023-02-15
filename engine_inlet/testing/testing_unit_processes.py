@@ -1,9 +1,12 @@
-import unittest 
-import unit_processes_ZH as unit_processes 
-#import unit_processes as unit_processes
 """
 unit testing script to verify output of various method of characteristics operators is within expected bounds
 """
+import unittest 
+import os 
+import sys 
+sys.path.append(os.getcwd())
+import unit_processes as unit_processes 
+
 class Test_Operators(unittest.TestCase):
     
     #Testing Interior Operator 
