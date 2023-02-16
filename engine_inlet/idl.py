@@ -83,10 +83,10 @@ class generate_tmc_initial_data_line:
             y_alpha = self.curveParams.y_x(x_alpha)
         
         #x&y and u&v discrete points on data line
-        self.x_idl = xlist
-        self.y_idl =  ylist
-        self.u_idl = ulist
-        self.v_idl = vlist
+        self.x = xlist
+        self.y =  ylist
+        self.u = ulist
+        self.v = vlist
 
 """
 def plot_tmc_idl(idl, inletGeom, coneSol, xinterval, annotate=False):

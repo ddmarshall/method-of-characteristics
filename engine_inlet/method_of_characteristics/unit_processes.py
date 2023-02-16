@@ -81,6 +81,7 @@ def direct_wall(pt1, y_x, dydx, gasProps, delta, vel_TOL, funcs):
     #MOC direct wall solution using irrotational, isentropic equations 
     #currently only works for wall above 
     #TODO adjust input function for y to be in implicit form 
+    #TODO allow for wall below point case
 
     #unpacking input data 
     u1, v1, x1, y1 = pt1.u, pt1.v, pt1.x, pt1.y
@@ -147,7 +148,8 @@ def direct_wall(pt1, y_x, dydx, gasProps, delta, vel_TOL, funcs):
     return [x3, y3, u3, v3] 
 
 def inverse_wall(pt1, pt2, pt3, gasProps, delta, vel_TOL, funcs):
-    #!Not Working
+    #TODO make it work for wall below point case
+
     #unpacking input data
     u1, v1, x1, y1 = pt1.u, pt1.v, pt1.x, pt1.y
     u2, v2, x2, y2 = pt2.u, pt2.v, pt2.x, pt2.y
@@ -251,13 +253,6 @@ def symmetry_boundary(pt2, gasProps, delta, vel_TOL, funcs):
         delta_vel = max([abs(u3 - u3_old), abs(v3 - v3_old)])
 
     return [x3, y3, u3, v3]
-
-def obtain_convergence(X):
-    """"""
-    if len(X) < 2: return None
-    range = max(X) - min(X)
-    delta = abs(X[-1] - X[1])
-    return delta/range
 
 """
 if __name__  == "__main__":

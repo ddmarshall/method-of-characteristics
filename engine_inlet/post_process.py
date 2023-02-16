@@ -49,10 +49,10 @@ class create_slice_plot:
         axes.axhline(0, color='w', linestyle='dashdot', linewidth=1) 
          
     def plot_idl(self, idl, axes, annotate=None): 
-        axes.plot(idl.x_idl, idl.y_idl, '-o', label="idl", linewidth=0.5, markersize=2, color='gold')
+        axes.plot(idl.x, idl.y, '-o', label="idl", linewidth=0.5, markersize=2, color='gold')
         if annotate: 
             for i,x in enumerate(idl.x_idl):
-                text = f"V={round(idl.u_idl[i],1)}, {round(idl.v_idl[i],1)}"
+                text = f"V={round(idl.u[i],1)}, {round(idl.v[i],1)}"
                 xy = (x,idl.y_idl[i])
                 axes.annotate(text, xy)
 

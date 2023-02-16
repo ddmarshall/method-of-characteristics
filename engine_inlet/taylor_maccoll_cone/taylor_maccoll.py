@@ -24,7 +24,7 @@ class TaylorMaccoll_Cone:
         #solve tmc flow and obtain ratios
         self.solve_TMC_flow()
         self.obtain_flow_properties()
-        self.convert_velocity_to_rectangular()
+        self.convert_velocity_to_cartesian()
        
     def solve_TMC_flow(self): 
 
@@ -180,7 +180,7 @@ class TaylorMaccoll_Cone:
         self.T2_T1 = T2_T1
         self.Tc_T1 = Tc_T1
 
-    def convert_velocity_to_rectangular(self):
+    def convert_velocity_to_cartesian(self):
         """
         TODO clean up this function (stagnation temperature doesn't change from the shock)
         returns a function which finds the rectangular velocity components u and v at any point in the flow field
