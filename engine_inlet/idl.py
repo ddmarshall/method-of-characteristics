@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 """
-Playing around with taylor maccoll function and generating an initial data line for moc computations
+class for generating initial data line object using flow solution from taylor maccoll module
 """
 class generate_tmc_initial_data_line: 
     def __init__(self, tmc_res, curve):
@@ -51,7 +51,7 @@ class generate_tmc_initial_data_line:
 
         #compute length of curve from endpoint to endpoint
         n = 1000 #!Placeholder
-        x_pts = list(np.linspace(curve.endpoints[0], curve.endpoints[1], n))
+        x_pts = list(np.linspace(self.curveParams.endpoints[0], self.curveParams.endpoints[1], n))
         y_pts = [y_x(x) for x in x_pts]
         
         l = 0 
@@ -60,10 +60,10 @@ class generate_tmc_initial_data_line:
             dl = dist(x_pts[i], x_pts[i-1], y_pts[i], y_pts[i-1]) #length of segment
             l += dl
         
-        spacing = [l*x for x in curve.dist]
+        spacing = [l*x for x in self.curveParams.dist]
 
         #iterating through curve
-        x_alpha = curve.endpoints[0]
+        x_alpha = self.curveParams.endpoints[0]
         y_alpha = y_x(x_alpha)
 
         xlist, ylist, ulist, vlist = [], [], [], []
@@ -80,7 +80,7 @@ class generate_tmc_initial_data_line:
             
             #update position
             x_alpha = x_beta
-            y_alpha = curve.y_x(x_alpha)
+            y_alpha = self.curveParams.y_x(x_alpha)
         
         #x&y and u&v discrete points on data line
         self.x_idl = xlist
@@ -88,6 +88,7 @@ class generate_tmc_initial_data_line:
         self.u_idl = ulist
         self.v_idl = vlist
 
+"""
 def plot_tmc_idl(idl, inletGeom, coneSol, xinterval, annotate=False):
     
     plt.style.use('dark_background')
@@ -107,11 +108,7 @@ def plot_tmc_idl(idl, inletGeom, coneSol, xinterval, annotate=False):
     #plot idl 
     plt.plot(idl.x_idl, idl.y_idl, '-o', label="idl", linewidth=0.5, markersize=2, color='gold')
 
-    if annotate: 
-        for i,x in enumerate(idl.x_idl):
-            text = f"V={round(idl.u_idl[i],1)}, {round(idl.v_idl[i],1)}"
-            xy = (x,idl.y_idl[i])
-            plt.annotate(text, xy)
+    
 
     plt.xlabel('x'), plt.ylabel('y'), plt.legend(), plt.grid(linewidth=0.3, color='grey'), plt.show()
 
@@ -137,4 +134,4 @@ if __name__ == "__main__":
     idl = generate_tmc_initial_data_line(cone, curve)
 
     plot_tmc_idl(idl, inletGeom, cone, (0,4.2), annotate=True)
-    pass
+"""
