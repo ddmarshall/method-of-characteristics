@@ -10,7 +10,7 @@ responsible for generating plots and figures
 """
 
 class create_slice_plot:
-    def __init__(self, coneSol=None, inletGeom=None, idl=None, mesh=None):
+    def __init__(self, coneSol=None, inletGeom=None, idl=None, annotateIdl=None, mesh=None):
         #create plot depending on which objects you give it
         plt.style.use('dark_background') #dark > light mode 
         fig = plt.figure(figsize=(16,9)) #create figure object
@@ -22,12 +22,13 @@ class create_slice_plot:
         if inletGeom is not None: 
             self.plot_inletGeom(inletGeom, ax)
         if idl is not None: 
-            self.plot_idl(idl, ax)
+            self.plot_idl(idl, ax, annotate=annotateIdl)
         if mesh is not None: 
             self.plot_mesh(mesh, ax)
 
         ax.legend()
         self.fig = fig
+        plt.show()
 
     def plot_coneSol(self, cone, axes, inletGeom):
         axes.set_title(f"M = {cone.M_inf}, \u03B3 = {cone.gam}, R = {cone.R} J/(kg*K), T_0 = {cone.T0} K") 
@@ -51,18 +52,21 @@ class create_slice_plot:
     def plot_idl(self, idl, axes, annotate=None): 
         axes.plot(idl.x, idl.y, '-o', label="idl", linewidth=0.5, markersize=2, color='gold')
         if annotate: 
-            for i,x in enumerate(idl.x_idl):
+            for i,x in enumerate(idl.x):
                 text = f"V={round(idl.u[i],1)}, {round(idl.v[i],1)}"
-                xy = (x,idl.y_idl[i])
+                xy = (x,idl.y[i])
                 axes.annotate(text, xy)
 
     def plot_mesh(self, mesh, axes):
         #TODO write when mesh generator is functional
+        for gen in mesh.gens: 
+            axes.scatter([pt.x for pt in gen],[pt.y for pt in gen], color='orange', linewidth=0.05)
         pass  
 
 if __name__ == "__main__":
     #Testing out class
     #LOAD IN INLET GEOMETRY 
+    sys.path.append(os.getcwd())
     import example_geometry as geom
     inlet = geom.inletGeom() 
 
@@ -75,6 +79,7 @@ if __name__ == "__main__":
     cone = tmc.TaylorMaccoll_Cone(cone_ang, M_inf, gam, R, T0) 
 
     #IDL 
+    sys.path.append(os.getcwd() + "\\initial_data_line")
     import idl as IDL
     class make_curve:
         def __init__(self, y_x, dist, endpoints):
@@ -85,6 +90,5 @@ if __name__ == "__main__":
     idlObj = IDL.generate_tmc_initial_data_line(cone, curve)
 
     #MAKE PLOT 
-    plotObj = create_slice_plot(coneSol=cone, inletGeom=inlet, idl=idlObj)
-    plotObj.fig.show()
-    pass             
+    plotObj = create_slice_plot(coneSol=cone, inletGeom=inlet, idl=idlObj, annotateIdl=True)
+    plt.show()             
