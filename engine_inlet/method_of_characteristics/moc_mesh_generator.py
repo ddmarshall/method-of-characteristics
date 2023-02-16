@@ -38,6 +38,7 @@ class mesh_point:
          self.x,self.y,self.u,self.v = x,y,u,v 
 
 if __name__ == "__main__":
+    #TESTING MODULE
     import os 
     import sys
     sys.path.append(os.getcwd())
