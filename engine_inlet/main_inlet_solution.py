@@ -1,6 +1,6 @@
 """
 Strings everything together and runs an inlet solution
-TODO: take in a run file with everything known ahead of time 
+TODO: take in a run file (.toml or .json) 
 """
 
 if __name__ == "__main__":
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     delta=1 #axisymmetric flow
     velTOL = 0.0001 #velocity delta
     masterMesh = moc.mesh(idlObj, inlet, gas, delta, velTOL) #create mesh object
-    masterMesh.generate_mesh(lambda masterMesh: len(masterMesh.gens) > 1) #generate mesh
+    masterMesh.generate_mesh(lambda masterMesh: len(masterMesh.gens) > 10) #generate mesh
 
     #Plot results
     plotObj = post_process.create_slice_plot(coneSol=cone, inletGeom=inlet, idl=idlObj, mesh=masterMesh)

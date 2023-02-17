@@ -96,4 +96,5 @@ if __name__ == "__main__":
         masterMesh.next_generation()
         print(masterMesh.gens[-1])
         input() #press return to move to next generation
+
 """
