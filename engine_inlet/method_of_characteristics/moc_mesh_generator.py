@@ -1,4 +1,7 @@
-import unit_processes as moc_op
+#import os
+#import sys
+#sys.path.append(os.getcwd())
+import method_of_characteristics.unit_processes as moc_op
 import math
 """
 class for generating mesh and mesh point objects
@@ -52,29 +55,26 @@ class mesh_point:
         #TODO
         pass 
 
+"""
 if __name__ == "__main__":
     #TESTING MODULE
-    import os 
-    import sys
-    sys.path.append(os.getcwd())
     
     #LOAD IN INLET GEOMETRY 
     import example_geometry as geom
     inlet = geom.inletGeom()
 
     #CONE SOLUTION 
-    sys.path.append(os.getcwd()+ "\\taylor_maccoll_cone")
-    import taylor_maccoll as tmc
-    gam = 1.4
+    import taylor_maccoll_cone.taylor_maccoll as tmc
     cone_ang = math.radians(12.5)
     M_inf = 2.5
-    R = 287.05
-    T0 = 288.15
-    cone = tmc.TaylorMaccoll_Cone(cone_ang, M_inf, gam, R, T0) 
+    class gasProps:
+        def __init__(self, gam, R, T0): 
+            self.gam, self.R, self.T0 = gam, R, T0
+    gas = gasProps(1.4, 287.05, 288.15)
+    cone = tmc.TaylorMaccoll_Cone(cone_ang, M_inf, gas) 
 
     #IDL 
-    sys.path.append(os.getcwd()+"\\initial_data_line")
-    import idl as IDL
+    import initial_data_line.idl as IDL
     class make_curve:
         def __init__(self, y_x, dist, endpoints):
             self.y_x, self.dist, self.endpoints = y_x, dist, endpoints
@@ -96,5 +96,4 @@ if __name__ == "__main__":
         masterMesh.next_generation()
         print(masterMesh.gens[-1])
         input() #press return to move to next generation
-
-    pass
+"""

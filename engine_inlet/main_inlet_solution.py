@@ -5,17 +5,12 @@ TODO: take in a run file with everything known ahead of time
 
 if __name__ == "__main__":
     #Importing Stuff
-    import sys
-    import os
+
     import math
-    sys.path.append(os.getcwd() + "\\method_of_characteristics")
-    sys.path.append(os.getcwd() + "\\taylor_maccoll_cone")
-    sys.path.append(os.getcwd() + "\\initial_data_line")
-    sys.path.append(os.getcwd() + "\\post_processing")
-    import moc_mesh_generator as moc
-    import taylor_maccoll as tmc
-    import idl 
-    import post_process
+    import method_of_characteristics.moc_mesh_generator as moc
+    import taylor_maccoll_cone.taylor_maccoll as tmc
+    import initial_data_line.idl as idl
+    import post_processing.post_process as post_process
 
     #Geometry 
     import example_geometry as geom
@@ -32,7 +27,7 @@ if __name__ == "__main__":
     gas = gasProps(gam, R, T0)
 
     #Run Taylor Maccoll Solution 
-    cone = tmc.TaylorMaccoll_Cone(math.radians(inlet.cone_ang_deg), M_inf, gam, R, T0) 
+    cone = tmc.TaylorMaccoll_Cone(math.radians(inlet.cone_ang_deg), M_inf, gas) 
 
     #Generate initial data line 
     class make_curve:
@@ -46,9 +41,8 @@ if __name__ == "__main__":
     delta=1 #axisymmetric flow
     velTOL = 0.0001 #velocity delta
     masterMesh = moc.mesh(idlObj, inlet, gas, delta, velTOL) #create mesh object
-    masterMesh.generate_mesh(lambda masterMesh: len(masterMesh.gens) > 10) #generate mesh
+    masterMesh.generate_mesh(lambda masterMesh: len(masterMesh.gens) > 1) #generate mesh
 
     #Plot results
     plotObj = post_process.create_slice_plot(coneSol=cone, inletGeom=inlet, idl=idlObj, mesh=masterMesh)
-
     pass

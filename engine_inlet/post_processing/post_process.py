@@ -1,14 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np 
 import math 
-import os 
-import sys 
-sys.path.append(os.getcwd() + "\\taylor_maccoll_cone") #add path to taylor maccoll module
-import taylor_maccoll as tmc
 """
-responsible for generating plots and figures
+module responsible for generating plots and figures
 """
-
 class create_slice_plot:
     def __init__(self, coneSol=None, inletGeom=None, idl=None, annotateIdl=None, mesh=None):
         #create plot depending on which objects you give it
@@ -64,23 +59,32 @@ class create_slice_plot:
         pass  
 
 if __name__ == "__main__":
+    #!WARNING: CAUSES SYSTEM TO FREEZE WHEN RUN IN DEBUGGING MODE
     #Testing out class
+    import os 
+    import sys 
+    sys.path.append(os.getcwd() + "\\taylor_maccoll_cone") #add path to taylor maccoll module
+    import taylor_maccoll_cone.taylor_maccoll as tmc
+    
     #LOAD IN INLET GEOMETRY 
     sys.path.append(os.getcwd())
     import example_geometry as geom
     inlet = geom.inletGeom() 
 
     #CONE SOLUTION 
-    gam = 1.4
     cone_ang = math.radians(12.5)
     M_inf = 2.5
-    R = 287.05
-    T0 = 288.15
-    cone = tmc.TaylorMaccoll_Cone(cone_ang, M_inf, gam, R, T0) 
+   
+    class gasProps:
+        def __init__(self, gam, R, T0):
+            self.gam, self.R, self.T0 = gam, R, T0
+    gas = gasProps(1.4, 287.05, 288.15)
+
+    cone = tmc.TaylorMaccoll_Cone(cone_ang, M_inf, gas) 
 
     #IDL 
     sys.path.append(os.getcwd() + "\\initial_data_line")
-    import idl as IDL
+    import initial_data_line.idl as IDL
     class make_curve:
         def __init__(self, y_x, dist, endpoints):
             self.y_x, self.dist, self.endpoints = y_x, dist, endpoints

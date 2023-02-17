@@ -2,14 +2,12 @@ import scipy.integrate
 import scipy.interpolate
 import scipy.optimize 
 import math
-import matplotlib.pyplot as plt
-import numpy as np
 
 class TaylorMaccoll_Cone:
     """
     This class calculates the Taylor-Maccoll flowfield for an infinite, straight cone 
     """
-    def __init__(self, cone_ang, M_inf, gam, R, T0):
+    def __init__(self, cone_ang, M_inf, gasProps):
         """
         cone_ang = cone half angle in radians 
         M_inf = free-stream Mach number 
@@ -17,9 +15,9 @@ class TaylorMaccoll_Cone:
         """
         self.cone_ang = cone_ang #cone half angle
         self.M_inf = M_inf #freestream mach number 
-        self.gam = gam #specific heat ratio 
-        self.R = R #ideal gas constant
-        self.T0 = T0 #freestream stagnation temperature 
+        self.gam = gasProps.gam #specific heat ratio 
+        self.R = gasProps.R #ideal gas constant
+        self.T0 = gasProps.T0 #freestream stagnation temperature 
 
         #solve tmc flow and obtain ratios
         self.solve_TMC_flow()
