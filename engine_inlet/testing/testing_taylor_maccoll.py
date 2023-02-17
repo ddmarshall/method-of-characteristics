@@ -1,10 +1,12 @@
+"""
+This file runs unit tests on the Taylor_Maccoll.py module
+"""
+import sys 
+import os
 import unittest
-import taylor_maccoll
 import math
-
-"""
-This file tests the function of the Taylor_Maccoll.py module 
-"""
+sys.path.append(os.getcwd() + "\\taylor_maccoll_cone") #add path to taylor maccoll module
+import taylor_maccoll
 
 class Test_Taylor_Maccoll(unittest.TestCase):
 
@@ -17,7 +19,9 @@ class Test_Taylor_Maccoll(unittest.TestCase):
         cone_ang = math.radians(30)
         M_inf = 3
         gam = 1.4
-        cone_flow = taylor_maccoll.TaylorMaccoll_Cone(cone_ang, M_inf, gam)
+        R = 287.05
+        T0 = 288.15
+        cone_flow = taylor_maccoll.TaylorMaccoll_Cone(cone_ang, M_inf, gam, R, T0)
         #Compare calculated shock angle with expected angle: 
         shock_ang_exp = math.radians(39.8169519) 
         self.assertAlmostEqual(cone_flow.shock_ang, shock_ang_exp, places=1)
