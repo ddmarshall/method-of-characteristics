@@ -1,6 +1,3 @@
-#import os
-#import sys
-#sys.path.append(os.getcwd())
 import method_of_characteristics.unit_processes as moc_op
 import math
 """
@@ -14,7 +11,7 @@ class mesh:
         self.meshPts = []
         self.triangle = []
         self.idlLen = len(idl.x) #number of points in idl
-        self.numGens = 1
+        self.numGens = 0
         for i,x in enumerate(idl.x): 
             self.meshPts.append(mesh_point(x, idl.y[i], idl.u[i], idl.v[i], i))
         self.currGen = self.meshPts.copy()
@@ -28,7 +25,6 @@ class mesh:
     def next_generation(self):
         #creates next generation of mesh points
         #!WORK IN PROGRESS...
-        #TODO add check to see if interior point will end up crossing a boundary 
         nextGen = []
         for i,pt in enumerate(self.currGen): 
             #interior solution:
@@ -65,6 +61,7 @@ class mesh:
                 nextGen.append(pt3)     
 
         self.numGens += 1
+        print(f"{len(nextGen)} points added in generation: {self.numGens}")
         self.currGen = nextGen
 
     def generate_mesh(self, kill_func):
@@ -77,6 +74,11 @@ class mesh:
         if y >= self.geom.y_cowl(x) or y <= self.geom.y_centerbody(x):
             return True
         return False
+
+    def check_curve_intersect(self):
+        #checks if two curves from the same family intersect (shock condition) 
+        #TODO write this
+        pass
 
 class mesh_point: 
     def __init__(self,x,y,u,v,ind,isWall=False):
@@ -91,47 +93,3 @@ class mesh_point:
         self.T = T0/(1+0.5*(gam-1)*(V/a)**2)
         #pressure
         self.p = p0*(T0/self.T)**(gam/(gam-1))
-
-"""
-if __name__ == "__main__":
-    #TESTING MODULE
-    
-    #LOAD IN INLET GEOMETRY 
-    import example_geometry as geom
-    inlet = geom.inletGeom()
-
-    #CONE SOLUTION 
-    import taylor_maccoll_cone.taylor_maccoll as tmc
-    cone_ang = math.radians(12.5)
-    M_inf = 2.5
-    class gasProps:
-        def __init__(self, gam, R, T0): 
-            self.gam, self.R, self.T0 = gam, R, T0
-    gas = gasProps(1.4, 287.05, 288.15)
-    cone = tmc.TaylorMaccoll_Cone(cone_ang, M_inf, gas) 
-
-    #IDL 
-    import initial_data_line.idl as IDL
-    class make_curve:
-        def __init__(self, y_x, dist, endpoints):
-            self.y_x, self.dist, self.endpoints = y_x, dist, endpoints
-    dist = [0, 0.2, 0.4, 0.6, 0.8, 1]
-    curve =  make_curve(lambda x: 4*(x-2.5)**2, dist, (2.01,2.15))
-    idlObj = IDL.generate_tmc_initial_data_line(cone, curve)
-
-    #OPERATOR INPUTS
-    class gasProps:
-        def __init__(self, gam, R, T0): 
-            self.gam, self.R, self.T0 = gam, R, T0
-    gas = gasProps(1.4, 287.05, 288.15)
-    delta=1 #axisymmetric flow
-    velTOL = 0.0001 #velocity delta 
-
-    #GENERATING
-    masterMesh = mesh(idlObj, inlet, gas, delta, velTOL)
-    while True:
-        masterMesh.next_generation()
-        print(masterMesh.gens[-1])
-        input() #press return to move to next generation
-
-"""

@@ -59,43 +59,4 @@ class create_slice_plot:
             if b is not None: 
                 plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[1]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[1]].y], color='gold', linewidth=0.5)
             if c is not None:
-                plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[2]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[2]].y], color='gold', linewidth=0.5)  
-
-if __name__ == "__main__":
-    #!WARNING: CAUSES SYSTEM TO FREEZE WHEN RUN IN DEBUGGING MODE
-    #Testing out class
-    import os 
-    import sys 
-    sys.path.append(os.getcwd() + "\\taylor_maccoll_cone") #add path to taylor maccoll module
-    import taylor_maccoll_cone.taylor_maccoll as tmc
-    
-    #LOAD IN INLET GEOMETRY 
-    sys.path.append(os.getcwd())
-    import example_geometry as geom
-    inlet = geom.inletGeom() 
-
-    #CONE SOLUTION 
-    cone_ang = math.radians(12.5)
-    M_inf = 2.5
-   
-    class gasProps:
-        def __init__(self, gam, R, T0):
-            self.gam, self.R, self.T0 = gam, R, T0
-    gas = gasProps(1.4, 287.05, 288.15)
-
-    cone = tmc.TaylorMaccoll_Cone(cone_ang, M_inf, gas) 
-
-    #IDL 
-    sys.path.append(os.getcwd() + "\\initial_data_line")
-    import initial_data_line.idl as IDL
-    class make_curve:
-        def __init__(self, y_x, dist, endpoints):
-            self.y_x, self.dist, self.endpoints = y_x, dist, endpoints
-    #dist = [0, 0.1, 0.2, 0.30, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-    dist = [0, 0.2, 0.4, 0.6, 0.8, 1]
-    curve =  make_curve(lambda x: 4*(x-2.5)**2, dist, (2.01,2.15))
-    idlObj = IDL.generate_tmc_initial_data_line(cone, curve)
-
-    #MAKE PLOT 
-    plotObj = create_slice_plot(coneSol=cone, inletGeom=inlet, idl=idlObj, annotateIdl=True)
-    plt.show()             
+                plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[2]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[2]].y], color='gold', linewidth=0.5)

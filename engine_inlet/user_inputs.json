@@ -10,5 +10,9 @@
     "MOC Settings":{
         "Delta":                        1,
         "Velocity Tol (m/s)":           0.001
+    },
+    "Initial Data Line":
+    {
+        
     }
 }

@@ -32,7 +32,7 @@ if __name__ == "__main__":
     class make_curve:
         def __init__(self, y_x, dist, endpoints):
             self.y_x, self.dist, self.endpoints = y_x, dist, endpoints
-    nPoints = 5
+    nPoints = 10
     dist = np.linspace(0,1+(1/nPoints),nPoints)
     curve =  make_curve(lambda x: 4*(x-2.5)**2, dist, (2.01,2.15))
     idlObj = idl.generate_tmc_initial_data_line(cone, curve)

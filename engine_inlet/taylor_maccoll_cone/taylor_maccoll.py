@@ -206,34 +206,3 @@ class TaylorMaccoll_Cone:
             return u,v
 
         self.f_veloc_uv = get_veloc_uv
-
-"""     
-if __name__ == "__main__":
-    
-    #TODO: Get rid of this section when module is functional
-    
-    cone_ang = math.radians(30)
-    M_inf = 3
-    gam, R, T0 = 1.4, 287.05, 288.15
-
-    def plot_TMC_flow(cone_obj):
-        
-        #Plots the continuous solution between the shock and cone surface
-        #cone_obj: taylor maccoll solved flow object
-        
-        dense_output = cone_obj.numerical_solution.sol
-        #create a plot of V_theta, V_R vs theta
-        n = 100 #number of theta slices 
-    
-        theta_arr = np.linspace(cone_obj.cone_ang, cone_obj.shock_ang, n)
-
-        V_R_arr = np.array([dense_output(thet)[0] for thet in theta_arr])
-        V_thet_arr = np.array([dense_output(thet)[1] for thet in theta_arr])
-
-        plt.figure(), plt.grid()
-        plt.plot([math.degrees(theta) for theta in theta_arr], V_R_arr, label="V_R")
-        plt.plot([math.degrees(theta) for theta in theta_arr], V_thet_arr, label="V_thet")
-        plt.show()
-
-    cone = TaylorMaccoll_Cone(cone_ang, M_inf, gam, R, T0) 
-"""
