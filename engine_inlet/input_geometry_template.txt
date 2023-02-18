@@ -1,0 +1,24 @@
+"""
+Template for inlet geometry input
+Change extension from .txt to .py when finished writing
+"""
+class inletGeom: 
+    def __init__(self): 
+        self.cone_ang_deg = ?       #initial cone half angle
+        self.centerbody_bounds = ?  #two-element list/tuple of minimum and maximum x-values of centerbody
+        self.cowl_bounds = ?        #two element list/tuple of minimum and maximum x-values of cowl
+        def y_centerbody(x):
+            """
+            return scalar y value 
+            should be continuous function defining shape of centerbody over centerbody_bounds
+            can be made piecewise by using if, elif, else statements 
+            """
+            return 
+        self.y_centerbody = y_centerbody
+        def y_cowl(x):
+            """
+            return scalar y value 
+            see centerbody instructions
+            """
+            return
+        self.y_cowl = y_cowl
