@@ -2,11 +2,10 @@
 Strings everything together and runs an inlet solution
 TODO: take in a run file (.toml or .json) 
 """
-
 if __name__ == "__main__":
     #Importing Stuff
-
     import math
+    import numpy as np
     import method_of_characteristics.moc_mesh_generator as moc
     import taylor_maccoll_cone.taylor_maccoll as tmc
     import initial_data_line.idl as idl
@@ -33,7 +32,8 @@ if __name__ == "__main__":
     class make_curve:
         def __init__(self, y_x, dist, endpoints):
             self.y_x, self.dist, self.endpoints = y_x, dist, endpoints
-    dist = [0, 0.2, 0.4, 0.6, 0.8, 1]
+    nPoints = 5
+    dist = np.linspace(0,1+(1/nPoints),nPoints)
     curve =  make_curve(lambda x: 4*(x-2.5)**2, dist, (2.01,2.15))
     idlObj = idl.generate_tmc_initial_data_line(cone, curve)
     
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     delta=1 #axisymmetric flow
     velTOL = 0.0001 #velocity delta
     masterMesh = moc.mesh(idlObj, inlet, gas, delta, velTOL) #create mesh object
-    masterMesh.generate_mesh(lambda masterMesh: len(masterMesh.gens) > 10) #generate mesh
+    masterMesh.generate_mesh(lambda masterMesh: masterMesh.numGens > 15) #generate mesh
 
     #Plot results
     plotObj = post_process.create_slice_plot(coneSol=cone, inletGeom=inlet, idl=idlObj, mesh=masterMesh)

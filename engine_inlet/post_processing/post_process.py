@@ -45,7 +45,7 @@ class create_slice_plot:
         axes.axhline(0, color='w', linestyle='dashdot', linewidth=1) 
          
     def plot_idl(self, idl, axes, annotate=None): 
-        axes.plot(idl.x, idl.y, '-o', label="idl", linewidth=0.5, markersize=2, color='gold')
+        axes.plot(idl.x, idl.y, '-o', linewidth=0.5, markersize=2, color='gold')
         if annotate: 
             for i,x in enumerate(idl.x):
                 text = f"V={round(idl.u[i],1)}, {round(idl.v[i],1)}"
@@ -53,10 +53,13 @@ class create_slice_plot:
                 axes.annotate(text, xy)
 
     def plot_mesh(self, mesh, axes):
-        #TODO write when mesh generator is functional
-        for gen in mesh.gens: 
-            axes.scatter([pt.x for pt in gen],[pt.y for pt in gen], color='orange', linewidth=0.05)
-        pass  
+        axes.scatter([pt.x for pt in mesh.meshPts],[pt.y for pt in mesh.meshPts], color='gold', s=2)
+        for tri in mesh.triangle:
+            a,b,c = tri
+            if b is not None: 
+                plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[1]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[1]].y], color='gold', linewidth=0.5)
+            if c is not None:
+                plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[2]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[2]].y], color='gold', linewidth=0.5)  
 
 if __name__ == "__main__":
     #!WARNING: CAUSES SYSTEM TO FREEZE WHEN RUN IN DEBUGGING MODE

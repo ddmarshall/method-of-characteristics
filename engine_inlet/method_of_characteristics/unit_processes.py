@@ -172,16 +172,16 @@ def direct_wall_bel(pt2, y_x, dydx, gasProps, delta, vel_TOL, funcs):
             lam23 = funcs.lam_min(u2, v2, a2)
         else: 
             a3 = funcs.a(a0, gam, u3, v3)
-            lam13 = 0.5*(funcs.lam_min(u2, v2, a2) + funcs.lam_min(u3, v3, a3))
+            lam23 = 0.5*(funcs.lam_min(u2, v2, a2) + funcs.lam_min(u3, v3, a3))
 
         S23 = funcs.S(delta, a23, v23, y23)
         Q23 = funcs.Q(u23, a23)
-        R23 = funcs.R(u23, v23, Q23, lam13)
+        R23 = funcs.R(u23, v23, Q23, lam23)
 
         #computing the x&y location of 3' for first iteration (2 methods suggested)
         try:
             #method 2: use lam13 to project to wall to get (x,y)_3'
-            x3p = float(scipy.optimize.fsolve(lambda x: lam13*(x-x2) + y2 - y_x(x), x2))
+            x3p = float(scipy.optimize.fsolve(lambda x: lam23*(x-x2) + y2 - y_x(x), x2))
             #sol = scipy.optimize.root_scalar(lambda x: lam13*(x-x1) + y1 - y_x(x), method='bisect', bracket=(0, 0.25)) #!Not solving with number as ZH book 
             #x3p = sol.root
             y3p = y_x(x3p)  
@@ -197,7 +197,7 @@ def direct_wall_bel(pt2, y_x, dydx, gasProps, delta, vel_TOL, funcs):
 
         #construct system and solve
         coeffMat = np.array([[lam23, -1, 0, 0],[pfpx_3p, pfpy_3p, 0, 0],[-S23, 0, Q23, R23],[0, 0, pfpx_3p, pfpy_3p]])
-        RHSvec = np.array([lam13*x2-y2, pfpx_3p*x3p+pfpy_3p*y3p-f_w3p, -S23*x2+Q23*u2+R23*v2, 0])
+        RHSvec = np.array([lam23*x2-y2, pfpx_3p*x3p+pfpy_3p*y3p-f_w3p, -S23*x2+Q23*u2+R23*v2, 0])
         return np.linalg.solve(coeffMat, RHSvec) #[x3, y3, u3, v3]
 
     #first iteration

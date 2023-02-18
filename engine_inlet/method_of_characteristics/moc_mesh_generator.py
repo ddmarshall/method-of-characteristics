@@ -10,11 +10,15 @@ class mesh:
     def __init__(self, idl, Geom, gasProps, delta, velTOL):
 
         #create first generation from idl object
-        firstGen = []
-        for i,x in enumerate(idl.x): 
-            firstGen.append(mesh_point(x, idl.y[i], idl.u[i], idl.v[i]))
-        self.gens = [firstGen] #create generation list
         
+        self.meshPts = []
+        self.triangle = []
+        self.idlLen = len(idl.x) #number of points in idl
+        self.numGens = 1
+        for i,x in enumerate(idl.x): 
+            self.meshPts.append(mesh_point(x, idl.y[i], idl.u[i], idl.v[i], i))
+        self.currGen = self.meshPts.copy()
+
         self.funcs = moc_op.operator_functions() #operator functions
         self.gasProps = gasProps
         self.delta = delta
@@ -24,36 +28,69 @@ class mesh:
     def next_generation(self):
         #creates next generation of mesh points
         #!WORK IN PROGRESS...
-        newGen = []
-        for i,pt2 in enumerate(self.gens[-1]): #iterate thru mesh points in most recent generation
-            
-            #run interior point solution for interior pairs
-            pt1 = self.gens[-1][i-1]
-            x3, y3, u3, v3 = moc_op.interior_point(pt1, pt2, self.gasProps, self.delta, self.velTOL, self.funcs)
-            newGen.append(mesh_point(x3,y3,u3,v3))
+        #TODO add check to see if interior point will end up crossing a boundary 
+        nextGen = []
+        for i,pt in enumerate(self.currGen): 
+            #interior solution:
+            if i == 0 and pt.isWall is not True:
+                #upper wall solution
+                pt1 = pt
+                x3, y3, u3, v3 = moc_op.direct_wall_abv(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.velTOL, self.funcs) 
+                ind = len(self.meshPts)
+                pt3 = mesh_point(x3, y3, u3, v3, ind,isWall=True)
+                self.meshPts.append(pt3)
+                self.triangle.append([pt3.i, None, pt1.i])
+                nextGen.append(pt3)
 
-            #run wall solution for edges
-            if i == 0 or i == len(self.gens[-1])-1:
-                #run wall or direct wall 
-                pass
-        
-        self.gens.append(newGen) #add next generation of points to
+            if i < len(self.currGen)-1: 
+                #interior point
+                pt2 = pt #y(pt2) > y(pt1)
+                pt1 = self.currGen[i+1]
+                x3, y3, u3, v3 = moc_op.interior_point(pt1, pt2, self.gasProps, self.delta, self.velTOL, self.funcs)
+                if self.check_boundary_breach(x3,y3) == False: #check if new point breaches upper or lower boundary
+                    ind = len(self.meshPts)
+                    pt3 = mesh_point(x3, y3, u3, v3, ind)
+                    self.meshPts.append(pt3)
+                    self.triangle.append([pt3.i, pt2.i, pt1.i])
+                    nextGen.append(pt3)
+
+            elif i == len(self.currGen)-1 and pt.isWall is not True:
+                #lower wall solution
+                pt2 = pt
+                x3, y3, u3, v3 = moc_op.direct_wall_bel(pt2, self.geom.y_centerbody, self.geom.dydx_centerbody, self.gasProps, self.delta, self.velTOL, self.funcs)
+                ind = len(self.meshPts)
+                pt3 = mesh_point(x3, y3, u3, v3, ind, isWall=True)
+                self.meshPts.append(pt3)
+                self.triangle.append([pt3.i, pt2.i, None])
+                nextGen.append(pt3)     
+
+        self.numGens += 1
+        self.currGen = nextGen
 
     def generate_mesh(self, kill_func):
         #computes subsequent generations until kill_func(mesh object) evaluates as true
         while kill_func(self) != True: 
-            self.next_generation()
-        pass 
+            self.next_generation() 
+
+    def check_boundary_breach(self,x,y):
+        #check if a point object has breached the boundary
+        if y >= self.geom.y_cowl(x) or y <= self.geom.y_centerbody(x):
+            return True
+        return False
 
 class mesh_point: 
-    def __init__(self,x,y,u,v):
+    def __init__(self,x,y,u,v,ind,isWall=False):
          self.x,self.y,self.u,self.v = x,y,u,v 
+         self.i = ind
+         self.isWall = isWall #is the point on the boundary? 
 
-    def get_point_flow_properties(self):
-        #calculates flow properties at piont
-        #Mach, Static/Stagnation ratio, Entropy, etc. 
-        #TODO
-        pass 
+    def get_temp_pressure(self, a0, T0, p0, gam): 
+        #temperature 
+        V = math.sqrt(self.u**2 + self.v**2)
+        a = math.sqrt(a0**2 + 0.5*(gam-1)*V**2)
+        self.T = T0/(1+0.5*(gam-1)*(V/a)**2)
+        #pressure
+        self.p = p0*(T0/self.T)**(gam/(gam-1))
 
 """
 if __name__ == "__main__":
