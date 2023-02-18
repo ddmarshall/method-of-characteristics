@@ -1,0 +1,14 @@
+{
+    "Gas Properties":{
+        "Freestream Stag Temp (K)":     288.15,
+        "Spec Heat Ratio":              1.4, 
+        "Ideal Gas Constant (J/kgK)":   287.05
+    },
+    "Flow Properties":{
+        "Freestream Mach":              2.5
+    },
+    "MOC Settings":{
+        "Delta":                        1,
+        "Velocity Tol (m/s)":           0.001
+    }
+}
