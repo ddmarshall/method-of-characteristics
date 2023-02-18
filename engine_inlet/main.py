@@ -39,9 +39,9 @@ if __name__ == "__main__":
     
     #Generate Mesh
     delta=1 #axisymmetric flow
-    velTOL = 0.0001 #velocity delta
-    masterMesh = moc.mesh(idlObj, inlet, gas, delta, velTOL) #create mesh object
-    masterMesh.generate_mesh(lambda masterMesh: masterMesh.numGens > 15) #generate mesh
+    pcTOL = 0.0001 #velocity delta
+    masterMesh = moc.mesh(idlObj, inlet, gas, delta, pcTOL) #create mesh object
+    masterMesh.generate_mesh(lambda masterMesh: masterMesh.numGens > 30) #generate mesh
 
     #Plot results
     plotObj = post_process.create_slice_plot(coneSol=cone, inletGeom=inlet, idl=idlObj, mesh=masterMesh)

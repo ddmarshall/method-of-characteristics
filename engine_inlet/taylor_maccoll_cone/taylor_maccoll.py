@@ -11,7 +11,7 @@ class TaylorMaccoll_Cone:
         """
         cone_ang = cone half angle in radians 
         M_inf = free-stream Mach number 
-        gam = specific heat ratio (calorically perfect)
+        gasProps = object contiaining gas properties 
         """
         self.cone_ang = cone_ang #cone half angle
         self.M_inf = M_inf #freestream mach number 
@@ -25,7 +25,7 @@ class TaylorMaccoll_Cone:
         self.convert_velocity_to_cartesian()
        
     def solve_TMC_flow(self): 
-
+            
         def TMC_flow(thet, V, gam):
             #Specifies system of ODEs for numerical solver to integrate (verified, don't touch)
             V_r, V_thet = V

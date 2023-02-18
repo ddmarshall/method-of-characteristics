@@ -20,7 +20,21 @@ class operator_functions:
         self.lam_min = lambda u, v, a : (u*v - a*math.sqrt(u**2 + v**2 - a**2))/(u**2 - a**2)
         self.lam_plus = lambda u, v, a : (u*v + a*math.sqrt(u**2 + v**2 - a**2))/(u**2 - a**2)
 
-def interior_point(pt1, pt2, gasProps, delta, vel_TOL, funcs):
+def get_percent_changes(pt_old, pt_new):
+    """
+    Evaluates percent change in velocity and position over one iteration
+    """
+    vel_Old = math.sqrt(pt_old[2]**2 + pt_old[3]**2)
+    pos_Old = math.sqrt(pt_old[0]**2 + pt_old[1]**2)
+    delVel = abs(math.sqrt(pt_old[2]**2 + pt_old[3]**2) - math.sqrt(pt_new[2]**2 + pt_new[3]**2))#change in velocity
+    delPos = abs(math.sqrt(pt_old[0]**2 + pt_old[1]**2) - math.sqrt(pt_new[0]**2 + pt_new[1]**2))#change in position
+
+    pcVel = delVel/vel_Old
+    pcPos = delPos/pos_Old
+
+    return pcVel, pcPos
+
+def interior_point(pt1, pt2, gasProps, delta, pcTOL, funcs):
     """
     MOC interior point solution using irrotational, isentropic equations
     """
@@ -67,21 +81,22 @@ def interior_point(pt1, pt2, gasProps, delta, vel_TOL, funcs):
     [x3, y3, u3, v3] = solve_interior_point(u13, v13, y13, u23, v23, y23, first_iter=True)
 
     #Iterate above process until values converge
-    delta_vel = vel_TOL
-    while delta_vel >= vel_TOL:
-        u3_old, v3_old = u3, v3
+    pc_it = pcTOL
+    while pc_it >= pcTOL:
+        x3_old, y3_old, u3_old, v3_old = x3, y3, u3, v3
         u13, v13, y13 = 0.5*(u1 + u3), 0.5*(v1 + v3), 0.5*(y1 + y3)
         u23, v23, y23 = 0.5*(u2 + u3), 0.5*(v2 + v3), 0.5*(y2 + y3)
         [x3, y3, u3, v3] = solve_interior_point(u13, v13, y13, u23, v23, y23)
-        delta_vel = max([abs(u3 - u3_old), abs(v3 - v3_old)])
+
+        pcVel, pcPos = get_percent_changes([x3_old, y3_old, u3_old, v3_old],[x3, y3, u3, v3]) #get percent change across iteration
+        pc_it = max([pcVel, pcPos])
 
     return [x3, y3, u3, v3]
 
-def direct_wall_abv(pt1, y_x, dydx, gasProps, delta, vel_TOL, funcs):
+def direct_wall_abv(pt1, y_x, dydx, gasProps, delta, pcTOL, funcs):
     #MOC direct wall solution using irrotational, isentropic equations 
     #currently only works for wall above 
     #TODO adjust input function for y to be in implicit form 
-    #TODO allow for wall below point case
 
     #unpacking input data 
     u1, v1, x1, y1 = pt1.u, pt1.v, pt1.x, pt1.y
@@ -131,27 +146,24 @@ def direct_wall_abv(pt1, y_x, dydx, gasProps, delta, vel_TOL, funcs):
         return np.linalg.solve(coeffMat, RHSvec) #[x3, y3, u3, v3]
 
     #first iteration
-    count = 1
     [x3, y3, u3, v3] = solve_direct_wall(u13, v13, y13, first_iter=True)
 
     #Iterate above process until values converge
-    delta_vel = vel_TOL
-    while delta_vel >= vel_TOL:
-        u3_old, v3_old = u3, v3
+    pc_it = pcTOL
+    while pc_it >= pcTOL:
+        x3_old, y3_old, u3_old, v3_old = x3, y3, u3, v3
         u13, v13, y13 = 0.5*(u1 + u3), 0.5*(v1 + v3), 0.5*(y1 + y3)
         [x3, y3, u3, v3] = solve_direct_wall(u13, v13, y13)
-        delta_vel = max([abs(u3 - u3_old), abs(v3 - v3_old)])
-        count += 1
-    
-    #print(f"direct wall converged after {count} iterations")
+        
+        pcVel, pcPos = get_percent_changes([x3_old, y3_old, u3_old, v3_old],[x3, y3, u3, v3]) #get percent change across iteration
+        pc_it = max([pcVel, pcPos])
 
     return [x3, y3, u3, v3] 
 
-def direct_wall_bel(pt2, y_x, dydx, gasProps, delta, vel_TOL, funcs):
+def direct_wall_bel(pt2, y_x, dydx, gasProps, delta, pcTOL, funcs):
     #MOC direct wall solution using irrotational, isentropic equations 
     #currently only works for wall above 
     #TODO adjust input function for y to be in implicit form 
-    #TODO allow for wall below point case
 
     #unpacking input data 
     u2, v2, x2, y2 = pt2.u, pt2.v, pt2.x, pt2.y
@@ -201,25 +213,22 @@ def direct_wall_bel(pt2, y_x, dydx, gasProps, delta, vel_TOL, funcs):
         return np.linalg.solve(coeffMat, RHSvec) #[x3, y3, u3, v3]
 
     #first iteration
-    count = 1
     [x3, y3, u3, v3] = solve_direct_wall(u23, v23, y23, first_iter=True)
 
     #Iterate above process until values converge
-    delta_vel = vel_TOL
-    while delta_vel >= vel_TOL:
-        u3_old, v3_old = u3, v3
+    pc_it = pcTOL
+    while pc_it >= pcTOL:
+        x3_old, y3_old, u3_old, v3_old = x3, y3, u3, v3
         u23, v23, y23 = 0.5*(u2 + u3), 0.5*(v2 + v3), 0.5*(y2 + y3)
         [x3, y3, u3, v3] = solve_direct_wall(u23, v23, y23)
-        delta_vel = max([abs(u3 - u3_old), abs(v3 - v3_old)])
-        count += 1
-    
-    #print(f"direct wall converged after {count} iterations")
+
+        pcVel, pcPos = get_percent_changes([x3_old, y3_old, u3_old, v3_old],[x3, y3, u3, v3]) #get percent change across iteration
+        pc_it = max([pcVel, pcPos])
 
     return [x3, y3, u3, v3] 
 
-def inverse_wall_abv(pt1, pt2, pt3, gasProps, delta, vel_TOL, funcs):
-    #TODO make it work for wall below point case
-
+def inverse_wall_abv(pt1, pt2, pt3, gasProps, delta, pcTOL, funcs):
+    
     #unpacking input data
     u1, v1, x1, y1 = pt1.u, pt1.v, pt1.x, pt1.y
     u2, v2, x2, y2 = pt2.u, pt2.v, pt2.x, pt2.y
@@ -263,25 +272,25 @@ def inverse_wall_abv(pt1, pt2, pt3, gasProps, delta, vel_TOL, funcs):
 
     #first iteration values
     xa, ya, ua, va = 0.5*(x1+x2), 0.5*(y1+y2), 0.5*(u1+u2), 0.5*(v1+v2)
-    #ua = u2 #! what zh does
-    #va = v2 #! what zh does
     u3, v3 = u2, v2
 
     #iterate until solution converges:
-    delta_vel = vel_TOL
-    while delta_vel >= vel_TOL:
+    pc_it = pcTOL
+    while pc_it >= pcTOL:
 
-        u3_old, v3_old = u3, v3
+        x3_old, y3_old, u3_old, v3_old = x3, y3, u3, v3
         [xa, ya, ua, va, u3, v3] = solve_inverse_wall(xa, ya, ua, va, u3, v3)
-        delta_vel = max([abs(u3 - u3_old), abs(v3 - v3_old)]) 
+
+        pcVel, pcPos = get_percent_changes([x3_old, y3_old, u3_old, v3_old],[x3, y3, u3, v3]) #get percent change across iteration
+        pc_it = max([pcVel, pcPos])
 
     return [xa, ya, ua, va, u3, v3]
 
 def inverse_wall_bel():
-    #TODO
-    return 
+    #TODO write this
+    pass
 
-def symmetry_boundary(pt2, gasProps, delta, vel_TOL, funcs):
+def symmetry_boundary(pt2, gasProps, delta, pcTOL, funcs): 
     #MOC symmetry boundary solution for irrotational, isentropic equations
     #currently only works for a point above the symmetry plane
 
@@ -319,11 +328,13 @@ def symmetry_boundary(pt2, gasProps, delta, vel_TOL, funcs):
     [x3, y3, u3, v3] = solve_symmetry_boundary(u23, v23, y23, first_iter=True)
 
     #iterate until convergence is attained 
-    delta_vel = vel_TOL
-    while delta_vel >= vel_TOL:
-        u3_old, v3_old = u3, v3
+    pc_it = pcTOL
+    while pc_it >= pcTOL:
+        x3_old, y3_old, u3_old, v3_old = x3, y3, u3, v3
         u23, v23, y23 = 0.5*(u2 + u3), 0.5*(v2 + v3), 0.5*(y2 + y3)
         [x3, y3, u3, v3] = solve_symmetry_boundary(u23, v23, y23)
-        delta_vel = max([abs(u3 - u3_old), abs(v3 - v3_old)])
+        
+        pcVel, pcPos = get_percent_changes([x3_old, y3_old, u3_old, v3_old],[x3, y3, u3, v3]) #get percent change across iteration
+        pc_it = max([pcVel, pcPos])
 
     return [x3, y3, u3, v3]

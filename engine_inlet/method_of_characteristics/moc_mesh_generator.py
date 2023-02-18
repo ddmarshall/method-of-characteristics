@@ -4,7 +4,7 @@ import math
 class for generating mesh and mesh point objects
 """
 class mesh: 
-    def __init__(self, idl, Geom, gasProps, delta, velTOL):
+    def __init__(self, idl, Geom, gasProps, delta, pcTOL):
 
         #create first generation from idl object
         
@@ -19,7 +19,7 @@ class mesh:
         self.funcs = moc_op.operator_functions() #operator functions
         self.gasProps = gasProps
         self.delta = delta
-        self.velTOL = velTOL
+        self.pcTOL = pcTOL
         self.geom = Geom
 
     def next_generation(self):
@@ -31,7 +31,7 @@ class mesh:
             if i == 0 and pt.isWall is not True:
                 #upper wall solution
                 pt1 = pt
-                x3, y3, u3, v3 = moc_op.direct_wall_abv(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.velTOL, self.funcs) 
+                x3, y3, u3, v3 = moc_op.direct_wall_abv(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs) 
                 ind = len(self.meshPts)
                 pt3 = mesh_point(x3, y3, u3, v3, ind,isWall=True)
                 self.meshPts.append(pt3)
@@ -42,7 +42,7 @@ class mesh:
                 #interior point
                 pt2 = pt #y(pt2) > y(pt1)
                 pt1 = self.currGen[i+1]
-                x3, y3, u3, v3 = moc_op.interior_point(pt1, pt2, self.gasProps, self.delta, self.velTOL, self.funcs)
+                x3, y3, u3, v3 = moc_op.interior_point(pt1, pt2, self.gasProps, self.delta, self.pcTOL, self.funcs)
                 if self.check_boundary_breach(x3,y3) == False: #check if new point breaches upper or lower boundary
                     ind = len(self.meshPts)
                     pt3 = mesh_point(x3, y3, u3, v3, ind)
@@ -53,7 +53,7 @@ class mesh:
             elif i == len(self.currGen)-1 and pt.isWall is not True:
                 #lower wall solution
                 pt2 = pt
-                x3, y3, u3, v3 = moc_op.direct_wall_bel(pt2, self.geom.y_centerbody, self.geom.dydx_centerbody, self.gasProps, self.delta, self.velTOL, self.funcs)
+                x3, y3, u3, v3 = moc_op.direct_wall_bel(pt2, self.geom.y_centerbody, self.geom.dydx_centerbody, self.gasProps, self.delta, self.pcTOL, self.funcs)
                 ind = len(self.meshPts)
                 pt3 = mesh_point(x3, y3, u3, v3, ind, isWall=True)
                 self.meshPts.append(pt3)

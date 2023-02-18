@@ -23,6 +23,8 @@ class create_slice_plot:
 
         ax.legend()
         self.fig = fig
+        #mng = plt.get_current_fig_manager()
+        #mng.full_screen_toggle() #open in full screen
         plt.show()
 
     def plot_coneSol(self, cone, axes, inletGeom):
@@ -34,7 +36,7 @@ class create_slice_plot:
         else: 
             axes.plot(xint, [x*math.tan(cone.cone_ang) for x in xint], label=f'cone = {round(math.degrees(cone.cone_ang),2)}', color='w', linewidth=1.3) #plot straight cone surface
 
-        axes.plot(xint, [x*math.tan(cone.shock_ang) for x in xint], label=f'shock = {round(math.degrees(cone.shock_ang),2)} deg', color='r', linewidth=0.7) 
+        axes.plot(xint, [x*math.tan(cone.shock_ang) for x in xint], label=f'shock = {round(math.degrees(cone.shock_ang),2)} deg', color='red', linewidth=0.7) 
 
     def plot_inletGeom(self, inletGeom, axes):
         #plot inlet geometry: 
@@ -42,10 +44,12 @@ class create_slice_plot:
         axes.plot(x_cowl, [inletGeom.y_cowl(x) for x in x_cowl], '-w', linewidth=1.3)
         x_cb = np.linspace(inletGeom.centerbody_bounds[0], inletGeom.centerbody_bounds[1], 1000)
         axes.plot(x_cb, [inletGeom.y_centerbody(x) for x in x_cb], '-w', linewidth=1.3)
-        axes.axhline(0, color='w', linestyle='dashdot', linewidth=1) 
+        axes.axhline(0, color='w', linestyle='dashed', linewidth=1) 
          
     def plot_idl(self, idl, axes, annotate=None): 
         axes.plot(idl.x, idl.y, '-o', linewidth=0.5, markersize=2, color='gold')
+        for i,x in enumerate(idl.x): 
+            axes.plot([0,x],[0,idl.y[i]],linewidth=0.5,color='gold')
         if annotate: 
             for i,x in enumerate(idl.x):
                 text = f"V={round(idl.u[i],1)}, {round(idl.v[i],1)}"
