@@ -46,8 +46,8 @@ class mesh:
                 if self.check_boundary_breach(x3,y3) == False: #check if new point breaches upper or lower boundary
                     ind = len(self.meshPts)
                     pt3 = mesh_point(x3, y3, u3, v3, ind)
-                    self.meshPts.append(pt3)
                     self.triangle.append([pt3.i, pt2.i, pt1.i])
+                    self.meshPts.append(pt3)
                     nextGen.append(pt3)
 
             elif i == len(self.currGen)-1 and pt.isWall is not True:
@@ -65,9 +65,12 @@ class mesh:
         self.currGen = nextGen
 
     def generate_mesh(self, kill_func):
-        #computes subsequent generations until kill_func(mesh object) evaluates as true
+        #continuously computes subsequent generations of characteristic mesh until kill_func(mesh object) evaluates as true
         while kill_func(self) != True: 
             self.next_generation() 
+
+        for meshPt in self.meshPts: 
+            meshPt.get_temp_pressure(self.gasProps)
 
     def check_boundary_breach(self,x,y):
         #check if a point object has breached the boundary
@@ -76,9 +79,15 @@ class mesh:
         return False
 
     def check_curve_intersect(self):
-        #checks if two curves from the same family intersect (shock condition) 
-        #TODO write this
-        pass
+        #!Work-In-Progress
+        #checks if a new point creates a line which crosses the same family of characteristic
+        #call when a new point is generated
+        #pChar is of form 
+        def ccw(A,B,C):
+            return (C[1]-A[1]) * (B[0]-A[0]) > (B[1]-A[1]) * (C[0]-A[0])
+        # Return true if line segments AB and CD intersect
+        def intersect(A,B,C,D):
+            return ccw(A,C,D) != ccw(B,C,D) and ccw(A,B,C) != ccw(A,B,D)
 
 class mesh_point: 
     def __init__(self,x,y,u,v,ind,isWall=False):
@@ -86,7 +95,9 @@ class mesh_point:
          self.i = ind
          self.isWall = isWall #is the point on the boundary? 
 
-    def get_temp_pressure(self, a0, T0, p0, gam): 
+    def get_temp_pressure(self, gasProps): 
+        #unpacking
+        gam, a0, T0, p0 = gasProps.gam, gasProps.a0, gasProps.T0, gasProps.p0
         #temperature 
         V = math.sqrt(self.u**2 + self.v**2)
         a = math.sqrt(a0**2 + 0.5*(gam-1)*V**2)

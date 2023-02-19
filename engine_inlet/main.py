@@ -20,10 +20,12 @@ if __name__ == "__main__":
     M_inf = 2.5
     R = 287.05
     T0 = 288.15
+    p0 = 101325
     class gasProps:
-        def __init__(self, gam, R, T0): 
-            self.gam, self.R, self.T0 = gam, R, T0
-    gas = gasProps(gam, R, T0)
+        def __init__(self, gam, R, T0, p0): 
+            self.gam, self.R, self.T0, self.p0 = gam, R, T0, p0
+            self.a0 = math.sqrt(gam*R*T0)
+    gas = gasProps(gam, R, T0, p0)
 
     #Run Taylor Maccoll Solution 
     cone = tmc.TaylorMaccoll_Cone(math.radians(inlet.cone_ang_deg), M_inf, gas) 
@@ -32,17 +34,16 @@ if __name__ == "__main__":
     class make_curve:
         def __init__(self, y_x, dist, endpoints):
             self.y_x, self.dist, self.endpoints = y_x, dist, endpoints
-    nPoints = 10
+    nPoints = 6
     dist = np.linspace(0,1+(1/nPoints),nPoints)
     curve =  make_curve(lambda x: 4*(x-2.5)**2, dist, (2.01,2.15))
     idlObj = idl.generate_tmc_initial_data_line(cone, curve)
     
     #Generate Mesh
     delta=1 #axisymmetric flow
-    pcTOL = 0.0001 #velocity delta
+    pcTOL=0.0001 #percent change convergence tolerance
     masterMesh = moc.mesh(idlObj, inlet, gas, delta, pcTOL) #create mesh object
-    masterMesh.generate_mesh(lambda masterMesh: masterMesh.numGens > 30) #generate mesh
+    masterMesh.generate_mesh(lambda masterMesh: masterMesh.numGens > 6) #generate mesh
 
     #Plot results
     plotObj = post_process.create_slice_plot(coneSol=cone, inletGeom=inlet, idl=idlObj, mesh=masterMesh)
-    pass
