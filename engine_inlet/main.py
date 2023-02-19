@@ -34,8 +34,8 @@ if __name__ == "__main__":
     class make_curve:
         def __init__(self, y_x, dist, endpoints):
             self.y_x, self.dist, self.endpoints = y_x, dist, endpoints
-    nPoints = 6
-    dist = np.linspace(0,1+(1/nPoints),nPoints)
+    nPoints = 4
+    dist = np.linspace(0,1+(1/nPoints),nPoints+1)
     curve =  make_curve(lambda x: 4*(x-2.5)**2, dist, (2.01,2.15))
     idlObj = idl.generate_tmc_initial_data_line(cone, curve)
     
@@ -43,7 +43,7 @@ if __name__ == "__main__":
     delta=1 #axisymmetric flow
     pcTOL=0.0001 #percent change convergence tolerance
     masterMesh = moc.mesh(idlObj, inlet, gas, delta, pcTOL) #create mesh object
-    masterMesh.generate_mesh(lambda masterMesh: masterMesh.numGens > 6) #generate mesh
+    masterMesh.generate_mesh(lambda masterMesh: masterMesh.numGens > 7) #generate mesh
 
     #Plot results
     plotObj = post_process.create_slice_plot(coneSol=cone, inletGeom=inlet, idl=idlObj, mesh=masterMesh)

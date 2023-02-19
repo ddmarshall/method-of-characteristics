@@ -58,6 +58,9 @@ class create_slice_plot:
 
     def plot_mesh(self, mesh, axes):
         axes.scatter([pt.x for pt in mesh.meshPts],[pt.y for pt in mesh.meshPts], color='gold', s=2)
+        
+        for pt in mesh.meshPts:
+            axes.annotate(f"{pt.i}", (pt.x,pt.y))
         for tri in mesh.triangle:
             a,b,c = tri
             if b is not None: 
