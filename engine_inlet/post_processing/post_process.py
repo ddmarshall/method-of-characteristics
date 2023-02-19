@@ -13,12 +13,15 @@ class create_slice_plot:
         ax.set_xlabel('x'), ax.set_ylabel('y'), ax.grid(linewidth=0.3, color='grey')
 
         if coneSol is not None:
+            #self.plot_coneSol(coneSol, ax, inletGeom, scalar='mach', idl=idl) 
             self.plot_coneSol(coneSol, ax, inletGeom) 
+
         if inletGeom is not None: 
             self.plot_inletGeom(inletGeom, ax)
         if idl is not None: 
             self.plot_idl(idl, ax, annotate=annotateIdl)
         if mesh is not None: 
+            #self.plot_mesh(mesh, ax, scalar='mach')
             self.plot_mesh(mesh, ax)
 
         ax.legend()
@@ -27,16 +30,20 @@ class create_slice_plot:
         #mng.full_screen_toggle() #open in full screen
         plt.show()
 
-    def plot_coneSol(self, cone, axes, inletGeom):
+    def plot_coneSol(self, cone, axes, inletGeom, scalar=None, idl=None):
         axes.set_title(f"M = {cone.M_inf}, \u03B3 = {cone.gam}, R = {cone.R} J/(kg*K), T_0 = {cone.T0} K") 
         xint = np.array([0, 1])
         if inletGeom is not None:
-            #plot incident only which conforms to inlet geometry 
+            #plot interval only which conforms to inlet geometry 
             xint = np.array([min(inletGeom.centerbody_bounds), max(inletGeom.centerbody_bounds)])
         else: 
             axes.plot(xint, [x*math.tan(cone.cone_ang) for x in xint], label=f'cone = {round(math.degrees(cone.cone_ang),2)}', color='w', linewidth=1.3) #plot straight cone surface
 
         axes.plot(xint, [x*math.tan(cone.shock_ang) for x in xint], label=f'shock = {round(math.degrees(cone.shock_ang),2)} deg', color='red', linewidth=0.7) 
+
+        if scalar is not None and idl is not None:
+            angSweep = np.linspace(cone.cone_ang, cone.shock_ang, 100) 
+            axes.tricontourf(idl.x, idl.y, getattr(idl, scalar), 20)
 
     def plot_inletGeom(self, inletGeom, axes):
         #plot inlet geometry: 
@@ -56,14 +63,18 @@ class create_slice_plot:
                 xy = (x,idl.y[i])
                 axes.annotate(text, xy)
 
-    def plot_mesh(self, mesh, axes):
-        axes.scatter([pt.x for pt in mesh.meshPts],[pt.y for pt in mesh.meshPts], color='gold', s=2)
+    def plot_mesh(self, mesh, axes, scalar=None):
         
-        for pt in mesh.meshPts:
-            axes.annotate(f"{pt.i}", (pt.x,pt.y))
-        for tri in mesh.triangle:
-            a,b,c = tri
-            if b is not None: 
-                plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[1]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[1]].y], color='gold', linewidth=0.5)
-            if c is not None:
-                plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[2]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[2]].y], color='gold', linewidth=0.5)
+        if scalar is None:
+            axes.scatter([pt.x for pt in mesh.meshPts],[pt.y for pt in mesh.meshPts], color='gold', s=2)
+            #for pt in mesh.meshPts:
+             #   axes.annotate(f"{pt.i}", (pt.x,pt.y))
+            for tri in mesh.triangle:
+                a,b,c = tri
+                if b is not None: 
+                    plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[1]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[1]].y], color='gold', linewidth=0.5)
+                if c is not None:
+                    plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[2]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[2]].y], color='gold', linewidth=0.5)
+
+        else:
+            axes.tricontourf([pt.x for pt in mesh.meshPts],[pt.y for pt in mesh.meshPts], [getattr(pt, scalar) for pt in mesh.meshPts], 20)

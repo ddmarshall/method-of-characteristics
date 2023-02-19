@@ -72,7 +72,7 @@ class mesh:
             self.next_generation() 
 
         for meshPt in self.meshPts: 
-            meshPt.get_temp_pressure(self.gasProps)
+            meshPt.get_point_properties(self.gasProps)
 
     def check_boundary_breach(self,x,y):
         #check if a point object has breached the boundary
@@ -169,12 +169,11 @@ class mesh_point:
          self.i = ind
          self.isWall = isWall #is the point on the boundary? 
 
-    def get_temp_pressure(self, gasProps): 
+    def get_point_properties(self, gasProps): 
         #unpacking
         gam, a0, T0, p0 = gasProps.gam, gasProps.a0, gasProps.T0, gasProps.p0
-        #temperature 
         V = math.sqrt(self.u**2 + self.v**2)
         a = math.sqrt(a0**2 + 0.5*(gam-1)*V**2)
+        self.mach = V/a
         self.T = T0/(1+0.5*(gam-1)*(V/a)**2)
-        #pressure
         self.p = p0*(T0/self.T)**(gam/(gam-1))

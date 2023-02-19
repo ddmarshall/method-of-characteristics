@@ -6,7 +6,7 @@ import numpy as np
 class for generating initial data line object using flow solution from taylor maccoll module
 """
 class generate_tmc_initial_data_line: 
-    def __init__(self, tmc_res, curve):
+    def __init__(self, tmc_res, curve, gasProps):
         """
         tmc_res: results object from taylor maccoll function computation
         curve: object containing attributes: 
@@ -22,6 +22,7 @@ class generate_tmc_initial_data_line:
         self.curveParams = curve
         self.check_inputs(tmc_res)
         self.generate_idl(tmc_res)
+        self.get_properties_on_idl(gasProps)
 
     def check_inputs(self, tmc_res):
         """
@@ -78,3 +79,15 @@ class generate_tmc_initial_data_line:
         
         #x&y and u&v discrete points on data line
         self.x, self.y, self.u, self.v = xlist, ylist, ulist, vlist
+
+    def get_properties_on_idl(self, gasProps):
+        #unpacking
+        gam, a0, T0, p0 = gasProps.gam, gasProps.a0, gasProps.T0, gasProps.p0
+        
+        self.T, self.p, self.mach = [],[],[]
+        for i,_ in enumerate(self.x):
+            V = math.sqrt(self.u[i]**2 + self.v[i]**2)
+            a = math.sqrt(a0**2 + 0.5*(gam-1)*V**2)
+            self.mach.append(V/a)
+            self.T.append(T0/(1+0.5*(gam-1)*(V/a)**2))
+            self.p.append(p0*(T0/self.T[i])**(gam/(gam-1)))
