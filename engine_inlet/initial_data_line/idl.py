@@ -20,16 +20,15 @@ class generate_tmc_initial_data_line:
         ultimately return initial data line as object which can be handed off to moc sequence 
         """
         self.curveParams = curve
-        self.check_inputs(tmc_res)
+        self.check_idl(tmc_res)
         self.generate_idl(tmc_res)
         self.get_properties_on_idl(gasProps)
 
-    def check_inputs(self, tmc_res):
+    def check_idl(self, tmc_res):
         """
-        TODO: docstring
-        TODO: check for geometry collision
+        TODO: check for an invalid initial data line
         """
-        #check if curve lies between cone surface and shock surface - throw error if so
+        #make sure curve lies between cone surface and shock surface - throw error if not
 
         return
 

@@ -5,7 +5,7 @@ class inletGeom:
     def __init__(self): 
         self.cone_ang_deg = 12.5
         self.centerbody_bounds = (0, 3.9)
-        self.cowl_bounds = (2,4.1)
+        self.cowl_bounds = (2, 4.1)
         def y_centerbody(x):
             if x >= 0 and x < 2.8: 
                 return 0.22169466264*x

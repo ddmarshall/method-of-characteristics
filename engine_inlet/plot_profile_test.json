@@ -1,0 +1,27 @@
+{   
+    "solution file":"filename.pickle",
+
+    "default plot settings":{
+        "style": "dark_background",
+        "figure size": [16,9],
+        "xlim": [0,4],
+        "ylim":[0,2],
+        "xlabel": "x",
+        "ylabel": "y"
+    },
+
+    "fig1":{
+    
+        "geom":{
+            "type": "geom"
+        },
+           
+        "mesh1":{
+            "type": "mesh",
+            "plot title": "calculated mesh",
+            "linewidth": 0.5,
+            "annotate nodes": false,
+            "line color": "gold"
+        }
+    }
+}

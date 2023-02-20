@@ -107,13 +107,13 @@ class mesh:
                     posSeg = [[pt.x,pt.y],[posPt.x, posPt.y]]
                     #check for intersection
                     if intersect(posSeg_new[0], posSeg_new[1], posSeg[0], posSeg[1]): 
-                        print(f"\nintersection of mesh segment [{pt3.i},{pt1.i}]")
+                        print(f"\nintersection of mesh segment [{pt3.i}-{pt1.i}]")
                         return [[pt, posPt],[pt3, pt1]]
                 if tri[1] is not None:  
                     negPt = [pt for pt in self.meshPts if pt.i == tri[1]][0] #should only be one point 
                     negSeg = [[pt.x, pt.y],[negPt.x, negPt.y]]
                     if intersect(negSeg_new[0], negSeg_new[1], negSeg[0], negSeg[1]):
-                        print(f"\nintersection of mesh segment [{pt3.i},{pt2.i}]")
+                        print(f"\nintersection of mesh segment [{pt3.i}-{pt2.i}]")
                         return [[pt, negPt],[pt3, pt2]]
 
         return None

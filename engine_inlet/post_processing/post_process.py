@@ -22,13 +22,20 @@ class create_slice_plot:
         #if mesh is not None: 
             #self.plot_mesh(ax, mesh)
         
-        self.plot_scalar_contours(ax, 'mach', idl=idl, mesh=mesh)
+        self.plot_scalar_contours(ax, 'p', idl=idl, mesh=mesh, barLabel="static pressure (Pa)")
 
         ax.legend()
         self.fig = fig
         #mng = plt.get_current_fig_manager()
         #mng.full_screen_toggle() #open in full screen
         plt.show()
+
+    def load_plotProfile(self, filePath):
+        """
+        Loads input file and converts entries to object attributes
+        TODO write this
+        """
+        pass 
 
     def plot_coneSol(self, cone, axes, inletGeom):
         axes.set_title(f"M = {cone.M_inf}, \u03B3 = {cone.gam}, R = {cone.R} J/(kg*K), T_0 = {cone.T0} K") 
@@ -71,7 +78,7 @@ class create_slice_plot:
             if c is not None:
                 plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[2]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[2]].y], color='gold', linewidth=0.5)
 
-    def plot_scalar_contours(self, axes, scalar, idl=None, mesh=None):
+    def plot_scalar_contours(self, axes, scalar, idl=None, mesh=None, barLabel=None):
 
         xList = []
         yList = []
@@ -96,4 +103,5 @@ class create_slice_plot:
             scalarList = scalarList + [getattr(pt, scalar) for pt in mesh.meshPts]
 
         tcf = axes.tricontourf(xList, yList, scalarList, 100, cmap='jet')
-        plt.colorbar(tcf, orientation='horizontal', shrink=0.5, label=scalar)
+        if barLabel is None: barLabel = scalar
+        plt.colorbar(tcf, orientation='horizontal', shrink=0.5, label=barLabel)
