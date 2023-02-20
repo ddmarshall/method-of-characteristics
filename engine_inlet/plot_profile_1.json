@@ -1,0 +1,49 @@
+{   
+    "solution file":"filename.pickle",
+
+    "default plot settings":{
+        "style": "dark_background",
+        "figure size": [16,9],
+        "xlim": [0,4],
+        "ylim":[0,2],
+        "xlabel": "x",
+        "ylabel": "y"
+    },
+    
+    "geom":{
+        "type": "geom",
+        "plot title": "inlet geometry"
+    },
+           
+    "mesh1":{
+        "type": "mesh",
+        "plot title": "calculated mesh",
+        "linewidth": 0.5,
+        "annotate nodes": false,
+        "line color": "gold"
+    },
+
+    "scalar1":{
+        "type": "contourf",
+        "scalar": "static temp",
+        "plot title": "None",
+        "numLevels": "100",
+        "colorbar limits": [0,0],
+        "colormap": "jet"
+    },
+
+    "scalar2":{
+
+    },
+
+    "vector1":{
+        "type": "streamlines",
+        "seed xcoords": [],
+        "seed ycoords": [],
+        "linewidth": [],
+        "linecolor": [],
+        "scalar": "None",
+        "scalar colormap": "jet",
+        "scalar colorbar limits": [0,0]
+    }
+}

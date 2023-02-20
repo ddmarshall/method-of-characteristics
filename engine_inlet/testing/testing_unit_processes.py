@@ -5,8 +5,8 @@ import unittest
 import math 
 import os 
 import sys 
-sys.path.append(os.getcwd() + "\\method_of_characteristics")
-import unit_processes as unit_processes 
+sys.path.append(os.getcwd())
+import method_of_characteristics.unit_processes as unit_processes 
 
 class test_operators(unittest.TestCase):
     #create input objects

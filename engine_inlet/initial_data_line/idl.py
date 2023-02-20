@@ -1,18 +1,12 @@
-import os 
-import sys 
-sys.path.append(os.getcwd() + "\\taylor_maccoll_cone") #add path to taylor maccoll module
-import taylor_maccoll as tmc
 import math 
 import scipy.optimize as scp_opt
 import scipy.interpolate as scp_int
 import numpy as np 
-import matplotlib.pyplot as plt
-
 """
 class for generating initial data line object using flow solution from taylor maccoll module
 """
 class generate_tmc_initial_data_line: 
-    def __init__(self, tmc_res, curve):
+    def __init__(self, tmc_res, curve, gasProps):
         """
         tmc_res: results object from taylor maccoll function computation
         curve: object containing attributes: 
@@ -26,15 +20,15 @@ class generate_tmc_initial_data_line:
         ultimately return initial data line as object which can be handed off to moc sequence 
         """
         self.curveParams = curve
-        self.check_inputs(tmc_res)
+        self.check_idl(tmc_res)
         self.generate_idl(tmc_res)
+        self.get_properties_on_idl(gasProps)
 
-    def check_inputs(self, tmc_res):
+    def check_idl(self, tmc_res):
         """
-        TODO: docstring
-        TODO: check for geometry collision
+        TODO: check for an invalid initial data line
         """
-        #check if curve lies between cone surface and shock surface - throw error if so
+        #make sure curve lies between cone surface and shock surface - throw error if not
 
         return
 
@@ -83,55 +77,16 @@ class generate_tmc_initial_data_line:
             y_alpha = self.curveParams.y_x(x_alpha)
         
         #x&y and u&v discrete points on data line
-        self.x = xlist
-        self.y =  ylist
-        self.u = ulist
-        self.v = vlist
+        self.x, self.y, self.u, self.v = xlist, ylist, ulist, vlist
 
-"""
-def plot_tmc_idl(idl, inletGeom, coneSol, xinterval, annotate=False):
-    
-    plt.style.use('dark_background')
-    plt.figure(figsize=(16,9)), plt.title(f"M = {coneSol.M_inf}, \u03B3 = {coneSol.gam}, R = {coneSol.R} J/(kg*K), T_0 = {coneSol.T0} K")
-
-    #plot incident shock
-    xint = np.linspace(xinterval[0], xinterval[1], 2)
-    plt.plot(xint, [x*math.tan(coneSol.shock_ang) for x in xint], label=f'shock = {round(math.degrees(coneSol.shock_ang),2)} deg', color='r', linewidth=0.7)
-    
-    #plot inlet geometry: 
-    x_cowl = np.linspace(inletGeom.cowl_bounds[0], inletGeom.cowl_bounds[1], 1000)
-    plt.plot(x_cowl, [inletGeom.y_cowl(x) for x in x_cowl], '-w', linewidth=1.3)
-    x_cb = np.linspace(inletGeom.centerbody_bounds[0], inletGeom.centerbody_bounds[1], 1000)
-    plt.plot(x_cb, [inletGeom.y_centerbody(x) for x in x_cb], '-w', linewidth=1.3)
-    plt.axhline(0, color='w', linestyle='dashdot', linewidth=1)
-
-    #plot idl 
-    plt.plot(idl.x_idl, idl.y_idl, '-o', label="idl", linewidth=0.5, markersize=2, color='gold')
-
-    
-
-    plt.xlabel('x'), plt.ylabel('y'), plt.legend(), plt.grid(linewidth=0.3, color='grey'), plt.show()
-
-if __name__ == "__main__":
-    import example_geometry as geom 
-    gam = 1.4
-    cone_ang = math.radians(12.5)
-    M_inf = 2.5
-    R = 287.05
-    T0 = 288.15
-    cone = tmc.TaylorMaccoll_Cone(cone_ang, M_inf, gam, R, T0) 
-
-    class make_curve:
-        def __init__(self, y_x, dist, endpoints):
-            self.y_x, self.dist, self.endpoints = y_x, dist, endpoints
-
-    #dist = [0, 0.1, 0.2, 0.30, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-    dist = [0, 0.2, 0.4, 0.6, 0.8, 1]
-
-    curve =  make_curve(lambda x: 4*(x-2.5)**2, dist, (2.01,2.15))
-    inletGeom = geom.inletGeom() 
-
-    idl = generate_tmc_initial_data_line(cone, curve)
-
-    plot_tmc_idl(idl, inletGeom, cone, (0,4.2), annotate=True)
-"""
+    def get_properties_on_idl(self, gasProps):
+        #unpacking
+        gam, a0, T0, p0 = gasProps.gam, gasProps.a0, gasProps.T0, gasProps.p0
+        
+        self.T, self.p, self.mach = [],[],[]
+        for i,_ in enumerate(self.x):
+            V = math.sqrt(self.u[i]**2 + self.v[i]**2)
+            a = math.sqrt(a0**2 + 0.5*(gam-1)*V**2)
+            self.mach.append(V/a)
+            self.T.append(T0/(1+0.5*(gam-1)*(V/a)**2))
+            self.p.append(p0*(T0/self.T[i])**(gam/(gam-1)))
