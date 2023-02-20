@@ -8,8 +8,9 @@ class create_slice_plot:
     def __init__(self, coneSol=None, inletGeom=None, idl=None, annotateIdl=None, mesh=None):
         #create plot depending on which objects you give it
         plt.style.use('dark_background') #dark > light mode 
-        fig = plt.figure(figsize=(16,9)) #create figure object
+        fig = plt.figure(figsize=(16,6)) #create figure object
         ax = fig.add_subplot(1,1,1)
+        ax.set_ylim(0,1.25)
         ax.set_xlabel('x'), ax.set_ylabel('y'), ax.grid(linewidth=0.3, color='grey')
 
         if coneSol is not None:
@@ -21,7 +22,7 @@ class create_slice_plot:
         #if mesh is not None: 
             #self.plot_mesh(ax, mesh)
         
-        self.plot_scalar_contours(ax, 'T', idl=idl, mesh=mesh )
+        self.plot_scalar_contours(ax, 'mach', idl=idl, mesh=mesh)
 
         ax.legend()
         self.fig = fig
@@ -94,4 +95,5 @@ class create_slice_plot:
             yList = yList + [pt.y for pt in mesh.meshPts]
             scalarList = scalarList + [getattr(pt, scalar) for pt in mesh.meshPts]
 
-        axes.tricontourf(xList, yList, scalarList, 100)
+        tcf = axes.tricontourf(xList, yList, scalarList, 100, cmap='jet')
+        plt.colorbar(tcf, orientation='horizontal', shrink=0.5, label=scalar)
