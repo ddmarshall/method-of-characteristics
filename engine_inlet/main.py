@@ -57,7 +57,8 @@ class main:
             def __init__(self, y_x, dist, endpoints):
                 self.y_x, self.dist, self.endpoints = y_x, dist, endpoints
         
-        if inp.idlDist[0] == "linear": Dist = np.linspace(0,1,inp.idlDist[1])
+        if inp.idlDist[0] == "linear": 
+            Dist = np.linspace(0,1+(1/inp.idlDist[1]),inp.idlDist[1]+1)
 
         curve = make_curve(eval(inp.idlFuncStr), Dist, inp.idlEndPts)
         self.idlObj = idl.generate_tmc_initial_data_line(self.coneSol, curve, gas)
@@ -111,8 +112,9 @@ class main:
         pass 
 
 if __name__ == "__main__":
-     
+    import post_processing.post_process as post_process
     import example_geometry as geom
     inlet = geom.Geom()
-    main(inputFile='user_inputs.json', geomObj=inlet) #run solution then plot results
+    sol = main(inputFile='user_inputs.json', geomObj=inlet) #run solution then plot results
+    post_process.create_slice_plot(coneSol=sol.coneSol, inletGeom=sol.inputs.geom, idl=sol.idlObj, mesh=sol.mesh)
     pass 

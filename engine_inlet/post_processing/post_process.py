@@ -22,7 +22,7 @@ class create_slice_plot:
         #if mesh is not None: 
             #self.plot_mesh(ax, mesh)
         
-        self.plot_scalar_contours(ax, 'p', idl=idl, mesh=mesh, barLabel="static pressure (Pa)")
+        self.plot_scalar_contours(ax, 'mach', idl=idl, mesh=mesh, barLabel="Mach Number")
 
         ax.legend()
         self.fig = fig
