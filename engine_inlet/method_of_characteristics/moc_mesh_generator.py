@@ -14,7 +14,7 @@ class mesh:
             self.meshPts.append(mesh_point(x, idl.y[i], idl.u[i], idl.v[i], i))
         self.currGen = self.meshPts.copy()
 
-        self.funcs = moc_op.operator_functions() #operator functions
+        self.funcs = moc_op.operator_funcs() #operator functions
         self.gasProps = gasProps
         self.delta = delta
         self.pcTOL = pcTOL

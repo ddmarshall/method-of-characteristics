@@ -1,8 +1,9 @@
 """
 Example inlet from Anderson BH fig 18 pg 118 M_inf = 2.5
 """
-class inletGeom: 
+class Geom: 
     def __init__(self): 
+        self.type = "inlet"
         self.cone_ang_deg = 12.5
         self.centerbody_bounds = (0, 3.9)
         self.cowl_bounds = (2, 4.1)

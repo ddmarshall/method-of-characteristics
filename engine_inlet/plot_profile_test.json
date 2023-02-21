@@ -1,6 +1,4 @@
 {   
-    "solution file":"filename.pickle",
-
     "default plot settings":{
         "style": "dark_background",
         "figure size": [16,9],
@@ -11,11 +9,9 @@
     },
 
     "fig1":{
-    
         "geom":{
             "type": "geom"
         },
-           
         "mesh1":{
             "type": "mesh",
             "plot title": "calculated mesh",
@@ -24,4 +20,5 @@
             "line color": "gold"
         }
     }
+
 }

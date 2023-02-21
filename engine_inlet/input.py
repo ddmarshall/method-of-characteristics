@@ -2,7 +2,7 @@
 This class generates a universal input object from a set of user input files
 """
 class inputObj: 
-    def __init__(self, inpFile, geomFile):
+    def __init__(self, inpFile, geomObj):
         
         #check file name extension for filetype
         fileName = inpFile.split("/")[-1]
@@ -15,7 +15,7 @@ class inputObj:
         else: 
             raise NameError(f'Invalid Filetype: .{ext}')
 
-        self.import_geom(geomFile) #get geometry
+        self.import_geom(geomObj) #store geometry object as attribute
 
     def import_json(self,file):
 
@@ -24,19 +24,19 @@ class inputObj:
         json_translator = { #converts dictionary keys to object attributes 
             #Gas Properties
             "Freestream Stag Temp (K)":     "T0",
+            "Freestream Stag Pres (Pa)":    "p0",
             "Spec Heat Ratio":              "gam",
             "Ideal Gas Constant (J/kgK)":   "R",
             #Flow Properties
             "Freestream Mach":              "M_inf",
-            #Geometry 
-            "file":                         "geomFile",
             #MOC Settings
             "Delta":                        "delta",
             "Unit Process Converge TOL":    "pcTOL",
+            "kill function":                "kill",
             #Initial Data Line
-            "function":                     "funcStr",
-            "distribution":                 "dist",
-            "endpoints":                    "endPts"
+            "function":                     "idlFuncStr",
+            "distribution":                 "idlDist",
+            "endpoints":                    "idlEndPts"
         }
         #Set attributes according to translator. Good luck comprehending this comprehension:      
         [setattr(self, json_translator[key_j], json_data[key_i][key_j]) for key_i in list(json_data.keys()) for key_j in json_data[key_i].keys() if key_j in json_translator.keys()]
@@ -45,11 +45,9 @@ class inputObj:
         #TODO write this part if using .toml files for inputs
         import toml 
 
-    def import_geom(self):
+    def import_geom(self, geomObj):
         """
         Accesses geometry file and stores in input object
         TODO write this
         """
-        import self.geomFile
-        geom = inletGeom()
-        self.geom = geom
+        self.geom = geomObj

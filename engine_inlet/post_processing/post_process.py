@@ -5,7 +5,7 @@ import math
 module responsible for generating plots and figures
 """
 class create_slice_plot:
-    def __init__(self, coneSol=None, inletGeom=None, idl=None, annotateIdl=None, mesh=None):
+    def __init__(self, coneSol=None, inletGeom=None, idl=None, mesh=None):
         #create plot depending on which objects you give it
         plt.style.use('dark_background') #dark > light mode 
         fig = plt.figure(figsize=(16,6)) #create figure object

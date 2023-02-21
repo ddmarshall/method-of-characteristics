@@ -6,7 +6,7 @@ import scipy.optimize
 Method of characteristics operator functions for irrotational, isentropic axisymmetric/2D flow. 
 """
 
-class operator_functions: 
+class operator_funcs: 
     """
     generates repeatedly-used functions object which are necessary for MOC unit processes
     """
