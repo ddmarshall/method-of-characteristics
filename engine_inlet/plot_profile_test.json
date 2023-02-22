@@ -13,8 +13,18 @@
             "type": "geom"
         },
         "1":{
+            "type": "scalar",
+            "scalar": "mach"
+            
+        }
+    },
+    "fig2":{
+        "0":{
+            "type": "geom"
+        },
+        "1":{
             "type": "mesh",
-            "annotate nodes": false
+            "annotate": false
         }
     }
 

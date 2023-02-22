@@ -94,17 +94,21 @@ class main:
         """
         load in plot file and create plots from save file
         """
+        import matplotlib.pyplot as plt
         import post_processing.post_process as post_process 
         import json 
+
+        plt.style.use('dark_background') #!temporary location
         plotDict = json.load(open(plotFile, 'r'))
         plotSettings = plotDict["default plot settings"]
         del plotDict["default plot settings"]
         
         for key in plotDict.keys():
             subDict = plotDict[key] 
-            figname = key 
-            #hand off subDict or equivalent to the post processing module
-            pass 
+            figname = key #TODO do something with this?
+            #hand off subDict to the post processing module
+            post_process.create_slice_plot(subDict, plotSettings, self)
+        plt.show() 
 
     def print_details(self):
         """
@@ -117,7 +121,7 @@ if __name__ == "__main__":
     import post_processing.post_process as post_process
     import example_geometry as geom
     inlet = geom.Geom()
-    sol = main(inputFile='user_inputs.json', geomObj=inlet) #run solution then plot results
-    #sol = main(inputFile='user_inputs.json', geomObj=inlet, plotFile="plot_profile_test.json") #run solution then plot results
-    post_process.create_slice_plot(coneSol=sol.coneSol, inletGeom=sol.inputs.geom, idl=sol.idlObj, mesh=sol.mesh)
+    #sol = main(inputFile='user_inputs.json', geomObj=inlet) #run solution then plot results
+    sol = main(inputFile='user_inputs.json', geomObj=inlet, plotFile="plot_profile_test.json") #run solution then plot results
+    #post_process.create_slice_plot(coneSol=sol.coneSol, inletGeom=sol.inputs.geom, idl=sol.idlObj, mesh=sol.mesh)
     pass 
