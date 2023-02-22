@@ -27,13 +27,13 @@ class main:
             self.plot_solution(plotFile)
 
     def load_inputs(self, inpFile, geomObj):
-        print("\nloading inputs")
+        print(f"\nloading input file: {inpFile}")
         import input as inp
         inpObj = inp.inputObj(inpFile, geomObj)
         self.inputs = inpObj
 
     def run_solution(self):
-        print("\nrunning solution")
+        print("\nrunning solution...\n")
         import method_of_characteristics.moc_mesh_generator as moc
         import taylor_maccoll_cone.taylor_maccoll as tmc
         import initial_data_line.idl as idl
@@ -102,8 +102,10 @@ class main:
         
         for key in plotDict.keys():
             subDict = plotDict[key] 
-            post_process.create_slice_plot(plotDict, plotSettings, coneSol=None, inletGeom=None, idl=None, mesh=None)
-    
+            figname = key 
+            #hand off subDict or equivalent to the post processing module
+            pass 
+
     def print_details(self):
         """
         prints all relevant solution information to console
@@ -116,5 +118,6 @@ if __name__ == "__main__":
     import example_geometry as geom
     inlet = geom.Geom()
     sol = main(inputFile='user_inputs.json', geomObj=inlet) #run solution then plot results
+    #sol = main(inputFile='user_inputs.json', geomObj=inlet, plotFile="plot_profile_test.json") #run solution then plot results
     post_process.create_slice_plot(coneSol=sol.coneSol, inletGeom=sol.inputs.geom, idl=sol.idlObj, mesh=sol.mesh)
     pass 

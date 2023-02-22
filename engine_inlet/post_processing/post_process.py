@@ -100,7 +100,7 @@ class create_slice_plot:
         if mesh is not None: 
             xList = xList + [pt.x for pt in mesh.meshPts]
             yList = yList + [pt.y for pt in mesh.meshPts]
-            scalarList = scalarList + [getattr(pt, scalar) for pt in mesh.meshPts]
+            scalarList = scalarList + [getattr(pt, scalar) for pt in mesh.meshPts]  
 
         tcf = axes.tricontourf(xList, yList, scalarList, 100, cmap='jet')
         if barLabel is None: barLabel = scalar

@@ -71,6 +71,7 @@ class mesh:
         while kill_func(self) != True: 
             self.next_generation() 
 
+        print("\nkill function triggered\n")
         for meshPt in self.meshPts: 
             meshPt.get_point_properties(self.gasProps)
 

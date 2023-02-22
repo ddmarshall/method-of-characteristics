@@ -1,5 +1,6 @@
 """
 unit testing script to verify output of various method of characteristics operators is within expected bounds
+TODO: add for below wall operators
 """
 import unittest 
 import math 

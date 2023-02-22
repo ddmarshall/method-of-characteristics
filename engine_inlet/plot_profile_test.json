@@ -9,15 +9,12 @@
     },
 
     "fig1":{
-        "geom":{
+        "0":{
             "type": "geom"
         },
-        "mesh1":{
+        "1":{
             "type": "mesh",
-            "plot title": "calculated mesh",
-            "linewidth": 0.5,
-            "annotate nodes": false,
-            "line color": "gold"
+            "annotate nodes": false
         }
     }
 
