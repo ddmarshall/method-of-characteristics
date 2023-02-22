@@ -12,6 +12,7 @@ class mesh:
         self.numGens = 0
         for i,x in enumerate(idl.x): 
             self.meshPts.append(mesh_point(x, idl.y[i], idl.u[i], idl.v[i], i))
+            #TODO add check for endpoints on the wall and set booleans to true
         self.currGen = self.meshPts.copy()
 
         self.funcs = moc_op.operator_funcs() #operator functions

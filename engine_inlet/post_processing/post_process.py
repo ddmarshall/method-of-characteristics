@@ -37,7 +37,7 @@ class create_slice_plot:
 
             elif typ == "scalar":
                 scalar = plotDict[key]["scalar"]
-                self.plot_scalar_contours(axes, scalar, mainObj.idlObj, mainObj.mesh)
+                self.plot_scalar_contours(axes, scalar, idl=mainObj.idlObj, mesh=mainObj.mesh)
 
             else: 
                 raise ValueError(f"invalid displayer type: {typ}")
@@ -84,14 +84,16 @@ class create_slice_plot:
             if c is not None:
                 plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[2]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[2]].y], color='gold', linewidth=0.5)
 
-    def plot_scalar_contours(self, axes, scalar, idl=None, mesh=None, barLabel=None):
-
+    def plot_scalar_contours(self, axes, scalar, idl=None, coneSol=None, mesh=None, freeStream=None, barLabel=None):
+        """
+        TODO: freestream not plotting right. Screws up the blending
+        """
         xList = []
         yList = []
         scalarList = []
 
         if idl is not None: 
-
+            #plot tmc region upto idl 
             x_init,y_init = [],[]
             r = 0.00001
             for i,x in enumerate(idl.x):
@@ -99,14 +101,25 @@ class create_slice_plot:
                 x_init.append(r*math.cos(thet))
                 y_init.append(r*math.sin(thet))
 
-            xList = xList + idl.x + x_init
-            yList = yList + idl.y + y_init
+            xList += idl.x + x_init
+            yList += idl.y + y_init
             scalarList = scalarList + getattr(idl, scalar) + getattr(idl,scalar)
 
         if mesh is not None: 
-            xList = xList + [pt.x for pt in mesh.meshPts]
-            yList = yList + [pt.y for pt in mesh.meshPts]
+            #plot mesh region
+            xList += [pt.x for pt in mesh.meshPts]
+            yList += [pt.y for pt in mesh.meshPts]
             scalarList = scalarList + [getattr(pt, scalar) for pt in mesh.meshPts]  
+
+        #plot far field triangle
+        if freeStream is not None and coneSol is not None: 
+            r = 1 #!hard coded 
+            xpts = [0, 2, 0]
+            ypts = [0, 1, 1]
+            z = getattr(freeStream, scalar)
+            xList += xpts
+            yList += ypts
+            scalarList += [z,z,z]
 
         tcf = axes.tricontourf(xList, yList, scalarList, 100, cmap='jet')
         if barLabel is None: barLabel = scalar

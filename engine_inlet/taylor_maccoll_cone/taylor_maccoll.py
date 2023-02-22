@@ -57,7 +57,7 @@ class TaylorMaccoll_Cone:
             V_r_init = V_nondim*math.cos(shock_ang-flow_deflec)
 
             y0 = [V_r_init, V_thet_init]
-            final_angle = cone_ang/2 #angle for solver to integrate to (must be beyond cone angle)
+            final_angle = cone_ang/6 #angle for solver to integrate to (must be beyond cone angle)
 
             sol = scipy.integrate.solve_ivp(TMC_flow, (shock_ang, final_angle), y0, args=[gam], dense_output=True) #dense output turned on
 

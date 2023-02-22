@@ -28,7 +28,6 @@ class generate_tmc_initial_data_line:
         """
         TODO: check for an invalid initial data line
         """
-        #make sure curve lies between cone surface and shock surface - throw error if not
 
         return
 

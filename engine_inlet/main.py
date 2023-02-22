@@ -32,6 +32,17 @@ class main:
         inpObj = inp.inputObj(inpFile, geomObj)
         self.inputs = inpObj
 
+        #Kind of a dirty solution, but adds freestream object for plotting purposes
+        #TODO consider rewriting
+        class freeStream:
+            def __init__(frst, inputObj):
+                M, p0, T0, gam = inputObj.M_inf, inputObj.p0, inputObj.T0, inputObj.gam
+                frst.mach = M
+                frst.p = p0*(1 + 0.5*(gam - 1)*M**2)**(-gam/(gam-1))
+                frst.T = T0/(1 + 0.5*(gam - 1)*M**2)
+
+        self.freestream = freeStream(inpObj)
+
     def run_solution(self):
         print("\nrunning solution...\n")
         import method_of_characteristics.moc_mesh_generator as moc
