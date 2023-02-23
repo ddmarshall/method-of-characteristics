@@ -32,6 +32,7 @@ class create_slice_plot:
             elif typ == "mesh":
                 anno=False
                 if plotDict[key]["annotate"] == True: anno=True
+                self.plot_coneSol(axes, mainObj.coneSol, mainObj.inputs.geom)
                 self.plot_mesh(axes, mainObj.mesh, annotate=anno)
                 self.plot_idl(axes, mainObj.idlObj)
 
@@ -42,7 +43,7 @@ class create_slice_plot:
             else: 
                 raise ValueError(f"invalid displayer type: {typ}")
 
-    def plot_coneSol(self, cone, axes, inletGeom):
+    def plot_coneSol(self, axes, cone, inletGeom):
         axes.set_title(f"M = {cone.M_inf}, \u03B3 = {cone.gam}, R = {cone.R} J/(kg*K), T_0 = {cone.T0} K") 
         xint = np.array([0, 1])
         if inletGeom is not None:

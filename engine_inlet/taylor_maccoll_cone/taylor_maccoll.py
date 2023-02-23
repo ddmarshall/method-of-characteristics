@@ -46,6 +46,10 @@ class TaylorMaccoll_Cone:
             """
             #get conditions directly after shock
             Mn1 = M_inf*math.sin(shock_ang) #normal freestream mach component
+    
+            if Mn1 <= 1: #if shock angle and freestream mach number result in a subsonic or sonic normal mach component abort and return nothing 
+                return None
+
             Mn2 = math.sqrt((1 + 0.5*(gam-1)*Mn1**2)/(gam*Mn1**2 - 0.5*(gam-1))) #normal shock relation 
             flow_deflec = math.atan((2*(1/math.tan(shock_ang))*((M_inf**2)*(math.sin(shock_ang)**2) - 1))/((M_inf**2)*(gam + math.cos(2*shock_ang)) + 2))
 
@@ -57,12 +61,13 @@ class TaylorMaccoll_Cone:
             V_r_init = V_nondim*math.cos(shock_ang-flow_deflec)
 
             y0 = [V_r_init, V_thet_init]
-            final_angle = cone_ang/10 #angle for solver to integrate to (must be beyond cone angle)
+            final_angle = cone_ang/5 #angle for solver to integrate to (must be beyond cone angle)
 
             sol = scipy.integrate.solve_ivp(TMC_flow, (shock_ang, final_angle), y0, args=[gam], dense_output=True) #dense output turned on
 
-            if sol.y[1].min() > 0 or sol.y[1].max() < 0:
+            if sol.y[1].min()*sol.y[1].max() > 0:
                 #Check to see if solution will lead to a theoretical cone angle 
+                return None
                 raise ValueError("IVP Solve Failed To Capture Theoretical Cone Surface")
 
             func = lambda thet: sol.sol(thet)[1] #returns V_theta for a given theta
@@ -84,9 +89,13 @@ class TaylorMaccoll_Cone:
             plotting = turn solver output plotting on (set to True) 
             """
             alpha_inf = math.asin(1/M_inf)
-            shock_ang_est = 1.45*(cone_ang + 0.5*alpha_inf) #initial guess shock angle 
+            #shock_ang_est = 1*(cone_ang + 0.5*alpha_inf) #initial guess shock angle 
+            shock_ang_est = 1.1*alpha_inf
+
+            print("\nComputing Taylor Maccoll Cone Solution...")
             fsolve_output = scipy.optimize.fsolve(TMC_cone_guess, x0=shock_ang_est, args=(cone_ang, M_inf, gam, "error"), full_output=True)
-            shock_ang = float(fsolve_output[0])          
+            shock_ang = float(fsolve_output[0])    
+            print(f"\nfound cone shock angle: {math.degrees(shock_ang)} deg")      
             
             #run function with correct shock angle:
             solution = TMC_cone_guess(shock_ang, cone_ang, M_inf, gam, "solution")
