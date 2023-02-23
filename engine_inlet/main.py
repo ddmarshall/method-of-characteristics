@@ -64,15 +64,15 @@ class main:
         self.coneSol = tmc.TaylorMaccoll_Cone(math.radians(inp.geom.cone_ang_deg), inp.M_inf, gas) 
 
         #generate idl 
-        class make_curve:
-            def __init__(self, y_x, dist, endpoints):
-                self.y_x, self.dist, self.endpoints = y_x, dist, endpoints
+        #class make_curve:
+        #    def __init__(self, y_x, dist, endpoints):
+        #        self.y_x, self.dist, self.endpoints = y_x, dist, endpoints
         
-        if inp.idlDist[0] == "linear": 
-            Dist = np.linspace(0,1+(1/inp.idlDist[1]),inp.idlDist[1]+1)
+        #if inp.idlDist[0] == "linear": 
+        #    Dist = np.linspace(0,1+(1/inp.idlDist[1]),inp.idlDist[1]+1)
 
-        curve = make_curve(eval(inp.idlFuncStr), Dist, inp.idlEndPts)
-        self.idlObj = idl.generate_tmc_initial_data_line(self.coneSol, gas, curve=curve)
+        #curve = make_curve(eval(inp.idlFuncStr), Dist, inp.idlEndPts)
+        self.idlObj = idl.generate_tmc_initial_data_line(self.inputs.geom, self.coneSol, gas, self.inputs.nIdlPts, self.inputs.idlEndPts)
 
         #generate mesh
         mesh = moc.mesh(self.idlObj, inp.geom, gas, inp.delta, inp.pcTOL) #create mesh object

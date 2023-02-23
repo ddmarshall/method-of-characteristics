@@ -10,9 +10,14 @@ class mesh:
         self.triangle = []
         self.idlLen = len(idl.x) #number of points in idl
         self.numGens = 0
-        for i,x in enumerate(idl.x): 
+        for i,x in enumerate(idl.x):
             self.meshPts.append(mesh_point(x, idl.y[i], idl.u[i], idl.v[i], i))
             #TODO add check for endpoints on the wall and set booleans to true
+        if hasattr(idl, 'cowlPoint'):
+            self.meshPts[0].isWall = True 
+        if hasattr(idl, 'cbPoint'):
+            self.meshPts[-1].isWall = True
+        
         self.currGen = self.meshPts.copy()
 
         self.funcs = moc_op.operator_funcs() #operator functions
@@ -78,6 +83,9 @@ class mesh:
 
     def check_boundary_breach(self,x,y):
         #check if a point object has breached the boundary
+        if self.geom.y_cowl(x) is None or self.geom.y_centerbody(x) is None: 
+            return True
+
         if y >= self.geom.y_cowl(x) or y <= self.geom.y_centerbody(x):
             return True
         return False

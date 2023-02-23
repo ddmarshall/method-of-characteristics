@@ -11,11 +11,10 @@
     "MOC Settings":{
         "Delta":                        1,
         "Unit Process Converge TOL":    0.0001,
-        "kill function":                "lambda mesh: mesh.numGens > 5"
+        "kill function":                "lambda mesh: mesh.numGens >= 9"
     },
     "Initial Data Line":{
-        "function":                     "lambda x: 4*(x-2.5)**2",
-        "distribution":                 ["linear",3],
-        "endpoints":                    [2.01, 2.15]
+        "endpoints":                    [[2,"cowl"], [2,"centerbody"]],
+        "num points":                   10
     }
 }
