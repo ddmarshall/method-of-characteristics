@@ -72,7 +72,7 @@ class main:
             Dist = np.linspace(0,1+(1/inp.idlDist[1]),inp.idlDist[1]+1)
 
         curve = make_curve(eval(inp.idlFuncStr), Dist, inp.idlEndPts)
-        self.idlObj = idl.generate_tmc_initial_data_line(self.coneSol, curve, gas)
+        self.idlObj = idl.generate_tmc_initial_data_line(self.coneSol, gas, curve=curve)
 
         #generate mesh
         mesh = moc.mesh(self.idlObj, inp.geom, gas, inp.delta, inp.pcTOL) #create mesh object

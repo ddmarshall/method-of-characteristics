@@ -6,16 +6,16 @@
         "Ideal Gas Constant (J/kgK)":   287.05
     },
     "Flow Properties":{
-        "Freestream Mach":              2.5
+        "Freestream Mach":              2
     },
     "MOC Settings":{
         "Delta":                        1,
         "Unit Process Converge TOL":    0.0001,
-        "kill function":                "lambda mesh: mesh.numGens > 70"
+        "kill function":                "lambda mesh: mesh.numGens > 5"
     },
     "Initial Data Line":{
         "function":                     "lambda x: 4*(x-2.5)**2",
-        "distribution":                 ["linear",20],
+        "distribution":                 ["linear",3],
         "endpoints":                    [2.01, 2.15]
     }
 }
