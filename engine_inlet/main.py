@@ -135,4 +135,4 @@ if __name__ == "__main__":
     #sol = main(inputFile='user_inputs.json', geomObj=inlet) #run solution then plot results
     sol = main(inputFile='user_inputs.json', geomObj=inlet, plotFile="plot_profile_test.json") #run solution then plot results
     #post_process.create_slice_plot(coneSol=sol.coneSol, inletGeom=sol.inputs.geom, idl=sol.idlObj, mesh=sol.mesh)
-    pass 
+pass        

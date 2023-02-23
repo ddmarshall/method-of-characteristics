@@ -57,13 +57,12 @@ class TaylorMaccoll_Cone:
             V_r_init = V_nondim*math.cos(shock_ang-flow_deflec)
 
             y0 = [V_r_init, V_thet_init]
-            final_angle = cone_ang/6 #angle for solver to integrate to (must be beyond cone angle)
+            final_angle = cone_ang/10 #angle for solver to integrate to (must be beyond cone angle)
 
             sol = scipy.integrate.solve_ivp(TMC_flow, (shock_ang, final_angle), y0, args=[gam], dense_output=True) #dense output turned on
 
             if sol.y[1].min() > 0 or sol.y[1].max() < 0:
                 #Check to see if solution will lead to a theoretical cone angle 
-                #return None
                 raise ValueError("IVP Solve Failed To Capture Theoretical Cone Surface")
 
             func = lambda thet: sol.sol(thet)[1] #returns V_theta for a given theta
@@ -85,12 +84,9 @@ class TaylorMaccoll_Cone:
             plotting = turn solver output plotting on (set to True) 
             """
             alpha_inf = math.asin(1/M_inf)
-            shock_ang_est = cone_ang + 0.5*alpha_inf #initial guess shock angle 
+            shock_ang_est = 1.45*(cone_ang + 0.5*alpha_inf) #initial guess shock angle 
             fsolve_output = scipy.optimize.fsolve(TMC_cone_guess, x0=shock_ang_est, args=(cone_ang, M_inf, gam, "error"), full_output=True)
             shock_ang = float(fsolve_output[0])          
-            #TODO switch to root_scalar 
-
-            #print(f"found shock angle: {round(math.degrees(shock_ang),3)} (deg)")
             
             #run function with correct shock angle:
             solution = TMC_cone_guess(shock_ang, cone_ang, M_inf, gam, "solution")

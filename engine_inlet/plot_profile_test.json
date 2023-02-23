@@ -1,5 +1,4 @@
-{   
-    "default plot settings":{
+{   "default plot settings":{
         "style": "dark_background",
         "figure size": [16,9],
         "xlim": [0,4],
@@ -8,17 +7,7 @@
         "ylabel": "y"
     },
 
-    "fig1":{
-        "0":{
-            "type": "geom"
-        },
-        "1":{
-            "type": "scalar",
-            "scalar": "mach"
-            
-        }
-    },
-    "fig2":{
+    "fig0":{
         "0":{
             "type": "geom"
         },
@@ -26,6 +15,25 @@
             "type": "mesh",
             "annotate": false
         }
-    }
+    },
 
+    "fig1":{
+        "0":{
+            "type": "geom"
+        },
+        "1":{
+            "type": "scalar",
+            "scalar": "mach"       
+        }
+    },
+
+    "fig2":{
+        "0":{
+            "type": "geom"
+        },
+        "1":{
+            "type": "scalar",
+            "scalar": "T"
+        }
+    }
 }
