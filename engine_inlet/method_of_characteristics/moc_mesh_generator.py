@@ -184,6 +184,7 @@ class mesh2:
         self.delta = delta
         self.pcTOL = pcTOL
         self.geom = Geom
+        self.f_kill = [kill_func, False]
 
         for i,x in enumerate(idl.x):
             self.idl.append(mesh_point(x, idl.y[i], idl.u[i], idl.v[i], None, isIdl=True))
@@ -193,16 +194,47 @@ class mesh2:
         if hasattr(idl, 'cbPoint'):
             self.idl[-1].isWall = True
         
-        self.generate_mesh(kill_func)
+        self.generate_mesh()
         self.compile_mesh_points()
         [pt.get_point_properties(self.gasProps) for pt in self.meshPts]
 
-    def generate_mesh(self, kill_func):
+    def generate_mesh(self):
         """
         generates the characteristic mesh until the kill function is triggered 
         """
-        charDir = "pos" #!hard coded for now... starting direction
+        charDir = "neg" #!hard coded for now... starting direction
         self.generate_initial_mesh(charDir)
+        while self.f_kill[1] == False: 
+
+            if charDir == "neg":
+                #generate initial above-wall point 
+                pt1 = self.C_neg[-1][1] #2nd point in most recent characteristic
+                [x3,y3,u3,v3] = moc_op.direct_wall_abv(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs)
+                pt3 = mesh_point(x3,y3,u3,v3, None, isWall=True)
+                self.triangle_obj.append([pt3, None, pt1]) 
+                #self.C_neg.append([pt3])
+                i,_ = self.find_mesh_point(pt1, self.C_pos)
+                self.C_pos[i].append(pt3) #add to positive
+                
+                prev_n_char = self.C_neg[-1].copy()
+                prev_n_char.remove(prev_n_char[0])
+                self.compute_next_neg_char(pt3, prev_n_char)
+
+            elif charDir == "pos":
+
+                #generate initial below-wall point 
+                pt2 = self.C_pos[-1][1] #2nd point in most recent characteristic
+                [x3,y3,u3,v3] = moc_op.direct_wall_bel(pt2, self.geom.y_centerbody, self.geom.dydx_centerbody, self.gasProps, self.delta, self.pcTOL, self.funcs)
+                pt3 = mesh_point(x3,y3,u3,v3, None, isWall=True)
+                self.triangle_obj.append([pt3, pt2, None]) 
+                #self.C_pos.append([pt3])
+                i,_ = self.find_mesh_point(pt2, self.C_neg)
+                self.C_neg[i].append(pt3) #add to positive
+                
+                prev_p_char = self.C_pos[-1].copy()
+                prev_p_char.remove(prev_p_char[0])
+                self.compute_next_pos_char(pt3, prev_p_char)
+            
         pass
  
     def generate_initial_mesh(self, charDir):
@@ -220,16 +252,19 @@ class mesh2:
             [self.C_pos.append([pt]) for pt in idl] #first pos line at the top
             idl.reverse() #reverse idl to start at bottom
 
-        #advancing along negatives: 
+        #generating intial mesh: 
         for i,pt in enumerate(idl):
             if i == 0: continue #first point has no - char passing through it 
-            #self.compute_next_neg_char(pt, self.C_neg[i-1])
-            self.compute_next_pos_char(pt, self.C_pos[i-1])
-            
+            if charDir == "neg":
+                self.compute_next_neg_char(pt, self.C_neg[i-1])
+            elif charDir == "pos":
+                self.compute_next_pos_char(pt, self.C_pos[i-1])
+
     def compute_next_neg_char(self, init_point, prev_n_char):
         """
         Generates the next leading negative characteristic by advancing the mesh along the previous
         init_point could be wall or idl point
+        !NOTE TO SELF: CHANGES HERE NEED TO BE REFLECTED IN TWIN FUNCTION
         """
         new_char = [init_point]
         for pt in prev_n_char:
@@ -241,10 +276,14 @@ class mesh2:
             self.triangle_obj.append([pt3, pt2, pt1])
 
             #find point 1 and append the new point 
-            for i,posChar in enumerate(self.C_pos): #TODO convert to list comprehension 
-                    [self.C_pos[i].append(pt3) for p in posChar if p == pt1]
+            i,_ = self.find_mesh_point(pt1, self.C_pos)
+            self.C_pos[i].append(pt3)
 
             init_point = pt3
+
+            if self.f_kill[0](self) == True:
+                self.f_kill[1] = True
+                return
 
         #terminating wall point
         pt2 = new_char[-1]
@@ -270,11 +309,15 @@ class mesh2:
             new_char.append(pt3)
             self.triangle_obj.append([pt3, pt2, pt1])
 
-            #find point 1 and append the new point 
-            for i,negChar in enumerate(self.C_neg): #TODO convert to list comprehension 
-                    [self.C_neg[i].append(pt3) for p in negChar if p == pt2]
+            #find point 2 and append the new point 
+            i,_ = self.find_mesh_point(pt2, self.C_neg)
+            self.C_neg[i].append(pt3)
 
             init_point = pt3
+
+            if self.f_kill[0](self) == True:
+                self.f_kill[1] = True
+                return
 
         #terminating wall point
         pt1 = new_char[-1]
@@ -286,7 +329,7 @@ class mesh2:
 
         self.C_pos.append(new_char)
 
-    def check_for_intersection(self,):
+    def check_for_intersection(self, newPt, ):
         """
         checks for a same-family characteristic intersection for a new mesh point computation
         """
@@ -299,6 +342,10 @@ class mesh2:
         pass
 
     def compile_mesh_points(self):
+        """
+        dumps all mesh points into one bucket, assigns them all indices, and makes a new triangle list of point indices
+        need to run this before plotting the mesh
+        """
         self.meshPts = []
         i = 0 
         for char in self.C_pos:
@@ -310,7 +357,19 @@ class mesh2:
         self.triangle = []
         for i,tri in enumerate(self.triangle_obj): #!TEMPORAY IMPROVE LATER
             self.triangle.append([pt.ind if pt is not None else None for pt in tri])
-                
+    
+    def find_mesh_point(self, pt, C_posneg):
+        """
+        gets the index of point in C_posneg (self.C_pos or self.C_neg)
+        returns [i,j]
+            i = line index 
+            j = point index
+        """
+        for i,char in enumerate(C_posneg):
+            for j,p in enumerate(char): 
+                if p == pt:
+                    return [i,j]
+
 class mesh_point: 
     def __init__(self,x,y,u,v,ind,isWall=False, isIdl=False):
          self.x,self.y,self.u,self.v = x,y,u,v 

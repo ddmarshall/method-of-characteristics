@@ -79,7 +79,7 @@ class main:
         #mesh.generate_mesh(eval(inp.kill)) #generate mesh
 
         
-        mesh = moc.mesh2(self.idlObj, inp.geom, gas, inp.delta, inp.pcTOL, inp.kill)
+        mesh = moc.mesh2(self.idlObj, inp.geom, gas, inp.delta, inp.pcTOL, eval(inp.kill))
         self.mesh = mesh 
 
     def store_solution(self, saveFile):
