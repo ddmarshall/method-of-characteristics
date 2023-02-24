@@ -272,6 +272,10 @@ class mesh2:
             pt1 = pt #below 
             [x3, y3, u3, v3] = moc_op.interior_point(pt1, pt2, self.gasProps, self.delta, self.pcTOL, self.funcs)
             pt3 = mesh_point(x3, y3, u3, v3, ind = None)
+            if self.check_for_int_intersect(pt3, pt2, pt1, "neg"):
+                self.trim_mesh_after_intersect(pt2, pt1, "neg")
+                return  
+
             new_char.append(pt3)
             self.triangle_obj.append([pt3, pt2, pt1])
 
@@ -302,10 +306,13 @@ class mesh2:
         """
         new_char = [init_point]
         for pt in prev_p_char:
-            pt1 = init_point #above #!
-            pt2 = pt #below #!
+            pt1 = init_point #below #!
+            pt2 = pt #above #!
             [x3, y3, u3, v3] = moc_op.interior_point(pt1, pt2, self.gasProps, self.delta, self.pcTOL, self.funcs)
             pt3 = mesh_point(x3, y3, u3, v3, ind = None)
+            if self.check_for_int_intersect(pt3, pt2, pt1, "pos"):
+                self.trim_mesh_after_intersect(pt2, pt1, "pos")
+                return
             new_char.append(pt3)
             self.triangle_obj.append([pt3, pt2, pt1])
 
@@ -329,26 +336,82 @@ class mesh2:
 
         self.C_pos.append(new_char)
 
-    def check_for_intersection(self, newPt, ):
+    def check_for_int_intersect(self, pt3, pt2, pt1, charDir):
         """
-        checks for a same-family characteristic intersection for a new mesh point computation
+        checks for a same-family characteristic intersection for an interior point solution
+        pt3 = new point from interior solution 
+        pt2 = above parent point 
+        pt1 = below parent point
         """
-        pass 
+        hasIntersected = False 
+        def ccw(A,B,C):
+            return (C[1]-A[1])*(B[0]-A[0]) > (B[1]-A[1])*(C[0]-A[0])
+        # Return true if line segments AB and CD intersect
+        def intersect(A,B,C,D):
+            #return true is segments A-B and C-D intersect 
+            #check if points intersect at the ends (guard clause)
+            if A in [C,D] or B in [C,D]:
+                return False
+            return ccw(A,C,D) != ccw(B,C,D) and ccw(A,B,C) != ccw(A,B,D) 
 
-    def correct_char_intersect(self,):
+        if charDir == "neg":
+            
+            #find pt0: 
+            i,j = self.find_mesh_point(pt2, self.C_pos)
+            pt0 = self.C_pos[i][j-1]
+            #check for intersection:
+            A,B = [pt2.x, pt2.y], [pt3.x, pt3.y]
+            C,D = [pt0.x, pt0.y], [pt1.x, pt1.y]
+
+        if charDir == "pos":
+            #find pt0: 
+            i,j = self.find_mesh_point(pt1, self.C_neg)
+            pt0 = self.C_neg[i][j-1]
+            #check for intersection:
+            A,B = [pt1.x, pt1.y], [pt3.x, pt3.y]
+            C,D = [pt1.x, pt1.y], [pt0.x, pt0.y]
+
+        if intersect(A,B,C,D): hasIntersected = True
+        return hasIntersected
+
+    def trim_mesh_after_intersect(self, pt2, pt1, charDir):
         """
         deletes downstream portion of crossed characteristic
         """
-        pass
+        if charDir == "neg":
+            #find pt1 in neg families 
+            i,j = self.find_mesh_point(pt1, self.C_neg)
+            #delete points
+            delPts = [pt for ii,pt in enumerate(self.C_neg[i]) if ii >= j]
+        
+        elif charDir == "pos":
+            #find pt2 in pos families
+            i,j = self.find_mesh_point(pt2, self.C_pos)
+            #delete points
+            delPts = [pt for ii,pt in enumerate(self.C_pos[i]) if ii >= j]
 
+        self.delete_mesh_points(delPts)
+        
     def compile_mesh_points(self):
         """
         dumps all mesh points into one bucket, assigns them all indices, and makes a new triangle list of point indices
         need to run this before plotting the mesh
         """
+        Clist = self.C_neg #!BAD CODING FIX AT SOME POINT
+        nC_pos = 0 
+        for char in self.C_pos: 
+            nC_pos += len(char)
+        nC_neg = 0 
+        for char in self.C_neg: 
+            nC_neg += len(char)
+
+        if nC_pos > nC_neg: 
+            Clist = self.C_pos
+
+
         self.meshPts = []
         i = 0 
-        for char in self.C_pos:
+        for char in Clist:
             for pt in char: 
                 pt.ind = i
                 self.meshPts.append(pt)
@@ -370,6 +433,25 @@ class mesh2:
                 if p == pt:
                     return [i,j]
 
+    def delete_mesh_points(self, delPts):
+        """
+        #!for some reason, the C_neg and C_pos lists are not equal in size
+        given a list of mesh points, this function will delete them from the mesh, line segments included
+        """
+        #delete from pos & neg char list 
+        for i,char in enumerate(self.C_pos):
+            [self.C_pos[i].remove(pt) for pt in char if pt in delPts]
+
+        for i,char in enumerate(self.C_neg):
+            [self.C_neg[i].remove(pt) for pt in char if pt in delPts]
+
+        #delete from triangle list
+        for i,tri in enumerate(self.triangle_obj): 
+            for pt in tri:
+                if pt in delPts: 
+                    self.triangle_obj.remove(tri)
+                    break
+         
 class mesh_point: 
     def __init__(self,x,y,u,v,ind,isWall=False, isIdl=False):
          self.x,self.y,self.u,self.v = x,y,u,v 
