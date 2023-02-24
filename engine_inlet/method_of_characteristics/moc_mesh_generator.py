@@ -71,7 +71,7 @@ class mesh:
         self.numGens += 1
         print(f"{len(nextGen)} points added in generation: {self.numGens}")
         self.currGen = nextGen
-
+        
     def generate_mesh(self, kill_func):
         #continuously computes subsequent generations of characteristic mesh until kill_func(mesh object) evaluates as true
         while kill_func(self) != True: 
@@ -173,11 +173,150 @@ class mesh:
         self.triangle.append([ind, C.i, A.i]) #adding segments connecting intersectpoint and A and C
         self.currGen.remove(B)
         self.currGen.insert(B.i,D)
+
+class mesh2:
+    def __init__(self, idl, Geom, gasProps, delta, pcTOL, kill_func):
+        self.C_pos, self.C_neg = [],[] #containers for characteristics lines
+        self.triangle_obj = [] #container for point line segments
+        self.idl = []
+        self.funcs = moc_op.operator_funcs() #operator functions
+        self.gasProps = gasProps
+        self.delta = delta
+        self.pcTOL = pcTOL
+        self.geom = Geom
+
+        for i,x in enumerate(idl.x):
+            self.idl.append(mesh_point(x, idl.y[i], idl.u[i], idl.v[i], None, isIdl=True))
+            #TODO add check for endpoints on the wall and set booleans to true
+        if hasattr(idl, 'cowlPoint'):
+            self.idl[0].isWall = True 
+        if hasattr(idl, 'cbPoint'):
+            self.idl[-1].isWall = True
+        
+        self.generate_mesh(kill_func)
+        self.compile_mesh_points()
+        [pt.get_point_properties(self.gasProps) for pt in self.meshPts]
+
+    def generate_mesh(self, kill_func):
+        """
+        generates the characteristic mesh until the kill function is triggered 
+        """
+        charDir = "pos" #!hard coded for now... starting direction
+        self.generate_initial_mesh(charDir)
+        pass
+ 
+    def generate_initial_mesh(self, charDir):
+        """
+        computes the initial mesh from the idl. For a vertical IDL this should form a triangle with either a leading + or - characterstic spanning wall to wall 
+        """
+        idl = self.idl 
+        if charDir == "pos": 
+            self.C_pos.append([idl[0]])
+            [self.C_neg.append([pt]) for pt in idl]
+            self.C_neg.reverse() #first neg line at bottom 
+            
+        elif charDir == "neg":
+            self.C_neg.append([idl[-1]])
+            [self.C_pos.append([pt]) for pt in idl] #first pos line at the top
+            idl.reverse() #reverse idl to start at bottom
+
+        #advancing along negatives: 
+        for i,pt in enumerate(idl):
+            if i == 0: continue #first point has no - char passing through it 
+            #self.compute_next_neg_char(pt, self.C_neg[i-1])
+            self.compute_next_pos_char(pt, self.C_pos[i-1])
+            
+    def compute_next_neg_char(self, init_point, prev_n_char):
+        """
+        Generates the next leading negative characteristic by advancing the mesh along the previous
+        init_point could be wall or idl point
+        """
+        new_char = [init_point]
+        for pt in prev_n_char:
+            pt2 = init_point #above
+            pt1 = pt #below 
+            [x3, y3, u3, v3] = moc_op.interior_point(pt1, pt2, self.gasProps, self.delta, self.pcTOL, self.funcs)
+            pt3 = mesh_point(x3, y3, u3, v3, ind = None)
+            new_char.append(pt3)
+            self.triangle_obj.append([pt3, pt2, pt1])
+
+            #find point 1 and append the new point 
+            for i,posChar in enumerate(self.C_pos): #TODO convert to list comprehension 
+                    [self.C_pos[i].append(pt3) for p in posChar if p == pt1]
+
+            init_point = pt3
+
+        #terminating wall point
+        pt2 = new_char[-1]
+        [x3,y3,u3,v3] = moc_op.direct_wall_bel(pt2, self.geom.y_centerbody, self.geom.dydx_centerbody, self.gasProps, self.delta, self.pcTOL, self.funcs)
+        pt3 = mesh_point(x3, y3, u3, v3, None, isWall=True)
+        new_char.append(pt3)
+        self.triangle_obj.append([pt3, pt2, None])
+        self.C_pos.append([pt3])
+
+        self.C_neg.append(new_char)
+    
+    def compute_next_pos_char(self, init_point, prev_p_char):
+        """
+        Generates the next leading positive characteristic by advancing the mesh along the previous
+        init_point could be wall or idl point
+        """
+        new_char = [init_point]
+        for pt in prev_p_char:
+            pt1 = init_point #above #!
+            pt2 = pt #below #!
+            [x3, y3, u3, v3] = moc_op.interior_point(pt1, pt2, self.gasProps, self.delta, self.pcTOL, self.funcs)
+            pt3 = mesh_point(x3, y3, u3, v3, ind = None)
+            new_char.append(pt3)
+            self.triangle_obj.append([pt3, pt2, pt1])
+
+            #find point 1 and append the new point 
+            for i,negChar in enumerate(self.C_neg): #TODO convert to list comprehension 
+                    [self.C_neg[i].append(pt3) for p in negChar if p == pt2]
+
+            init_point = pt3
+
+        #terminating wall point
+        pt1 = new_char[-1]
+        [x3,y3,u3,v3] = moc_op.direct_wall_abv(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs)
+        pt3 = mesh_point(x3, y3, u3, v3, None, isWall=True)
+        new_char.append(pt3)
+        self.triangle_obj.append([pt3, None, pt1])
+        self.C_neg.append([pt3])
+
+        self.C_pos.append(new_char)
+
+    def check_for_intersection(self,):
+        """
+        checks for a same-family characteristic intersection for a new mesh point computation
+        """
+        pass 
+
+    def correct_char_intersect(self,):
+        """
+        deletes downstream portion of crossed characteristic
+        """
+        pass
+
+    def compile_mesh_points(self):
+        self.meshPts = []
+        i = 0 
+        for char in self.C_pos:
+            for pt in char: 
+                pt.ind = i
+                self.meshPts.append(pt)
+                i += 1 
+
+        self.triangle = []
+        for i,tri in enumerate(self.triangle_obj): #!TEMPORAY IMPROVE LATER
+            self.triangle.append([pt.ind if pt is not None else None for pt in tri])
+                
 class mesh_point: 
-    def __init__(self,x,y,u,v,ind,isWall=False):
+    def __init__(self,x,y,u,v,ind,isWall=False, isIdl=False):
          self.x,self.y,self.u,self.v = x,y,u,v 
          self.i = ind
          self.isWall = isWall #is the point on the boundary? 
+         self.isIdl = isIdl #is the point on the initial data line? 
 
     def get_point_properties(self, gasProps): 
         #unpacking

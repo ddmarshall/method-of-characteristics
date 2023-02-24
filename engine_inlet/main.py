@@ -75,9 +75,11 @@ class main:
         self.idlObj = idl.generate_tmc_initial_data_line(self.inputs.geom, self.coneSol, gas, self.inputs.nIdlPts, self.inputs.idlEndPts)
 
         #generate mesh
-        mesh = moc.mesh(self.idlObj, inp.geom, gas, inp.delta, inp.pcTOL) #create mesh object
-        mesh.generate_mesh(eval(inp.kill)) #generate mesh
-        del mesh.funcs
+        #mesh = moc.mesh(self.idlObj, inp.geom, gas, inp.delta, inp.pcTOL) #create mesh object
+        #mesh.generate_mesh(eval(inp.kill)) #generate mesh
+
+        
+        mesh = moc.mesh2(self.idlObj, inp.geom, gas, inp.delta, inp.pcTOL, inp.kill)
         self.mesh = mesh 
 
     def store_solution(self, saveFile):
