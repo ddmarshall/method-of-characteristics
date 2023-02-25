@@ -185,6 +185,7 @@ class mesh2:
         self.pcTOL = pcTOL
         self.geom = Geom
         self.f_kill = [kill_func, False]
+        self.alternateChar = False
 
         for i,x in enumerate(idl.x):
             self.idl.append(mesh_point(x, idl.y[i], idl.u[i], idl.v[i], None, isIdl=True))
@@ -204,6 +205,7 @@ class mesh2:
         """
         charDir = "neg" #!hard coded for now... starting direction
         self.generate_initial_mesh(charDir)
+        #self.compile_mesh_points()
         while self.f_kill[1] == False: 
 
             if charDir == "neg":
@@ -215,13 +217,17 @@ class mesh2:
                 #self.C_neg.append([pt3])
                 i,_ = self.find_mesh_point(pt1, self.C_pos)
                 self.C_pos[i].append(pt3) #add to positive
-                prev_n_char = self.C_neg[-1][1:]
+                prev_n_char = self.C_neg[-1][2:]
                 self.compute_next_neg_char(pt3, prev_n_char)
+                if self.alternateChar: #if intersection occured, need to iterate over familiy to capture reflection 
+                    charDir = "pos"
+                    self.alternateChar = False
 
             elif charDir == "pos":
 
                 #generate initial below-wall point 
-                pt2 = self.C_pos[-1][1] #2nd point in most recent characteristic
+                #pt2 = self.C_pos[-1][1] #2nd point in most recent characteristic
+                pt2 = self.C_neg[-1][1]
                 [x3,y3,u3,v3] = moc_op.direct_wall_bel(pt2, self.geom.y_centerbody, self.geom.dydx_centerbody, self.gasProps, self.delta, self.pcTOL, self.funcs)
                 pt3 = mesh_point(x3,y3,u3,v3, None, isWall=True)
                 self.triangle_obj.append([pt3, pt2, None]) 
@@ -257,13 +263,13 @@ class mesh2:
             elif charDir == "pos":
                 self.compute_next_pos_char(pt, self.C_pos[i-1])
 
-    def compute_next_neg_char(self, init_point, prev_n_char, continueChar = False):
+    def compute_next_neg_char(self, init_point, prev_n_char, continueChar=False):
         """
         Generates the next leading negative characteristic by advancing the mesh along the previous
         init_point could be wall or idl point
         !NOTE TO SELF: CHANGES HERE NEED TO BE REFLECTED IN TWIN FUNCTION
         """
-             
+           
         if continueChar is False:
             self.C_neg.append([init_point])
         for pt in prev_n_char:
@@ -279,7 +285,8 @@ class mesh2:
                 i,j = self.find_mesh_point(pt0, self.C_neg)
                 prev_n_char = self.C_neg[i][j+1:]
                 self.compute_next_neg_char(init_point, prev_n_char, continueChar=True) #recursion ooooh spooky 
-                return 
+                self.alternateChar = True
+                return
 
             self.C_neg[-1].append(pt3)
             self.triangle_obj.append([pt3, pt2, pt1])
@@ -387,13 +394,13 @@ class mesh2:
         i = 0 
         for char in Clist:
             for pt in char: 
-                pt.ind = i
+                pt.i = i
                 self.meshPts.append(pt)
                 i += 1 
 
         self.triangle = []
         for i,tri in enumerate(self.triangle_obj): #!TEMPORAY IMPROVE LATER
-            self.triangle.append([pt.ind if pt is not None else None for pt in tri])
+            self.triangle.append([pt.i if pt is not None else None for pt in tri])
             
     def find_mesh_point(self, pt, C_posneg):
         """
