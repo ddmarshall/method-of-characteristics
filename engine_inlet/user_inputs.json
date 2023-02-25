@@ -11,7 +11,7 @@
     "MOC Settings":{
         "Delta":                        1,
         "Unit Process Converge TOL":    0.0001,
-        "kill function":                "lambda mesh: len(mesh.triangle_obj) >= 38"
+        "kill function":                "lambda mesh: len(mesh.triangle_obj) >= 37"
     },
     "Initial Data Line":{
         "endpoints":                    [[2,"cowl"], [2.2,"centerbody"]],

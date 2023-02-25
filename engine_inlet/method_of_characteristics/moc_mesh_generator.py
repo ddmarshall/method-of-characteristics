@@ -215,9 +215,7 @@ class mesh2:
                 #self.C_neg.append([pt3])
                 i,_ = self.find_mesh_point(pt1, self.C_pos)
                 self.C_pos[i].append(pt3) #add to positive
-                
-                prev_n_char = self.C_neg[-1].copy()
-                prev_n_char.remove(prev_n_char[0])
+                prev_n_char = self.C_neg[-1][1:]
                 self.compute_next_neg_char(pt3, prev_n_char)
 
             elif charDir == "pos":
@@ -231,8 +229,7 @@ class mesh2:
                 i,_ = self.find_mesh_point(pt2, self.C_neg)
                 self.C_neg[i].append(pt3) #add to positive
                 
-                prev_p_char = self.C_pos[-1].copy()
-                prev_p_char.remove(prev_p_char[0])
+                prev_p_char = self.C_pos[-1][1:]
                 self.compute_next_pos_char(pt3, prev_p_char)
             
         pass
@@ -260,13 +257,15 @@ class mesh2:
             elif charDir == "pos":
                 self.compute_next_pos_char(pt, self.C_pos[i-1])
 
-    def compute_next_neg_char(self, init_point, prev_n_char):
+    def compute_next_neg_char(self, init_point, prev_n_char, continueChar = False):
         """
         Generates the next leading negative characteristic by advancing the mesh along the previous
         init_point could be wall or idl point
         !NOTE TO SELF: CHANGES HERE NEED TO BE REFLECTED IN TWIN FUNCTION
         """
-        new_char = [init_point]
+             
+        if continueChar is False:
+            self.C_neg.append([init_point])
         for pt in prev_n_char:
             pt2 = init_point #above
             pt1 = pt #below 
@@ -274,37 +273,42 @@ class mesh2:
             pt3 = mesh_point(x3, y3, u3, v3, ind = None)
             if self.check_for_int_intersect(pt3, pt2, pt1, "neg"):
                 self.trim_mesh_after_intersect(pt2, pt1, "neg")
-                return  
+                init_point = self.C_neg[-1][-1]
+                i,j = self.find_mesh_point(init_point, self.C_pos)
+                pt0 = self.C_pos[i][j-2]
+                i,j = self.find_mesh_point(pt0, self.C_neg)
+                prev_n_char = self.C_neg[i][j+1:]
+                self.compute_next_neg_char(init_point, prev_n_char, continueChar=True) #recursion ooooh spooky 
+                return 
 
-            new_char.append(pt3)
+            self.C_neg[-1].append(pt3)
             self.triangle_obj.append([pt3, pt2, pt1])
 
             #find point 1 and append the new point 
             i,_ = self.find_mesh_point(pt1, self.C_pos)
             self.C_pos[i].append(pt3)
 
-            init_point = pt3
+            init_point = pt3 #update initial point
 
             if self.f_kill[0](self) == True:
                 self.f_kill[1] = True
                 return
 
         #terminating wall point
-        pt2 = new_char[-1]
+        pt2 = self.C_neg[-1][-1]
         [x3,y3,u3,v3] = moc_op.direct_wall_bel(pt2, self.geom.y_centerbody, self.geom.dydx_centerbody, self.gasProps, self.delta, self.pcTOL, self.funcs)
         pt3 = mesh_point(x3, y3, u3, v3, None, isWall=True)
-        new_char.append(pt3)
+        self.C_neg[-1].append(pt3)
         self.triangle_obj.append([pt3, pt2, None])
         self.C_pos.append([pt3])
 
-        self.C_neg.append(new_char)
-    
     def compute_next_pos_char(self, init_point, prev_p_char):
         """
         Generates the next leading positive characteristic by advancing the mesh along the previous
         init_point could be wall or idl point
+        !OUTDATED !UPDATE THIS
         """
-        new_char = [init_point]
+        self.C_pos.append([init_point])
         for pt in prev_p_char:
             pt1 = init_point #below #!
             pt2 = pt #above #!
@@ -313,7 +317,7 @@ class mesh2:
             if self.check_for_int_intersect(pt3, pt2, pt1, "pos"):
                 self.trim_mesh_after_intersect(pt2, pt1, "pos")
                 return
-            new_char.append(pt3)
+            self.C_pos[-1].append(pt3)
             self.triangle_obj.append([pt3, pt2, pt1])
 
             #find point 2 and append the new point 
@@ -327,14 +331,12 @@ class mesh2:
                 return
 
         #terminating wall point
-        pt1 = new_char[-1]
+        pt1 = self.C_pos[-1][-1]
         [x3,y3,u3,v3] = moc_op.direct_wall_abv(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs)
         pt3 = mesh_point(x3, y3, u3, v3, None, isWall=True)
-        new_char.append(pt3)
+        self.C_pos[-1].append(pt3)
         self.triangle_obj.append([pt3, None, pt1])
         self.C_neg.append([pt3])
-
-        self.C_pos.append(new_char)
 
     def check_for_int_intersect(self, pt3, pt2, pt1, charDir):
         """
@@ -373,6 +375,37 @@ class mesh2:
 
         if intersect(A,B,C,D): hasIntersected = True
         return hasIntersected
+        
+    def compile_mesh_points(self):
+        """
+        dumps all mesh points into one bucket, assigns them all indices, and makes a new triangle list of point indices
+        need to run this before plotting the mesh
+        """
+        Clist = self.C_neg #both C_neg and C_pos should contain the same points so this should be fine. Maybe put a check here? 
+
+        self.meshPts = []
+        i = 0 
+        for char in Clist:
+            for pt in char: 
+                pt.ind = i
+                self.meshPts.append(pt)
+                i += 1 
+
+        self.triangle = []
+        for i,tri in enumerate(self.triangle_obj): #!TEMPORAY IMPROVE LATER
+            self.triangle.append([pt.ind if pt is not None else None for pt in tri])
+            
+    def find_mesh_point(self, pt, C_posneg):
+        """
+        gets the index of point in C_posneg (self.C_pos or self.C_neg)
+        returns [i,j]
+            i = line index 
+            j = point index
+        """
+        for i,char in enumerate(C_posneg):
+            for j,p in enumerate(char): 
+                if p == pt:
+                    return [i,j]
 
     def trim_mesh_after_intersect(self, pt2, pt1, charDir):
         """
@@ -391,47 +424,6 @@ class mesh2:
             delPts = [pt for ii,pt in enumerate(self.C_pos[i]) if ii >= j]
 
         self.delete_mesh_points(delPts)
-        
-    def compile_mesh_points(self):
-        """
-        dumps all mesh points into one bucket, assigns them all indices, and makes a new triangle list of point indices
-        need to run this before plotting the mesh
-        """
-        Clist = self.C_neg #!BAD CODING FIX AT SOME POINT
-        nC_pos = 0 
-        for char in self.C_pos: 
-            nC_pos += len(char)
-        nC_neg = 0 
-        for char in self.C_neg: 
-            nC_neg += len(char)
-
-        if nC_pos > nC_neg: 
-            Clist = self.C_pos
-
-
-        self.meshPts = []
-        i = 0 
-        for char in Clist:
-            for pt in char: 
-                pt.ind = i
-                self.meshPts.append(pt)
-                i += 1 
-
-        self.triangle = []
-        for i,tri in enumerate(self.triangle_obj): #!TEMPORAY IMPROVE LATER
-            self.triangle.append([pt.ind if pt is not None else None for pt in tri])
-    
-    def find_mesh_point(self, pt, C_posneg):
-        """
-        gets the index of point in C_posneg (self.C_pos or self.C_neg)
-        returns [i,j]
-            i = line index 
-            j = point index
-        """
-        for i,char in enumerate(C_posneg):
-            for j,p in enumerate(char): 
-                if p == pt:
-                    return [i,j]
 
     def delete_mesh_points(self, delPts):
         """
@@ -440,18 +432,28 @@ class mesh2:
         """
         #delete from pos & neg char list 
         for i,char in enumerate(self.C_pos):
-            [self.C_pos[i].remove(pt) for pt in char if pt in delPts]
-
+            newchar = []
+            for pt in char: 
+                if pt not in delPts: 
+                    newchar.append(pt)
+            self.C_pos[i] = newchar        
+        
         for i,char in enumerate(self.C_neg):
-            [self.C_neg[i].remove(pt) for pt in char if pt in delPts]
+            newchar = []
+            for pt in char: 
+                if pt not in delPts: 
+                    newchar.append(pt)
+            self.C_neg[i] = newchar   
 
         #delete from triangle list
+        removeTriInd = []
         for i,tri in enumerate(self.triangle_obj): 
             for pt in tri:
-                if pt in delPts: 
-                    self.triangle_obj.remove(tri)
+                if pt in delPts and pt is not None: 
+                    removeTriInd.append(i)
                     break
-         
+        self.triangle_obj = [tri for i,tri in enumerate(self.triangle_obj) if i not in removeTriInd]
+
 class mesh_point: 
     def __init__(self,x,y,u,v,ind,isWall=False, isIdl=False):
          self.x,self.y,self.u,self.v = x,y,u,v 
