@@ -1,5 +1,6 @@
 import method_of_characteristics.unit_processes as moc_op
 import math
+import numpy as np
 """
 class for generating mesh and mesh point objects
 """
@@ -348,6 +349,32 @@ class mesh:
         self.C_pos = [char for i,char in enumerate(self.C_pos) if i not in emptyLists]
         emptyLists = [i for i,char in enumerate(self.C_neg) if len(char) == 0]
         self.C_neg = [char for i,char in enumerate(self.C_neg) if i not in emptyLists]
+
+    def calculate_mass_flow(self, dl, delta):
+        """
+        calculates the total mass flow rate across a data line
+        dl: list of mesh points dl[0] and dl[-1] should be wall points for this calculation to be meaningful 
+        TODO: need static density at each point
+        """
+        mdot = 0 
+        for i,pt2 in enumerate(dl):
+            if i == 0: continue 
+            pt1 = dl[i-1]
+
+            V = np.array([0.5*(pt2.u + pt1.u), 0.5*(pt2.v + pt1.v)]) #average velocity 
+            rho_avg = 0.5*(pt1.rho + pt2.rho)
+            nHat = np.array([pt2.y - pt1.y, -1*(pt2.x - pt1.x)])
+            nHat = np.divide(nHat, np.linalg.norm(nHat, ord=2))
+
+            if delta == 1:
+                A = math.pi*(pt1.y + pt2.y)*math.sqrt((pt1.x - pt2.x)**2 + (pt1.y - pt2.y)**2)
+
+            elif delta == 0: 
+                A = math.sqrt((pt1.x - pt2.x)**2 + (pt1.y - pt2.y)**2)
+            
+            mdot += np.dot(np.multiply(rho_avg, V), np.multiply(nHat, A))
+        
+        return mdot
 
 class mesh_point: 
     def __init__(self,x,y,u,v,ind=None,isWall=False, isIdl=False):
