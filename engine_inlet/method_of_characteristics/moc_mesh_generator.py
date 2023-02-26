@@ -2,7 +2,7 @@ import method_of_characteristics.unit_processes as moc_op
 import math
 import numpy as np
 """
-class for generating mesh and mesh point objects
+Module responsible for generating method-of-characteristics mesh and mesh points
 """
 class mesh:
     def __init__(self, idl, Geom, gasProps, delta, pcTOL, kill_func):
@@ -40,6 +40,7 @@ class mesh:
             #!following sections were written for initiating with neg lines. Untested for starting with positive
             if charDir == "neg" and self.alternateChar == False:
                 #generate mesh until first intersection
+                #TODO use generate_mesh_from_line here instead 
                 #generate initial above-wall point 
                 pt1 = self.C_neg[-1][1] #2nd point in most recent characteristic
                 [x3,y3,u3,v3] = moc_op.direct_wall_abv(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs)
@@ -92,10 +93,13 @@ class mesh:
                 self.compute_next_pos_char(pt, self.C_pos[i-1])
 
     def generate_mesh_from_line(self, dl, charDir):
-    
+        """
+        Generates the characteristic mesh from an existic characteristic (either pos or neg) terminates when all opposite characteristics originating 
+        from dl have been generated
+        dl = list of mesh points from positive/negative characteristic spanning wall to wall 
+        """
         #if charDir == "neg": 
         #    dl.reverse() #reverse idl to start at bottom                
-        
         if charDir == "pos":
             #top wall solution
             pt1 = dl[1]
@@ -132,7 +136,7 @@ class mesh:
 
     def compute_next_neg_char(self, init_point, prev_n_char, continueChar=False):
         """
-        Generates the next leading negative characteristic by advancing the mesh along the previous
+        Generates the next leading negative characteristic by advancing the mesh along the previous one
         init_point could be wall or idl point
         !NOTE TO SELF: CHANGES HERE NEED TO BE REFLECTED IN TWIN FUNCTION
         """
@@ -178,9 +182,8 @@ class mesh:
 
     def compute_next_pos_char(self, init_point, prev_p_char, continueChar=False):
         """
-        Generates the next leading positive characteristic by advancing the mesh along the previous
+        Generates the next leading positive characteristic by advancing the mesh along the previous one
         init_point could be wall or idl point
-        !OUTDATED !UPDATE THIS
         """
         if continueChar is False:
             self.C_pos.append([init_point])
@@ -277,6 +280,7 @@ class mesh:
         """
         dumps all mesh points into one bucket, assigns them all indices, and makes a new triangle list of point indices
         need to run this before plotting the mesh
+        Useful for debugging
         """
         Clist = self.C_neg #both C_neg and C_pos should contain the same points so this should be fine. Maybe put a check here? 
 
@@ -301,12 +305,15 @@ class mesh:
         """
         for i,char in enumerate(C_posneg):
             for j,p in enumerate(char): 
-                if p == pt:
-                    return [i,j]
+                if p == pt: return [i,j]
 
     def trim_mesh_after_intersect(self, pt2, pt1, charDir):
         """
-        deletes downstream portion of crossed characteristic
+        deletes a portion of the mesh which exists downstream of a crossed characteristic
+        pt2,pt1 are parent points to the hypothetic pt3 which exhibited the intersection 
+            pt2 = upper point 
+            pt1 = lower point 
+        charDir is the family of the crossed characteristic ("pos" or "neg")
         """
         if charDir == "neg":
             #find pt1 in neg families 
@@ -377,17 +384,31 @@ class mesh:
         return mdot
 
 class mesh_point: 
+    """
+    generates and manipulates individual mesh point objects
+    """
     def __init__(self,x,y,u,v,ind=None,isWall=False, isIdl=False):
-         self.x,self.y,self.u,self.v = x,y,u,v 
-         self.i = ind
-         self.isWall = isWall #is the point on the boundary? 
-         self.isIdl = isIdl #is the point on the initial data line? 
+        """
+        x,y,u,v: position and velocity components
+        ind: numerical index for point
+        isWall: set to True if point exists on the wall boundary 
+        isIdl: set to True if point belongs to the initial data line
+        """
+        self.x,self.y,self.u,self.v = x,y,u,v 
+        self.i = ind
+        self.isWall = isWall #is the point on the boundary? 
+        self.isIdl = isIdl #is the point on the initial data line? 
 
     def get_point_properties(self, gasProps): 
+        """
+        Gets flow properties at an individual mesh point. Calculates temperature, pressure, density, mach number, etc. 
+        """
         #unpacking
         gam, a0, T0, p0 = gasProps.gam, gasProps.a0, gasProps.T0, gasProps.p0
         V = math.sqrt(self.u**2 + self.v**2)
         a = math.sqrt(a0**2 + 0.5*(gam-1)*V**2)
-        self.mach = V/a
-        self.T = T0/(1+0.5*(gam-1)*(V/a)**2)
-        self.p = p0*(T0/self.T)**(gam/(gam-1))
+        self.mach = V/a #mach number 
+        self.T = T0/(1+0.5*(gam-1)*(V/a)**2) #static temperature
+        self.p = p0*(T0/self.T)**(gam/(gam-1)) #static pressure 
+
+        self.rho = self.p/(gasProps.R*self.T) #ideal gas law
