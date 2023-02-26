@@ -3,7 +3,7 @@ import math
 """
 class for generating mesh and mesh point objects
 """
-class mesh2:
+class mesh:
     def __init__(self, idl, Geom, gasProps, delta, pcTOL, kill_func):
         self.C_pos, self.C_neg = [],[] #containers for characteristics lines
         self.triangle_obj = [] #container for point line segments
@@ -37,7 +37,7 @@ class mesh2:
         self.compile_mesh_points()
         while self.f_kill[1] == False: 
             #!following sections were written for initiating with neg lines. Untested for starting with positive
-            if charDir == "neg":
+            if charDir == "neg" and self.alternateChar == False:
                 #generate initial above-wall point 
                 pt1 = self.C_neg[-1][1] #2nd point in most recent characteristic
                 [x3,y3,u3,v3] = moc_op.direct_wall_abv(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs)
@@ -50,18 +50,22 @@ class mesh2:
                 if self.alternateChar: #if intersection occured, need to iterate over familiy to capture reflection 
                     charDir = "pos"
 
-            elif charDir == "pos":
-
+            elif charDir == "pos" and self.alternateChar == False:
                 pass
 
             if charDir == "pos" and self.alternateChar:
                 #execute after finishing a crossed characteristic
                 self.alternateChar = False
-                self.generate_mesh_from_line(self.C_neg[-1], "pos")
-                break 
+                self.generate_mesh_from_line(self.C_neg[-1], "pos") 
+                if self.alternateChar: 
+                    charDir = "neg"
 
             if charDir == "neg" and self.alternateChar: 
-                pass 
+                 #self.alternateChar = False
+                 break 
+                 self.generate_mesh_from_line(self.C_pos[-1],"neg") 
+                 if self.alternateChar:
+                    charDir = "pos"
 
     def generate_initial_mesh(self, dl, charDir):
         """
@@ -86,8 +90,8 @@ class mesh2:
 
     def generate_mesh_from_line(self, dl, charDir):
     
-        if charDir == "neg": 
-            dl.reverse() #reverse idl to start at bottom                
+        #if charDir == "neg": 
+        #    dl.reverse() #reverse idl to start at bottom                
         
         if charDir == "pos":
             #top wall solution
@@ -100,12 +104,22 @@ class mesh2:
             self.C_pos[i].append(pt3)
         
         elif charDir == "neg":
-            pass 
-
+            #bottom wall solution
+            pt2 = dl[1]
+            [x3,y3,u3,v3] = moc_op.direct_wall_abv(pt2, self.geom.y_centerbody, self.geom.dydx_centerbody, self.gasProps, self.delta, self.pcTOL, self.funcs)
+            pt3 = mesh_point(x3,y3,u3,v3,None,isWall=True)
+            self.triangle_obj.append([pt3, pt2, None])
+            self.C_pos.append([pt3])
+            i,_ = self.find_mesh_point(pt2, self.C_neg)
+            self.C_neg[i].append(pt3) 
         for i,initPt in enumerate(dl):
             if i >= 2:
-                if charDir == "neg":
-                    pass 
+                if charDir == "neg": 
+                    i,j = self.find_mesh_point(initPt, self.C_pos) 
+                    pt0 = self.C_pos[i][j-1]
+                    i,j = self.find_mesh_point(pt0, self.C_neg)
+                    prev_n_char = self.C_neg[i][j+1:]
+                    self.compute_next_neg_char(initPt, prev_n_char, continueChar=True); 
                 elif charDir == "pos":
                     i,j = self.find_mesh_point(initPt, self.C_neg) 
                     pt0 = self.C_neg[i][j-1]
@@ -312,17 +326,11 @@ class mesh2:
         """
         #delete from pos & neg char list 
         for i,char in enumerate(self.C_pos):
-            newchar = []
-            for pt in char: 
-                if pt not in delPts: 
-                    newchar.append(pt)
+            newchar = [pt for pt in char if pt not in delPts]
             self.C_pos[i] = newchar        
         
         for i,char in enumerate(self.C_neg):
-            newchar = []
-            for pt in char: 
-                if pt not in delPts: 
-                    newchar.append(pt)
+            newchar = [pt for pt in char if pt not in delPts]
             self.C_neg[i] = newchar   
 
         #delete from triangle list
@@ -333,6 +341,12 @@ class mesh2:
                     removeTriInd.append(i)
                     break
         self.triangle_obj = [tri for i,tri in enumerate(self.triangle_obj) if i not in removeTriInd]
+
+        #get rid of empty lists in both characteristics lists 
+        emptyLists = [i for i,char in enumerate(self.C_pos) if len(char) == 0]
+        self.C_pos = [char for i,char in enumerate(self.C_pos) if i not in emptyLists]
+        emptyLists = [i for i,char in enumerate(self.C_neg) if len(char) == 0]
+        self.C_neg = [char for i,char in enumerate(self.C_neg) if i not in emptyLists]
 
 class mesh_point: 
     def __init__(self,x,y,u,v,ind,isWall=False, isIdl=False):

@@ -79,7 +79,7 @@ class main:
         #mesh.generate_mesh(eval(inp.kill)) #generate mesh
 
         
-        mesh = moc.mesh2(self.idlObj, inp.geom, gas, inp.delta, inp.pcTOL, eval(inp.kill))
+        mesh = moc.mesh(self.idlObj, inp.geom, gas, inp.delta, inp.pcTOL, eval(inp.kill))
         self.mesh = mesh 
 
     def store_solution(self, saveFile):
@@ -134,7 +134,5 @@ if __name__ == "__main__":
     import post_processing.post_process as post_process
     import example_geometry as geom
     inlet = geom.Geom()
-    #sol = main(inputFile='user_inputs.json', geomObj=inlet) #run solution then plot results
     sol = main(inputFile='user_inputs.json', geomObj=inlet, plotFile="plot_profile_test.json") #run solution then plot results
-    #post_process.create_slice_plot(coneSol=sol.coneSol, inletGeom=sol.inputs.geom, idl=sol.idlObj, mesh=sol.mesh)
 pass        
