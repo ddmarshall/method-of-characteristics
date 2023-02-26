@@ -33,15 +33,16 @@ class mesh:
         generates the characteristic mesh until the kill function is triggered 
         """
         charDir = "neg" #!hard coded for now... starting direction
-        self.generate_initial_mesh(self.idl, charDir) #generate mesh from initial data line
+        self.generate_initial_mesh_from_idl(self.idl, charDir) #generate mesh from initial data line
         self.compile_mesh_points()
         while self.f_kill[1] == False: 
             #!following sections were written for initiating with neg lines. Untested for starting with positive
             if charDir == "neg" and self.alternateChar == False:
+                #generate mesh until first intersection
                 #generate initial above-wall point 
                 pt1 = self.C_neg[-1][1] #2nd point in most recent characteristic
                 [x3,y3,u3,v3] = moc_op.direct_wall_abv(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs)
-                pt3 = mesh_point(x3,y3,u3,v3, None, isWall=True)
+                pt3 = mesh_point(x3,y3,u3,v3, isWall=True)
                 self.triangle_obj.append([pt3, None, pt1]) 
                 i,_ = self.find_mesh_point(pt1, self.C_pos)
                 self.C_pos[i].append(pt3) #add to positive
@@ -51,6 +52,7 @@ class mesh:
                     charDir = "pos"
 
             elif charDir == "pos" and self.alternateChar == False:
+                #TODO add if starting with positive characteristics
                 pass
 
             if charDir == "pos" and self.alternateChar:
@@ -62,26 +64,26 @@ class mesh:
 
             if charDir == "neg" and self.alternateChar: 
                  #self.alternateChar = False
-                 break 
+                 break #!Stop solution before mesh points get fucky
                  self.generate_mesh_from_line(self.C_pos[-1],"neg") 
                  if self.alternateChar:
                     charDir = "pos"
 
-    def generate_initial_mesh(self, dl, charDir):
+    def generate_initial_mesh_from_idl(self, idl, charDir):
         """
         computes the initial mesh from the idl. For a vertical IDL this should form a triangle with either a leading + or - characterstic spanning wall to wall 
         """
         
         if charDir == "pos": 
-            self.C_pos.append([dl[0]])
-            [self.C_neg.append([pt]) for pt in dl]
+            self.C_pos.append([idl[0]])
+            [self.C_neg.append([pt]) for pt in idl]
             self.C_neg.reverse() #first neg line at bottom 
         elif charDir == "neg":
-            self.C_neg.append([dl[-1]])
-            [self.C_pos.append([pt]) for pt in dl] #first pos line at the top
-            dl.reverse() #reverse idl to start at bottom                
+            self.C_neg.append([idl[-1]])
+            [self.C_pos.append([pt]) for pt in idl] #first pos line at the top
+            idl.reverse() #reverse idl to start at bottom                
         #generating intial mesh: 
-        for i,pt in enumerate(dl):
+        for i,pt in enumerate(idl):
             if i == 0: continue #first point has no - char passing through it 
             if charDir == "neg":
                 self.compute_next_neg_char(pt, self.C_neg[i-1])
@@ -97,7 +99,7 @@ class mesh:
             #top wall solution
             pt1 = dl[1]
             [x3,y3,u3,v3] = moc_op.direct_wall_abv(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs)
-            pt3 = mesh_point(x3,y3,u3,v3,None,isWall=True)
+            pt3 = mesh_point(x3,y3,u3,v3,isWall=True)
             self.triangle_obj.append([pt3, None, pt1])
             self.C_neg.append([pt3])
             i,_ = self.find_mesh_point(pt1, self.C_pos)
@@ -107,7 +109,7 @@ class mesh:
             #bottom wall solution
             pt2 = dl[1]
             [x3,y3,u3,v3] = moc_op.direct_wall_abv(pt2, self.geom.y_centerbody, self.geom.dydx_centerbody, self.gasProps, self.delta, self.pcTOL, self.funcs)
-            pt3 = mesh_point(x3,y3,u3,v3,None,isWall=True)
+            pt3 = mesh_point(x3,y3,u3,v3,isWall=True)
             self.triangle_obj.append([pt3, pt2, None])
             self.C_pos.append([pt3])
             i,_ = self.find_mesh_point(pt2, self.C_neg)
@@ -140,7 +142,7 @@ class mesh:
             pt2 = init_point #above
             pt1 = pt #below 
             [x3, y3, u3, v3] = moc_op.interior_point(pt1, pt2, self.gasProps, self.delta, self.pcTOL, self.funcs)
-            pt3 = mesh_point(x3, y3, u3, v3, ind = None)
+            pt3 = mesh_point(x3, y3, u3, v3)
             if self.check_for_int_intersect(pt3, pt2, pt1, "neg"):
                 self.trim_mesh_after_intersect(pt2, pt1, "neg")
                 init_point = self.C_neg[-1][-1]
@@ -168,7 +170,7 @@ class mesh:
         #terminating wall point
         pt2 = self.C_neg[-1][-1]
         [x3,y3,u3,v3] = moc_op.direct_wall_bel(pt2, self.geom.y_centerbody, self.geom.dydx_centerbody, self.gasProps, self.delta, self.pcTOL, self.funcs)
-        pt3 = mesh_point(x3, y3, u3, v3, None, isWall=True)
+        pt3 = mesh_point(x3, y3, u3, v3, isWall=True)
         self.C_neg[-1].append(pt3)
         self.triangle_obj.append([pt3, pt2, None])
         self.C_pos.append([pt3])
@@ -185,7 +187,7 @@ class mesh:
             pt2 = pt #above
             pt1 = init_point #below 
             [x3, y3, u3, v3] = moc_op.interior_point(pt1, pt2, self.gasProps, self.delta, self.pcTOL, self.funcs)
-            pt3 = mesh_point(x3, y3, u3, v3, ind = None)
+            pt3 = mesh_point(x3, y3, u3, v3)
             if self.check_for_int_intersect(pt3, pt2, pt1, "pos"):
                 self.trim_mesh_after_intersect(pt2, pt1, "pos")
                 init_point = self.C_pos[-1][-1]
@@ -219,14 +221,14 @@ class mesh:
         if continueChar:
             pt1 = self.C_neg[-1][-1]
             [x3,y3,u3,v3] = moc_op.direct_wall_abv(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs)
-            pt3 = mesh_point(x3, y3, u3, v3, None, isWall=True)
+            pt3 = mesh_point(x3, y3, u3, v3, isWall=True)
             i,_ = self.find_mesh_point(pt1, self.C_pos)
             self.C_pos[i].append(pt3)
             
         else: 
             pt1 = self.C_pos[-1][-1]
             [x3,y3,u3,v3] = moc_op.direct_wall_abv(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs)
-            pt3 = mesh_point(x3, y3, u3, v3, None, isWall=True)
+            pt3 = mesh_point(x3, y3, u3, v3, isWall=True)
             self.C_pos[-1].append(pt3)
 
         self.C_neg.append([pt3])
@@ -321,7 +323,6 @@ class mesh:
 
     def delete_mesh_points(self, delPts):
         """
-        #!for some reason, the C_neg and C_pos lists are not equal in size
         given a list of mesh points, this function will delete them from the mesh, line segments included
         """
         #delete from pos & neg char list 
@@ -349,7 +350,7 @@ class mesh:
         self.C_neg = [char for i,char in enumerate(self.C_neg) if i not in emptyLists]
 
 class mesh_point: 
-    def __init__(self,x,y,u,v,ind,isWall=False, isIdl=False):
+    def __init__(self,x,y,u,v,ind=None,isWall=False, isIdl=False):
          self.x,self.y,self.u,self.v = x,y,u,v 
          self.i = ind
          self.isWall = isWall #is the point on the boundary? 
