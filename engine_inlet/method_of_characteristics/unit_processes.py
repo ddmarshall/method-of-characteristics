@@ -398,3 +398,15 @@ def symmetry_boundary(pt2, gasProps, delta, pcTOL, funcs):
         pc_it = max([pcVel, pcPos])
 
     return [x3, y3, u3, v3]
+
+def shock_interior():
+    """
+    characteristic shock field point unit process 
+    """
+    pass
+
+def shock_boundary():
+    """
+    characteristic shock boundary point unit process
+    """
+    pass 
