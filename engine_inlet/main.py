@@ -33,7 +33,6 @@ class main:
         self.inputs = inpObj
 
         #Kind of a dirty solution, but adds freestream object for plotting purposes
-        #TODO consider rewriting
         class freeStream:
             def __init__(frst, inputObj):
                 M, p0, T0, gam = inputObj.M_inf, inputObj.p0, inputObj.T0, inputObj.gam
@@ -45,7 +44,7 @@ class main:
 
     def run_solution(self):
         print("\nrunning solution...\n")
-        import method_of_characteristics.moc_mesh_generator as moc
+        import method_of_characteristics.moc_mesh_engine as moc
         import taylor_maccoll_cone.taylor_maccoll as tmc
         import initial_data_line.idl as idl
         import post_processing.post_process as post_process

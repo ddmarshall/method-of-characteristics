@@ -11,7 +11,7 @@ class create_slice_plot:
         self.plot_from_plotDict(plotDict, ax, mainObj) #
 
     def initialize_figure(self, settingDict=None): 
-        fig = plt.figure(figsize=(16,6)) #create figure object
+        fig = plt.figure(figsize=(16,7)) #create figure object
         ax = fig.add_subplot(1,1,1) 
         ax.set_ylim(0,1.25)
         ax.set_xlabel('x'), ax.set_ylabel('y'), ax.grid(linewidth=0.3, color='grey')
@@ -37,6 +37,7 @@ class create_slice_plot:
                 self.plot_idl(axes, mainObj.idlObj)
 
             elif typ == "scalar":
+                self.plot_coneSol(axes, mainObj.coneSol, mainObj.inputs.geom)
                 scalar = plotDict[key]["scalar"]
                 self.plot_scalar_contours(axes, scalar, idl=mainObj.idlObj, mesh=mainObj.mesh)
 
