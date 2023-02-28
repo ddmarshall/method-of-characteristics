@@ -52,7 +52,7 @@ class create_slice_plot:
         else: 
             axes.plot(xint, [x*math.tan(cone.cone_ang) for x in xint], label=f'cone = {round(math.degrees(cone.cone_ang),2)}', color='w', linewidth=1.3) #plot straight cone surface
 
-        axes.plot(xint, [x*math.tan(cone.shock_ang) for x in xint], label=f'shock = {round(math.degrees(cone.shock_ang),2)} deg', color='red', linewidth=0.7) 
+        axes.plot(xint, [x*math.tan(cone.shock_ang) for x in xint], label=f'shock = {round(math.degrees(cone.shock_ang),2)} deg', color='red', linewidth=1) 
 
     def plot_inletGeom(self, axes, inletGeom):
         #plot inlet geometry: 
@@ -63,9 +63,9 @@ class create_slice_plot:
         axes.axhline(0, color='w', linestyle='dashed', linewidth=1) 
          
     def plot_idl(self, axes, idl, annotate=None): 
-        axes.plot(idl.x, idl.y, '-o', linewidth=0.5, markersize=2, color='gold')
+        axes.plot(idl.x, idl.y, '-o', linewidth=0.5, markersize=2, color='aquamarine')
         for i,x in enumerate(idl.x): 
-            axes.plot([0,x],[0,idl.y[i]],linewidth=0.5,color='gold')
+            axes.plot([0,x],[0,idl.y[i]],linewidth=0.5,color='aquamarine')
         if annotate: 
             for i,x in enumerate(idl.x):
                 text = f"V={round(idl.u[i],1)}, {round(idl.v[i],1)}"
@@ -74,16 +74,16 @@ class create_slice_plot:
 
     def plot_mesh(self, axes, mesh, annotate=False):
         
-        axes.scatter([pt.x for pt in mesh.meshPts],[pt.y for pt in mesh.meshPts], color='gold', s=2)
+        axes.scatter([pt.x for pt in mesh.meshPts],[pt.y for pt in mesh.meshPts], color='aquamarine', s=2)
         if annotate: 
             [axes.annotate(f"{pt.i}", (pt.x,pt.y)) for pt in mesh.meshPts]
                 
         for tri in mesh.triangle:
             _,b,c = tri
             if b is not None: 
-                plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[1]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[1]].y], color='gold', linewidth=0.5)
+                plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[1]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[1]].y], color='aquamarine', linewidth=0.5)
             if c is not None:
-                plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[2]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[2]].y], color='gold', linewidth=0.5)
+                plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[2]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[2]].y], color='aquamarine', linewidth=0.5)
 
     def plot_scalar_contours(self, axes, scalar, idl=None, coneSol=None, mesh=None, freeStream=None, barLabel=None):
         """
@@ -125,3 +125,9 @@ class create_slice_plot:
         tcf = axes.tricontourf(xList, yList, scalarList, 100, cmap='jet')
         if barLabel is None: barLabel = scalar
         plt.colorbar(tcf, orientation='horizontal', shrink=0.5, label=barLabel)
+
+def plot_streamlines(self, seedPts):
+    """
+    generates streamlines from list of seedpoints. Uses triangular interpolation with characteristic mesh
+    """
+    pass

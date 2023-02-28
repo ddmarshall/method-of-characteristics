@@ -8,7 +8,6 @@ class mesh:
     def __init__(self, idl, Geom, gasProps, delta, pcTOL, kill_func):
         self.C_pos, self.C_neg = [],[] #containers for characteristics lines
         self.triangle_obj = [] #container for point line segments
-        self.idl = []
         self.funcs = moc_op.operator_funcs() #operator functions
         self.gasProps = gasProps
         self.delta = delta
@@ -17,7 +16,9 @@ class mesh:
         self.f_kill = [kill_func, False]
         self.alternateChar = False
         self.numPointsGen = 0
+        self.hasIntersected = False
 
+        self.idl = []
         for i,x in enumerate(idl.x):
             self.idl.append(mesh_point(x, idl.y[i], idl.u[i], idl.v[i], None, isIdl=True))
             #TODO add check for endpoints on the wall and set booleans to true
@@ -40,8 +41,8 @@ class mesh:
         while self.f_kill[1] == False: 
             #!following sections were written for initiating with neg lines. Untested for starting with positive
             if charDir == "neg" and self.alternateChar == False:
-                #generate mesh until first intersection
                 #TODO use generate_mesh_from_line here instead 
+                
                 #generate initial above-wall point 
                 pt1 = self.C_neg[-1][1] #2nd point in most recent characteristic
                 [x3,y3,u3,v3] = moc_op.direct_wall_abv(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs)
@@ -52,7 +53,7 @@ class mesh:
                 self.C_pos[i].append(pt3) #add to positive
                 prev_n_char = self.C_neg[-1][2:]
                 self.compute_next_neg_char(pt3, prev_n_char)
-                if self.alternateChar: #if intersection occured, need to iterate over familiy to capture reflection 
+                if self.alternateChar: #if intersection occured, need to iterate over family to capture reflection 
                     charDir = "pos"
 
             elif charDir == "pos" and self.alternateChar == False:
@@ -62,17 +63,21 @@ class mesh:
             if charDir == "pos" and self.alternateChar:
                 #execute after finishing a crossed characteristic
                 self.alternateChar = False
-                self.generate_mesh_from_line(self.C_neg[-1], "pos") 
+                if self.hasIntersected == True: 
+                    self.generate_until_non_intersect(self.C_neg[-1], "neg")  
+                self.generate_mesh_from_line(self.C_neg[-1], "pos")    
                 if self.alternateChar: 
-                    charDir = "neg"
-
+                    charDir = "neg"  
+         
             if charDir == "neg" and self.alternateChar: 
                 self.alternateChar = False
-                self.generate_mesh_from_line(self.C_pos[-1],"neg") 
+                if self.hasIntersected == True: 
+                    self.generate_until_non_intersect(self.C_pos[-1], "pos") 
+                self.generate_mesh_from_line(self.C_pos[-1],"neg")   
                 if self.alternateChar:
                     charDir = "pos" 
- 
-
+                break  
+                 
     def generate_initial_mesh_from_idl(self, idl, charDir):
         """
         computes the initial mesh from the idl. For a vertical IDL this should form a triangle with either a leading + or - characterstic spanning wall to wall 
@@ -91,8 +96,14 @@ class mesh:
             if i == 0: continue #first point has no - char passing through it 
             if charDir == "neg":
                 self.compute_next_neg_char(pt, self.C_neg[i-1])
+                if self.f_kill[0](self) == True:
+                        self.f_kill[1] = True
+                        return 
             elif charDir == "pos":
                 self.compute_next_pos_char(pt, self.C_pos[i-1])
+                if self.f_kill[0](self) == True:
+                        self.f_kill[1] = True
+                        return 
 
     def generate_mesh_from_line(self, dl, charDir):
         """
@@ -100,13 +111,15 @@ class mesh:
         from dl have been generated
         dl = list of mesh points from positive/negative characteristic spanning wall to wall 
         """
-        #if charDir == "neg": 
-        #    dl.reverse() #reverse idl to start at bottom                
+             
         if charDir == "pos":
             #top wall solution
             pt1 = dl[1]
             [x3,y3,u3,v3] = moc_op.direct_wall_abv(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs)
             self.numPointsGen += 1
+            if self.f_kill[0](self) == True:
+                self.f_kill[1] = True
+                return 
             pt3 = mesh_point(x3,y3,u3,v3,isWall=True)
             self.triangle_obj.append([pt3, None, pt1])
             self.C_neg.append([pt3])
@@ -118,6 +131,9 @@ class mesh:
             pt2 = dl[1]
             [x3,y3,u3,v3] = moc_op.direct_wall_bel(pt2, self.geom.y_centerbody, self.geom.dydx_centerbody, self.gasProps, self.delta, self.pcTOL, self.funcs)
             self.numPointsGen += 1
+            if self.f_kill[0](self) == True:
+                self.f_kill[1] = True
+                return 
             pt3 = mesh_point(x3,y3,u3,v3,isWall=True)
             self.triangle_obj.append([pt3, pt2, None])
             self.C_pos.append([pt3])
@@ -125,19 +141,36 @@ class mesh:
             self.C_neg[i].append(pt3) 
 
         for ind,initPt in enumerate(dl):
+            
             if ind >= 2:
+                self.hasIntersected = False  
                 if charDir == "neg": 
                     i,j = self.find_mesh_point(initPt, self.C_pos) 
                     pt0 = self.C_pos[i][j-1]
                     i,j = self.find_mesh_point(pt0, self.C_neg)
                     prev_n_char = self.C_neg[i][j+1:]
-                    self.compute_next_neg_char(initPt, prev_n_char, continueChar=True); 
+                    try: self.compute_next_neg_char(initPt, prev_n_char, continueChar=True);
+                    except: #if math error occurs (due to subsonic) kill mesher 
+                        self.f_kill[1] = True
+                        return 
+                    
+                    if self.f_kill[0](self) == True:
+                        self.f_kill[1] = True
+                        return 
+ 
                 elif charDir == "pos":
                     i,j = self.find_mesh_point(initPt, self.C_neg) 
                     pt0 = self.C_neg[i][j-1]
                     i,j = self.find_mesh_point(pt0, self.C_pos)
                     prev_p_char = self.C_pos[i][j+1:]
-                    self.compute_next_pos_char(initPt, prev_p_char, continueChar=True);  
+                    try:self.compute_next_pos_char(initPt, prev_p_char, continueChar=True);  
+                    except: #if math error occurs (due to subsonic) kill mesher 
+                        self.f_kill[1] = True
+                        return
+
+                    if self.f_kill[0](self) == True:
+                        self.f_kill[1] = True
+                        return 
 
     def compute_next_neg_char(self, init_point, prev_n_char, continueChar=False):
         """
@@ -155,8 +188,9 @@ class mesh:
             self.numPointsGen += 1
             pt3 = mesh_point(x3, y3, u3, v3)
             if self.check_for_int_intersect(pt3, pt2, pt1, "neg"):
+                self.hasIntersected = True #indicate that an intersection has occurred 
                 self.trim_mesh_after_intersect(pt2, pt1, "neg")
-                init_point = self.C_neg[-1][-1]
+                init_point = pt2
                 i,j = self.find_mesh_point(init_point, self.C_pos)
                 pt0 = self.C_pos[i][j-2]
                 i,j = self.find_mesh_point(pt0, self.C_neg)
@@ -178,10 +212,6 @@ class mesh:
             self.C_pos[i].append(pt3)
 
             init_point = pt3 #update initial point
-
-            if self.f_kill[0](self) == True:
-                self.f_kill[1] = True
-                return
 
         #terminating wall point
         if continueChar:
@@ -216,8 +246,9 @@ class mesh:
             self.numPointsGen += 1
             pt3 = mesh_point(x3, y3, u3, v3)
             if self.check_for_int_intersect(pt3, pt2, pt1, "pos"):
+                self.hasIntersected = True 
                 self.trim_mesh_after_intersect(pt2, pt1, "pos")
-                init_point = self.C_pos[-1][-1]
+                init_point = pt1
                 i,j = self.find_mesh_point(init_point, self.C_neg)
                 pt0 = self.C_neg[i][j-2]
                 i,j = self.find_mesh_point(pt0, self.C_pos)
@@ -239,10 +270,6 @@ class mesh:
             self.C_neg[i].append(pt3)
 
             init_point = pt3 #update initial point
-
-            if self.f_kill[0](self) == True:
-                self.f_kill[1] = True
-                return
 
         #terminating wall point
         if continueChar:
@@ -303,7 +330,6 @@ class mesh:
 
     def check_for_wall_intersect(self, pt3, pt12, charDir):
         """
-        !EXPERIMENTAL UNTESTED
         checks for a same family intersection at the generation of a new wall point and an existing wall point
         """
         hasIntersected = False 
@@ -331,7 +357,39 @@ class mesh:
 
         if intersect(A,B,C,D): hasIntersected = True 
         return hasIntersected
-        
+
+    def generate_until_non_intersect(self, dl, charDir):
+        """
+        will generate successive + or - chars until one makes it wall to wall without a same-family intersection
+        """
+        while self.hasIntersected == True: 
+            self.hasIntersected = False #set to false
+            if charDir == "neg":
+                pt1 = self.C_neg[-1][1] #2nd point in most recent characteristic
+                [x3,y3,u3,v3] = moc_op.direct_wall_abv(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs)
+                pt3 = mesh_point(x3,y3,u3,v3, isWall=True)
+                self.numPointsGen += 1 
+                self.triangle_obj.append([pt3, None, pt1]) 
+                i,_ = self.find_mesh_point(pt1, self.C_pos)
+                self.C_pos[i].append(pt3) #add to positive
+                init_point = pt3
+                prev_n_char = self.C_neg[-1][2:]
+                self.compute_next_neg_char(init_point, prev_n_char)
+
+            elif charDir == "pos":
+                
+                pt2 = self.C_pos[-1][1] #2nd point in most recent characteristic
+                [x3,y3,u3,v3] = moc_op.direct_wall_bel(pt2, self.geom.y_centerbody, self.geom.dydx_centerbody, self.gasProps, self.delta, self.pcTOL, self.funcs)
+                pt3 = mesh_point(x3,y3,u3,v3, isWall=True)
+                self.numPointsGen += 1 
+                self.triangle_obj.append([pt3, pt2, None]) 
+                i,_ = self.find_mesh_point(pt2, self.C_neg)
+                self.C_neg[i].append(pt3) #add to positive
+                init_point = pt3
+                prev_p_char = self.C_pos[-1][2:] 
+                self.compute_next_pos_char(init_point, prev_p_char) 
+                 
+                 
     def compile_mesh_points(self):
         """
         dumps all mesh points into one bucket, assigns them all indices, and makes a new triangle list of point indices
