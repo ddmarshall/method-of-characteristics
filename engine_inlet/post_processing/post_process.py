@@ -1,16 +1,18 @@
 import matplotlib.pyplot as plt
+import matplotlib.colors
+import matplotlib.tri
 import numpy as np 
 import math 
 """
 module responsible for generating plots and figures
 """
 class create_slice_plot:
-    def __init__(self, plotDict, defSettDict, mainObj):
+    def __init__(self, plotDict, mainObj):
         
         fig,ax = self.initialize_figure() #TODO take in default settings dictionary
         self.plot_from_plotDict(plotDict, ax, mainObj) #
 
-    def initialize_figure(self, settingDict=None): 
+    def initialize_figure(self): 
         fig = plt.figure(figsize=(16,7)) #create figure object
         ax = fig.add_subplot(1,1,1) 
         ax.set_ylim(0,1.25)
@@ -39,7 +41,9 @@ class create_slice_plot:
             elif typ == "scalar":
                 self.plot_coneSol(axes, mainObj.coneSol, mainObj.inputs.geom)
                 scalar = plotDict[key]["scalar"]
-                self.plot_scalar_contours(axes, scalar, idl=mainObj.idlObj, mesh=mainObj.mesh)
+                #self.plot_scalar_contours(axes, scalar, idl=mainObj.idlObj, mesh=mainObj.mesh, coneSol=mainObj.coneSol, freeStream = mainObj.freestream)
+                self.plot_scalar_contours(axes, scalar, idl=mainObj.idlObj, mesh=mainObj.mesh) #dumbed down to not include freestream 
+
 
             else: 
                 raise ValueError(f"invalid displayer type: {typ}")
@@ -111,21 +115,23 @@ class create_slice_plot:
             #plot mesh region
             xList += [pt.x for pt in mesh.meshPts]
             yList += [pt.y for pt in mesh.meshPts]
-            scalarList = scalarList + [getattr(pt, scalar) for pt in mesh.meshPts]  
+            scalarList = scalarList + [getattr(pt, scalar) for pt in mesh.meshPts] 
+            mocReg = matplotlib.tri.Triangulation(xList,yList) 
+            tcf = axes.tricontourf(mocReg, scalarList, 100, cmap='jet')
 
         #plot far field triangle
         if freeStream is not None and coneSol is not None: 
-            r = 1 #!hard coded 
+            #Testing this out
             xpts = [0, 2, 0]
             ypts = [0, 1, 1]
             z = getattr(freeStream, scalar)
-            xList += xpts
-            yList += ypts
-            scalarList += [z,z,z]
+            scalarList = [z,z,z]
+            freestrReg = matplotlib.tri.Triangulation(xpts, ypts)
+            axes.tricontourf(freestrReg, scalarList, 100, cmap='jet')
 
-        tcf = axes.tricontourf(xList, yList, scalarList, 100, cmap='jet')
-        if barLabel is None: barLabel = scalar
+        #tcf = axes.tricontourf(xList, yList, scalarList, 100, cmap='jet')
         plt.colorbar(tcf, orientation='horizontal', shrink=0.5, label=barLabel)
+        if barLabel is None: barLabel = scalar
 
 def plot_streamlines(self, seedPts):
     """

@@ -112,14 +112,13 @@ class main:
 
         plt.style.use('dark_background') #!temporary location
         plotDict = json.load(open(plotFile, 'r'))
-        plotSettings = plotDict["default plot settings"]
         del plotDict["default plot settings"]
         
         for key in plotDict.keys():
             subDict = plotDict[key] 
             figname = key #TODO do something with this?
             #hand off subDict to the post processing module
-            post_process.create_slice_plot(subDict, plotSettings, self)
+            post_process.create_slice_plot(subDict, self)
         plt.show() 
 
     def print_details(self):
