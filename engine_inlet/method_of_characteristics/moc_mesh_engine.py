@@ -31,6 +31,8 @@ class mesh:
         self.compile_mesh_points()
         [pt.get_point_properties(self.gasProps) for pt in self.meshPts]
 
+
+
     def generate_mesh(self):
         """
         generates the characteristic mesh until the kill function is triggered 
@@ -77,7 +79,9 @@ class mesh:
                 if self.alternateChar:
                     charDir = "pos" 
                 break  
-                 
+
+
+
     def generate_initial_mesh_from_idl(self, idl, charDir):
         """
         computes the initial mesh from the idl. For a vertical IDL this should form a triangle with either a leading + or - characterstic spanning wall to wall 
@@ -104,6 +108,8 @@ class mesh:
                 if self.f_kill[0](self) == True:
                         self.f_kill[1] = True
                         return 
+
+
 
     def generate_mesh_from_line(self, dl, charDir):
         """
@@ -172,6 +178,8 @@ class mesh:
                         self.f_kill[1] = True
                         return 
 
+
+
     def compute_next_neg_char(self, init_point, prev_n_char, continueChar=False):
         """
         Generates the next leading negative characteristic by advancing the mesh along the previous one
@@ -232,6 +240,8 @@ class mesh:
         self.C_pos.append([pt3])
         self.triangle_obj.append([pt3, pt2, None])
 
+
+
     def compute_next_pos_char(self, init_point, prev_p_char, continueChar=False):
         """
         Generates the next leading positive characteristic by advancing the mesh along the previous one
@@ -290,6 +300,8 @@ class mesh:
         self.C_neg.append([pt3])
         self.triangle_obj.append([pt3, None, pt1])
 
+
+
     def check_for_int_intersect(self, pt3, pt2, pt1, charDir):
         """
         checks for a same-family characteristic intersection for an interior point solution
@@ -328,6 +340,8 @@ class mesh:
         if intersect(A,B,C,D): hasIntersected = True
         return hasIntersected
 
+
+
     def check_for_wall_intersect(self, pt3, pt12, charDir):
         """
         checks for a same family intersection at the generation of a new wall point and an existing wall point
@@ -357,6 +371,8 @@ class mesh:
 
         if intersect(A,B,C,D): hasIntersected = True 
         return hasIntersected
+
+
 
     def generate_until_non_intersect(self, dl, charDir):
         """
@@ -389,7 +405,8 @@ class mesh:
                 prev_p_char = self.C_pos[-1][2:] 
                 self.compute_next_pos_char(init_point, prev_p_char) 
                  
-                 
+
+
     def compile_mesh_points(self):
         """
         dumps all mesh points into one bucket, assigns them all indices, and makes a new triangle list of point indices
@@ -410,6 +427,8 @@ class mesh:
         for i,tri in enumerate(self.triangle_obj): #!TEMPORAY IMPROVE LATER
             self.triangle.append([pt.i if pt is not None else None for pt in tri])
             
+
+
     def find_mesh_point(self, pt, C_posneg):
         """
         gets the index of point in C_posneg (self.C_pos or self.C_neg)
@@ -420,6 +439,8 @@ class mesh:
         for i,char in enumerate(C_posneg):
             for j,p in enumerate(char): 
                 if p == pt: return [i,j]
+
+
 
     def trim_mesh_after_intersect(self, pt2, pt1, charDir):
         """
@@ -442,6 +463,8 @@ class mesh:
             delPts = [pt for ii,pt in enumerate(self.C_pos[i]) if ii >= j]
 
         self.delete_mesh_points(delPts)
+
+
 
     def delete_mesh_points(self, delPts):
         """
@@ -471,6 +494,8 @@ class mesh:
         emptyLists = [i for i,char in enumerate(self.C_neg) if len(char) == 0]
         self.C_neg = [char for i,char in enumerate(self.C_neg) if i not in emptyLists]
 
+
+
     def calculate_mass_flow(self, dl, delta):
         """
         calculates the total mass flow rate across a data line
@@ -497,6 +522,8 @@ class mesh:
         
         return mdot
 
+
+
 class mesh_point: 
     """
     generates and manipulates individual mesh point objects
@@ -512,6 +539,8 @@ class mesh_point:
         self.i = ind
         self.isWall = isWall #is the point on the boundary? 
         self.isIdl = isIdl #is the point on the initial data line? 
+
+
 
     def get_point_properties(self, gasProps): 
         """

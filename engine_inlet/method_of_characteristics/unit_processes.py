@@ -5,7 +5,6 @@ import scipy.optimize
 """
 Method of characteristics operator functions for irrotational, isentropic axisymmetric/2D flow. 
 """
-
 class operator_funcs: 
     """
     generates repeatedly-used functions object which are necessary for MOC unit processes
@@ -18,6 +17,8 @@ class operator_funcs:
         self.lam = lambda lam1, lam2 : 0.5*(lam1 + lam2)
         self.lam_min = lambda u, v, a : (u*v - a*math.sqrt(u**2 + v**2 - a**2))/(u**2 - a**2)
         self.lam_plus = lambda u, v, a : (u*v + a*math.sqrt(u**2 + v**2 - a**2))/(u**2 - a**2)
+
+
 
 def get_percent_changes(pt_old, pt_new):
     """
@@ -32,6 +33,8 @@ def get_percent_changes(pt_old, pt_new):
     pcPos = delPos/pos_old
 
     return pcVel, pcPos
+
+
 
 def interior_point(pt1, pt2, gasProps, delta, pcTOL, funcs):
     """
@@ -92,9 +95,10 @@ def interior_point(pt1, pt2, gasProps, delta, pcTOL, funcs):
 
     return [x3, y3, u3, v3]
 
-def direct_wall_abv(pt1, y_x, dydx, gasProps, delta, pcTOL, funcs):
+
+
+def direct_wall_abv(pt1, y_x, dydx, gasProps, delta, pcTOL, funcs, charDir="pos"):
     #MOC direct wall solution using irrotational, isentropic equations 
-    #currently only works for wall above 
     #TODO adjust input function for y to be in implicit form 
 
     #unpacking input data 
@@ -113,10 +117,12 @@ def direct_wall_abv(pt1, y_x, dydx, gasProps, delta, pcTOL, funcs):
         a13 = funcs.a(a0, gam, u13, v13)
 
         if first_iter: 
-            lam13 = funcs.lam_plus(u1, v1, a1)
+            if charDir=="pos": lam13 = funcs.lam_plus(u1, v1, a1)
+            elif charDir=="neg": lam13 = funcs.lam_min(u1, v1, a1)
         else: 
             a3 = funcs.a(a0, gam, u3, v3)
-            lam13 = 0.5*(funcs.lam_plus(u1, v1, a1) + funcs.lam_plus(u3, v3, a3))
+            if charDir=="pos": lam13 = 0.5*(funcs.lam_plus(u1, v1, a1) + funcs.lam_plus(u3, v3, a3))
+            elif charDir=="neg": lam13 = 0.5*(funcs.lam_min(u1, v1, a1) + funcs.lam_min(u3, v3, a3))
 
         S13 = funcs.S(delta, a13, v13, y13)
         Q13 = funcs.Q(u13, a13)
@@ -159,7 +165,9 @@ def direct_wall_abv(pt1, y_x, dydx, gasProps, delta, pcTOL, funcs):
 
     return [x3, y3, u3, v3] 
 
-def direct_wall_bel(pt2, y_x, dydx, gasProps, delta, pcTOL, funcs):
+
+
+def direct_wall_bel(pt2, y_x, dydx, gasProps, delta, pcTOL, funcs, charDir="neg"):
     #MOC direct wall solution using irrotational, isentropic equations 
     #currently only works for wall above 
     #TODO adjust input function for y to be in implicit form 
@@ -180,10 +188,12 @@ def direct_wall_bel(pt2, y_x, dydx, gasProps, delta, pcTOL, funcs):
         a23 = funcs.a(a0, gam, u23, v23)
 
         if first_iter: 
-            lam23 = funcs.lam_min(u2, v2, a2)
+            if charDir=="neg": lam23 = funcs.lam_min(u2, v2, a2)
+            elif charDir=="pos": lam23 = funcs.lam_plus(u2, v2, a2)
         else: 
             a3 = funcs.a(a0, gam, u3, v3)
-            lam23 = 0.5*(funcs.lam_min(u2, v2, a2) + funcs.lam_min(u3, v3, a3))
+            if charDir=="neg": lam23 = 0.5*(funcs.lam_min(u2, v2, a2) + funcs.lam_min(u3, v3, a3))
+            elif charDir=="pos": lam23 = 0.5*(funcs.lam_plus(u2, v2, a2) + funcs.lam_plus(u3, v3, a3))
 
         S23 = funcs.S(delta, a23, v23, y23)
         Q23 = funcs.Q(u23, a23)
@@ -225,6 +235,8 @@ def direct_wall_bel(pt2, y_x, dydx, gasProps, delta, pcTOL, funcs):
         pc_it = max([pcVel, pcPos])
 
     return [x3, y3, u3, v3] 
+
+
 
 def inverse_wall_abv(pt1, pt2, pt3, gasProps, delta, pcTOL, funcs):
     """
@@ -288,6 +300,8 @@ def inverse_wall_abv(pt1, pt2, pt3, gasProps, delta, pcTOL, funcs):
 
     return [xa, ya, ua, va, u3, v3]
 
+
+
 def inverse_wall_bel(pt1, pt2, pt3, gasProps, delta, pcTOL, funcs):
     """
     1-2 is positive characteristics
@@ -350,6 +364,8 @@ def inverse_wall_bel(pt1, pt2, pt3, gasProps, delta, pcTOL, funcs):
 
     return [xa, ya, ua, va, u3, v3]
 
+
+
 def symmetry_boundary(pt2, gasProps, delta, pcTOL, funcs): 
     #MOC symmetry boundary solution for irrotational, isentropic equations
     #currently only works for a point above the symmetry plane
@@ -399,11 +415,15 @@ def symmetry_boundary(pt2, gasProps, delta, pcTOL, funcs):
 
     return [x3, y3, u3, v3]
 
+
+
 def shock_interior():
     """
     characteristic shock field point unit process 
     """
     pass
+
+
 
 def shock_boundary():
     """
