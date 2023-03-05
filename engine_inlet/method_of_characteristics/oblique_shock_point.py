@@ -74,7 +74,7 @@ def get_flow_deflection(M, beta, gam):
 
 
 
-def shock_point(pt1, pt2, beta1, pt4_up, a0, delta):
+def interior_shock_point(pt1, pt2, beta1, pt4_up, a0, delta):
     """
     compute downstream shock point from previous upstream shock point
     pt1: upstream shock point (x, y needed)
@@ -89,48 +89,11 @@ def shock_point(pt1, pt2, beta1, pt4_up, a0, delta):
     u4_up, v4_up, T4_up = pt4_up.u, pt4_up.v, pt4_up.T
 
     def solve_shock_point(beta4, returnSpec):
-        """
-        solve downstream-of-shock properties at shock point 4 given a assumed wave angle at point 4
-        """
-        #find location of shock point 
-        K = math.tan(0.5*(beta1 + beta4))
-        a2 = math.sqrt(a0**2 - 0.5*(gam-1)*(u2**2 + v2**2))
-        lam_p = (u2*v2 + a2*math.sqrt(u2**2 + v2**2 - a2**2))/(u2**2 - a2**2) #first pass set lam_p = lam_p_2 instead of average between 2 and 4
-        x4 = (K*x1 - y1 - lam_p*x2 + y2)/(K - lam_p)
-        y4 = K*(x4 - x1) + y1
-
-        #TODO interpolate along existing characteristic to get u, v, T at x4 and y4
-
-        #get downstream properties 
-        M4_up = math.sqrt((u4_up**2 + v4_up**2)/(gam*R*T4_up))
-        thet4 = get_flow_deflection(M4_up, beta4,gam)
-        u4, v4, T4 = get_downstream_properties(u4_up, v4_up, T4_up, thet4, beta4, gam)
-
-        u24 = 0.5*(u2 + u4)
-        v24 = 0.5*(v2 + v4)
-        y24 = 0.5*(y2 + y4)
-
-
-        a24 = math.sqrt(a0**2 - 0.5*(gam-1)*(u24**2 + v24**2))
-        lam24 = 0.5*(lam2 + lam4)
-        Q24 = u24**2 - a24**2
-        R24 = 2*u24*v24 - Q24*lam24
-        S24 = delta*(a24**2*v24/y24)
-        
-        if returnSpec == "zero":
-            return Q24*(u4-u2) + R24*(v4-v2) - S24*(x4-x2) #compatibility relation along char 24
-        if returnSpec is "sol": 
-            return x4, y4, u4, v4, T4
-
-    res = scipy.optimize.root_scalar(solve_shock_point, args=("zero"), method='bisect', bracket=[0,1]) #get beta using root finder
-    beta_4 = res.root
-
-    x4, y4, u4, v4, T4 = solve_shock_point(beta_4, "sol") #solve for shock point properties using solved-for wave angle
-    return x4, y4, u4, v4, T4
+        pass
 
 
 
-def get_wall_shock_neg(pt_w_u, y_x, dy_dx, pt1, pt3, pcTOL, delta, gasProps):
+def wall_shock_point_neg(pt_w_u, y_x, dy_dx, pt1, pt3, pcTOL, delta, gasProps):
     """
     gets the intial negative shock segment from wall flow deflection to first pos char 
     pt_w_u: upstream-of-shock properties at wall point 
@@ -264,6 +227,6 @@ if __name__ == "__main__":
     #M1 = math.sqrt(u1**2 + v1**2)/math.sqrt(gam*R*T1)
     #beta_w, beta_s = get_oblique_shock_angle(M1, thet, gam) #get shock angle 
     #u2, v2, T2 = get_downstream_properties(u1, v1, T1, thet, beta_w, gam) #compute downstream properties
-    pt4_dwn, pt4_ups, thet4 = get_wall_shock_neg(pt_w_u, y_cowl, dydx_cowl, pt1, pt3, 0.0001, 1, gas)
+    pt4_dwn, pt4_ups, thet4 = wall_shock_point_neg(pt_w_u, y_cowl, dydx_cowl, pt1, pt3, 0.0001, 1, gas)
 
     pass
