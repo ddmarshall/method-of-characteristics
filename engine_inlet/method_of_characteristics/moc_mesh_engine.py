@@ -47,7 +47,7 @@ class mesh:
                 
                 #generate initial above-wall point 
                 pt1 = self.C_neg[-1][1] #2nd point in most recent characteristic
-                [x3,y3,u3,v3] = moc_op.direct_wall_abv(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs)
+                [x3,y3,u3,v3] = moc_op.direct_wall(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs, "pos")
                 pt3 = mesh_point(x3,y3,u3,v3, isWall=True)
                 self.numPointsGen += 1 
                 self.triangle_obj.append([pt3, None, pt1]) 
@@ -121,7 +121,7 @@ class mesh:
         if charDir == "pos":
             #top wall solution
             pt1 = dl[1]
-            [x3,y3,u3,v3] = moc_op.direct_wall_abv(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs)
+            [x3,y3,u3,v3] = moc_op.direct_wall(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs, "pos")
             self.numPointsGen += 1
             if self.f_kill[0](self) == True:
                 self.f_kill[1] = True
@@ -135,7 +135,7 @@ class mesh:
         elif charDir == "neg":
             #bottom wall solution
             pt2 = dl[1]
-            [x3,y3,u3,v3] = moc_op.direct_wall_bel(pt2, self.geom.y_centerbody, self.geom.dydx_centerbody, self.gasProps, self.delta, self.pcTOL, self.funcs)
+            [x3,y3,u3,v3] = moc_op.direct_wall(pt2, self.geom.y_centerbody, self.geom.dydx_centerbody, self.gasProps, self.delta, self.pcTOL, self.funcs, "neg")
             self.numPointsGen += 1
             if self.f_kill[0](self) == True:
                 self.f_kill[1] = True
@@ -224,7 +224,7 @@ class mesh:
         #terminating wall point
         if continueChar:
             pt2 = self.C_pos[-1][-1]
-            [x3,y3,u3,v3] = moc_op.direct_wall_bel(pt2, self.geom.y_centerbody, self.geom.dydx_centerbody, self.gasProps, self.delta, self.pcTOL, self.funcs)
+            [x3,y3,u3,v3] = moc_op.direct_wall(pt2, self.geom.y_centerbody, self.geom.dydx_centerbody, self.gasProps, self.delta, self.pcTOL, self.funcs, "neg")
             self.numPointsGen += 1
             pt3 = mesh_point(x3, y3, u3, v3, isWall=True)
             i,_ = self.find_mesh_point(pt2, self.C_neg)
@@ -232,7 +232,7 @@ class mesh:
 
         else:
             pt2 = self.C_neg[-1][-1]
-            [x3,y3,u3,v3] = moc_op.direct_wall_bel(pt2, self.geom.y_centerbody, self.geom.dydx_centerbody, self.gasProps, self.delta, self.pcTOL, self.funcs)
+            [x3,y3,u3,v3] = moc_op.direct_wall(pt2, self.geom.y_centerbody, self.geom.dydx_centerbody, self.gasProps, self.delta, self.pcTOL, self.funcs, "neg")
             self.numPointsGen += 1
             pt3 = mesh_point(x3, y3, u3, v3, isWall=True)
             self.C_neg[-1].append(pt3)
@@ -284,7 +284,7 @@ class mesh:
         #terminating wall point
         if continueChar:
             pt1 = self.C_neg[-1][-1]
-            [x3,y3,u3,v3] = moc_op.direct_wall_abv(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs)
+            [x3,y3,u3,v3] = moc_op.direct_wall(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs, "pos")
             self.numPointsGen += 1
             pt3 = mesh_point(x3, y3, u3, v3, isWall=True)
             i,_ = self.find_mesh_point(pt1, self.C_pos)
@@ -292,7 +292,7 @@ class mesh:
             
         else: 
             pt1 = self.C_pos[-1][-1]
-            [x3,y3,u3,v3] = moc_op.direct_wall_abv(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs)
+            [x3,y3,u3,v3] = moc_op.direct_wall(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs, "pos")
             self.numPointsGen += 1
             pt3 = mesh_point(x3, y3, u3, v3, isWall=True)
             self.C_pos[-1].append(pt3)
@@ -382,7 +382,7 @@ class mesh:
             self.hasIntersected = False #set to false
             if charDir == "neg":
                 pt1 = self.C_neg[-1][1] #2nd point in most recent characteristic
-                [x3,y3,u3,v3] = moc_op.direct_wall_abv(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs)
+                [x3,y3,u3,v3] = moc_op.direct_wall(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs, "pos")
                 pt3 = mesh_point(x3,y3,u3,v3, isWall=True)
                 self.numPointsGen += 1 
                 self.triangle_obj.append([pt3, None, pt1]) 
@@ -395,7 +395,7 @@ class mesh:
             elif charDir == "pos":
                 
                 pt2 = self.C_pos[-1][1] #2nd point in most recent characteristic
-                [x3,y3,u3,v3] = moc_op.direct_wall_bel(pt2, self.geom.y_centerbody, self.geom.dydx_centerbody, self.gasProps, self.delta, self.pcTOL, self.funcs)
+                [x3,y3,u3,v3] = moc_op.direct_wall(pt2, self.geom.y_centerbody, self.geom.dydx_centerbody, self.gasProps, self.delta, self.pcTOL, self.funcs, "neg")
                 pt3 = mesh_point(x3,y3,u3,v3, isWall=True)
                 self.numPointsGen += 1 
                 self.triangle_obj.append([pt3, pt2, None]) 
