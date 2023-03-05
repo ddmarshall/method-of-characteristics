@@ -26,6 +26,7 @@ class point:
             if T is not None: self.T = T
 
 
+
 def get_oblique_shock_angle(M, thet, gam): 
     """
     calculates the shock wave angle required for a given upstream mach number, flow deflection from upstream angle
@@ -74,33 +75,18 @@ def get_flow_deflection(M, beta, gam):
 
 
 
-def interior_shock_point(pt1, pt2, beta1, pt4_up, a0, delta):
-    """
-    compute downstream shock point from previous upstream shock point
-    pt1: upstream shock point (x, y needed)
-    pt2: downstream point along neg char from pt1 (x,y,u,v needed)
-    beta1: shock angle at point 1
-    pt4_up: upstream properties at new shock point
-    a0: stagnation speed of sound
-    """
-    #unpacking 
-    x1,y1 = pt1.x, pt1.y
-    x2,y2,u2,v2 = pt2.x, pt2.y, pt2.u, pt2.v
-    u4_up, v4_up, T4_up = pt4_up.u, pt4_up.v, pt4_up.T
-
-    def solve_shock_point(beta4, returnSpec):
-        pass
-
-
-
-def wall_shock_point_neg(pt_w_u, y_x, dy_dx, pt1, pt3, pcTOL, delta, gasProps):
+def wall_shock_point(pt_w_u, y_x, dydx, pt1, pt3, pcTOL, delta, gasProps, shockDir):
     """
     gets the intial negative shock segment from wall flow deflection to first pos char 
     pt_w_u: upstream-of-shock properties at wall point 
     y_x: wall position function 
     dy_dx: wall slope function 
-    pt1: upstream point of pos char 
-    pt2: downstream point of pos char 
+    pt1: upstream point of char to be intersected
+    pt3: downstream point of char to be intersected 
+    pcTOL: moc operator percent-change tolerance 
+    delta: (0/1) 2D or axisymmetric 
+    gasProps: gas properties object
+    shockDir: ("neg"/"pos") direction of shock (use neg for wall above, pos for wall below)  
     """
 
     #unpacking
@@ -111,7 +97,7 @@ def wall_shock_point_neg(pt_w_u, y_x, dy_dx, pt1, pt3, pcTOL, delta, gasProps):
     
     #Get initial shock at wall point 
     thet = math.atan(v_w_i/u_w_i) #initial flow angle 
-    wallDef = math.atan(dy_dx(x_w_i)) #wall angle 
+    wallDef = math.atan(dydx(x_w_i)) #wall angle 
     def_ = abs(thet - wallDef) #change in flow direction due to wall 
     beta_w, _ = get_oblique_shock_angle(M_w_i, def_, gam) #weak shock wave angle
     u_w, v_w, T_w = get_downstream_properties(u_w_i, v_w_i, T_w_i, def_, beta_w, gam) #downstream flow properties at wall shock point
@@ -119,17 +105,22 @@ def wall_shock_point_neg(pt_w_u, y_x, dy_dx, pt1, pt3, pcTOL, delta, gasProps):
 
     a1 = a(a0, gam, u1, v1)
     a3 = a(a0, gam, u3, v3)
-    lam1 = lam_plus(u1, v1, a1)
-    lam3 = lam_plus(u3, v3, a3)
+    if shockDir=="neg":
+        lam1, lam3 = lam_plus(u1, v1, a1), lam_plus(u3, v3, a3)
+    elif shockDir=="pos":
+        lam1, lam3 = lam_min(u1, v1, a1), lam_min(u3, v3, a3)
+    
     lam13 = lam(lam1, lam3)
 
-    def solve_shock(thet4, ret="thet"):
+    def solve_shock(thet4, beta4, ret="thet"):
         
-        lam_s = -math.tan(beta_w) #shock slope
+        lam_s = math.tan(0.5*(beta_w + beta4)) #shock slope
+        if shockDir=="neg":
+            lam_s = -1*lam_s
 
         #find intersection point of shock and segment 1-3 (assuming char is a line with slope lam_13)
         x4 = (lam13*x3 - lam_s*x_w - y3 + y_w)/(lam13 - lam_s)
-        y4 = lam_s*(x4 - x1) + y_w
+        y4 = lam_s*(x4 - x_w) + y_w
 
         #linear interpolate to get velocity and temperature 
         linInt = lambda x, p1, p3: (p3-p1)/(x3-x1)*(x-x1) + p1
@@ -145,10 +136,10 @@ def wall_shock_point_neg(pt_w_u, y_x, dy_dx, pt1, pt3, pcTOL, delta, gasProps):
         #get downstream wall point 
         pt4 = point(u4, v4, x4, y4)
         funcs = up.operator_funcs()
-        [x3p, y3p, u3p, v3p] = up.direct_wall_abv(pt4, y_x, dy_dx, gasProps, delta, pcTOL, funcs, charDir="pos")
+        [x3p, y3p, u3p, v3p] = up.direct_wall(pt4, y_x, dydx, gasProps, delta, pcTOL, funcs, charDir="pos")
 
         #get upstream reference point
-        [x_r, y_r, u_r, v_r] = up.direct_wall_abv(pt4, y_x, dy_dx, gasProps, delta, pcTOL, funcs, charDir="neg")
+        [x_r, y_r, u_r, v_r] = up.direct_wall(pt4, y_x, dydx, gasProps, delta, pcTOL, funcs, charDir="neg")
 
         #compute new shock point 
         pt_r = point(u_r, v_r, x_r, y_r)
@@ -164,22 +155,26 @@ def wall_shock_point_neg(pt_w_u, y_x, dy_dx, pt1, pt3, pcTOL, delta, gasProps):
         thet4 = math.acos(np.dot(V4, V4_i)/(math.sqrt(u4_i**2 + v4_i**2)*math.sqrt(u4**2 + v4**2)))
 
 
-        if ret=="thet": return thet4
+        if ret=="thet": return thet4, beta4
         elif ret=="sol":
 
             pt4_dwn = point(x=x4, y=y4, u=u4, v=v4, T=T4)
             pt4_ups = point(u=u4_i, v=v4_i, T=T4_i)
-            return [pt4_dwn, pt4_ups, thet4]
+            return [pt4_dwn, pt4_ups, thet4, beta4]
 
     thet4 = thet#intial guess
+    beta4 = beta_w
     err = 0.001
     while abs(err) >= 0.001: 
         thet4_old = thet4
-        thet4 = solve_shock(thet4_old)     
+        beta4_old = beta4
+        thet4, beta4 = solve_shock(thet4_old, beta4_old)     
         err = thet4-thet4_old
         print(f"error: {err} rad")
     
-    return solve_shock(thet4, ret="sol")
+    return solve_shock(thet4, beta4, ret="sol")
+
+
 
 if __name__ == "__main__":
 
@@ -227,6 +222,6 @@ if __name__ == "__main__":
     #M1 = math.sqrt(u1**2 + v1**2)/math.sqrt(gam*R*T1)
     #beta_w, beta_s = get_oblique_shock_angle(M1, thet, gam) #get shock angle 
     #u2, v2, T2 = get_downstream_properties(u1, v1, T1, thet, beta_w, gam) #compute downstream properties
-    pt4_dwn, pt4_ups, thet4 = wall_shock_point_neg(pt_w_u, y_cowl, dydx_cowl, pt1, pt3, 0.0001, 1, gas)
+    pt4_dwn, pt4_ups, thet4, beta4 = wall_shock_point(pt_w_u, y_cowl, dydx_cowl, pt1, pt3, 0.0001, 1, gas, "neg")
 
     pass

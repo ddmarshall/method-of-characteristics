@@ -35,7 +35,8 @@ class mesh:
 
     def generate_mesh(self):
         """
-        generates the characteristic mesh until the kill function is triggered 
+        generates characteristic mesh until the kill function is triggered 
+        Handles shock waves implicitly i.e. trims mesh after same-family intersection and does NOT include oblique shock calculations
         """
         charDir = "neg" #!hard coded for now... starting direction
         self.generate_initial_mesh_from_idl(self.idl, charDir) #generate mesh from initial data line
