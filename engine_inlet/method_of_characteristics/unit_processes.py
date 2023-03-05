@@ -97,10 +97,19 @@ def interior_point(pt1, pt2, gasProps, delta, pcTOL, funcs):
 
 
 
-def direct_wall_abv(pt1, y_x, dydx, gasProps, delta, pcTOL, funcs, charDir="pos"):
+def direct_wall(pt1, y_x, dydx, gasProps, delta, pcTOL, funcs, charDir):
+    """
     #MOC direct wall solution using irrotational, isentropic equations 
-    #TODO adjust input function for y to be in implicit form 
-
+    pt1: interior point near wall 
+    y_x: scalar position function defining wall
+    dydx: scalar wall slope function 
+    gasProps: gas properties object
+    delta: 0 or 1 - 2D or axisymmetric 
+    pcTOL: percent change tolerance between successive iterations 
+    funcs: moc operator functions object 
+    charDir: ("pos"/"neg") denotes what type of characteristics exists between pt1 and nearby wall
+    """
+    
     #unpacking input data 
     u1, v1, x1, y1 = pt1.u, pt1.v, pt1.x, pt1.y
     gam, R_gas, T0 = gasProps.gam, gasProps.R, gasProps.T0 #gas properties 
@@ -167,7 +176,75 @@ def direct_wall_abv(pt1, y_x, dydx, gasProps, delta, pcTOL, funcs, charDir="pos"
 
 
 
-def direct_wall_bel(pt2, y_x, dydx, gasProps, delta, pcTOL, funcs, charDir="neg"):
+def direct_wall_abv(pt1, y_x, dydx, gasProps, delta, pcTOL, funcs):
+    #MOC direct wall solution using irrotational, isentropic equations 
+    #TODO adjust input function for y to be in implicit form 
+
+    #unpacking input data 
+    u1, v1, x1, y1 = pt1.u, pt1.v, pt1.x, pt1.y
+    gam, R_gas, T0 = gasProps.gam, gasProps.R, gasProps.T0 #gas properties 
+
+    #getting speed of sound
+    a0 = gasProps.a0 #stagnation speed of sound
+
+    #initial value computations 
+    u13, v13 = u1, v1 
+    y13 = 1 if y1 == 0 else y1
+
+    def solve_direct_wall(u13, v13, y13, first_iter=None):
+        a1 = funcs.a(a0, gam, u1, v1)
+        a13 = funcs.a(a0, gam, u13, v13)
+
+        if first_iter: 
+            lam13 = funcs.lam_plus(u1, v1, a1)
+        else: 
+            a3 = funcs.a(a0, gam, u3, v3)
+            lam13 = 0.5*(funcs.lam_plus(u1, v1, a1) + funcs.lam_plus(u3, v3, a3))
+
+        S13 = funcs.S(delta, a13, v13, y13)
+        Q13 = funcs.Q(u13, a13)
+        R13 = funcs.R(u13, v13, Q13, lam13)
+
+        #computing the x&y location of 3' for first iteration (2 methods suggested)
+        try:
+            #method 2: use lam13 to project to wall to get (x,y)_3'
+            x3p = float(scipy.optimize.fsolve(lambda x: lam13*(x-x1) + y1 - y_x(x), x1))
+            #sol = scipy.optimize.root_scalar(lambda x: lam13*(x-x1) + y1 - y_x(x), method='bisect', bracket=(0, 0.25)) #!Not solving with number as ZH book 
+            #x3p = sol.root
+            y3p = y_x(x3p)  
+        except: 
+            #method 1: go straight up from x1 to get x_3' if no downstream solution exists given lam13 and point 1
+            x3p = x1
+            y3p = y_x(x3p)
+
+        #computing partial derivatives for taylor series expansion using 2nd order centered differences
+        pfpx_3p = -dydx(x3p)
+        pfpy_3p = 1 #!Hard Coded
+        f_w3p = 0 #!Hard Coded 
+
+        #construct system and solve
+        coeffMat = np.array([[lam13, -1, 0, 0],[pfpx_3p, pfpy_3p, 0, 0],[-S13, 0, Q13, R13],[0, 0, pfpx_3p, pfpy_3p]])
+        RHSvec = np.array([lam13*x1-y1, pfpx_3p*x3p+pfpy_3p*y3p-f_w3p, -S13*x1+Q13*u1+R13*v1, 0])
+        return np.linalg.solve(coeffMat, RHSvec) #[x3, y3, u3, v3]
+
+    #first iteration
+    [x3, y3, u3, v3] = solve_direct_wall(u13, v13, y13, first_iter=True)
+
+    #Iterate above process until values converge
+    pc_it = pcTOL
+    while pc_it >= pcTOL:
+        x3_old, y3_old, u3_old, v3_old = x3, y3, u3, v3
+        u13, v13, y13 = 0.5*(u1 + u3), 0.5*(v1 + v3), 0.5*(y1 + y3)
+        [x3, y3, u3, v3] = solve_direct_wall(u13, v13, y13)
+        
+        pcVel, pcPos = get_percent_changes([x3_old, y3_old, u3_old, v3_old],[x3, y3, u3, v3]) #get percent change across iteration
+        pc_it = max([pcVel, pcPos])
+
+    return [x3, y3, u3, v3] 
+
+
+
+def direct_wall_bel(pt2, y_x, dydx, gasProps, delta, pcTOL, funcs):
     #MOC direct wall solution using irrotational, isentropic equations 
     #currently only works for wall above 
     #TODO adjust input function for y to be in implicit form 
@@ -188,12 +265,10 @@ def direct_wall_bel(pt2, y_x, dydx, gasProps, delta, pcTOL, funcs, charDir="neg"
         a23 = funcs.a(a0, gam, u23, v23)
 
         if first_iter: 
-            if charDir=="neg": lam23 = funcs.lam_min(u2, v2, a2)
-            elif charDir=="pos": lam23 = funcs.lam_plus(u2, v2, a2)
+            lam23 = funcs.lam_min(u2, v2, a2)
         else: 
             a3 = funcs.a(a0, gam, u3, v3)
-            if charDir=="neg": lam23 = 0.5*(funcs.lam_min(u2, v2, a2) + funcs.lam_min(u3, v3, a3))
-            elif charDir=="pos": lam23 = 0.5*(funcs.lam_plus(u2, v2, a2) + funcs.lam_plus(u3, v3, a3))
+            lam23 = 0.5*(funcs.lam_min(u2, v2, a2) + funcs.lam_min(u3, v3, a3))
 
         S23 = funcs.S(delta, a23, v23, y23)
         Q23 = funcs.Q(u23, a23)
