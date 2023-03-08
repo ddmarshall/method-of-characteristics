@@ -11,6 +11,8 @@ class create_slice_plot:
     def __init__(self, plotDict, mainObj):
         
         fig,ax = self.initialize_figure() #TODO take in default settings dictionary
+        pos = [0.05, 1] #placeholder 
+        self.display_sol_params(ax, pos, mainObj)
         self.plot_from_plotDict(plotDict, ax, mainObj) #
 
 
@@ -19,8 +21,13 @@ class create_slice_plot:
         fig = plt.figure(figsize=(16,7)) #create figure object
         ax = fig.add_subplot(1,1,1) 
         ax.set_ylim(0,1.25)
-        ax.set_xlabel('x'), ax.set_ylabel('y'), ax.grid(linewidth=0.3, color='grey')
+        ax.set_xlabel('x'), ax.set_ylabel('y', rotation='horizontal'), ax.grid(linewidth=0.3, color='grey')
         return fig, ax 
+
+
+    def display_sol_params(self, axes, pos, mainObj):
+        textStr = f"Freestream:\n M = {mainObj.freestream.mach}\n T = {round(mainObj.freestream.T,2)} K \np = {round(mainObj.freestream.p,1)} Pa"
+        axes.text(pos[0], pos[1], textStr)
 
 
 
@@ -46,8 +53,12 @@ class create_slice_plot:
             elif typ == "scalar":
                 self.plot_coneSol(axes, mainObj.coneSol, mainObj.inputs.geom)
                 scalar = plotDict[key]["scalar"]
-                #self.plot_scalar_contours(axes, scalar, idl=mainObj.idlObj, mesh=mainObj.mesh, coneSol=mainObj.coneSol, freeStream = mainObj.freestream)
-                self.plot_scalar_contours(axes, scalar, idl=mainObj.idlObj, mesh=mainObj.mesh) #dumbed down to not include freestream 
+                #freeStScal = getattr(mainObj.freestream, scalar)
+                zs = [getattr(pt, scalar) for pt in mainObj.mesh.meshPts]
+                #zs.append(freeStScal)
+                vMinMax = [min(zs), max(zs)]
+                #self.plot_scalar_contours(axes, scalar, vMinMax, idl=mainObj.idlObj, mesh=mainObj.mesh, coneSol=mainObj.coneSol, freeStream = mainObj.freestream)
+                self.plot_scalar_contours(axes, scalar, vMinMax, idl=mainObj.idlObj, mesh=mainObj.mesh) #dumbed down to not include freestream 
 
 
             else: 
@@ -56,7 +67,6 @@ class create_slice_plot:
 
 
     def plot_coneSol(self, axes, cone, inletGeom):
-        axes.set_title(f"M = {cone.M_inf}, \u03B3 = {cone.gam}, R = {cone.R} J/(kg*K), T_0 = {cone.T0} K") 
         xint = np.array([0, 1])
         if inletGeom is not None:
             #plot interval only which conforms to inlet geometry 
@@ -70,11 +80,17 @@ class create_slice_plot:
 
     def plot_inletGeom(self, axes, inletGeom):
         #plot inlet geometry: 
-        x_cowl = np.linspace(inletGeom.cowl_bounds[0], inletGeom.cowl_bounds[1], 1000)
-        axes.plot(x_cowl, [inletGeom.y_cowl(x) for x in x_cowl], '-w', linewidth=1.3)
-        x_cb = np.linspace(inletGeom.centerbody_bounds[0], inletGeom.centerbody_bounds[1], 1000)
-        axes.plot(x_cb, [inletGeom.y_centerbody(x) for x in x_cb], '-w', linewidth=1.3)
+        x_cowl = np.linspace(inletGeom.cowl_bounds[0], inletGeom.cowl_bounds[1], 100)
+        axes.plot(x_cowl, [inletGeom.y_cowl(x) for x in x_cowl], '-w', linewidth=2)
+        x_cb = np.linspace(inletGeom.centerbody_bounds[0], inletGeom.centerbody_bounds[1], 100)
+        #axes.plot(x_cb, [inletGeom.y_centerbody(x) for x in x_cb], '-w', linewidth=2)
         axes.axhline(0, color='w', linestyle='dashed', linewidth=1) 
+
+        fill_x = np.array([max(x_cb)])
+        fill_x = np.append(fill_x, x_cb)
+        fill_y = np.array([0])
+        fill_y = np.append(fill_y, [inletGeom.y_centerbody(x) for x in x_cb])
+        axes.fill(fill_x, fill_y, facecolor="black", edgecolor="white", zorder=15, hatch="\\\\", linewidth=2) 
          
 
 
@@ -105,7 +121,7 @@ class create_slice_plot:
 
 
 
-    def plot_scalar_contours(self, axes, scalar, idl=None, coneSol=None, mesh=None, freeStream=None, barLabel=None):
+    def plot_scalar_contours(self, axes, scalar, vMinMax, idl=None, coneSol=None, mesh=None, freeStream=None, barLabel=None,):
         """
         TODO: freestream not plotting right. Screws up the blending
         """
@@ -132,7 +148,7 @@ class create_slice_plot:
             yList += [pt.y for pt in mesh.meshPts]
             scalarList = scalarList + [getattr(pt, scalar) for pt in mesh.meshPts] 
             mocReg = matplotlib.tri.Triangulation(xList,yList) 
-            tcf = axes.tricontourf(mocReg, scalarList, 100, cmap='jet')
+            tcf = axes.tricontourf(mocReg, scalarList, 100, cmap='jet', vmin=vMinMax[0], vmax=vMinMax[1])
 
         #plot far field triangle
         if freeStream is not None and coneSol is not None: 
@@ -142,7 +158,7 @@ class create_slice_plot:
             z = getattr(freeStream, scalar)
             scalarList = [z,z,z]
             freestrReg = matplotlib.tri.Triangulation(xpts, ypts)
-            axes.tricontourf(freestrReg, scalarList, 100, cmap='jet')
+            axes.tricontourf(freestrReg, scalarList, 100, cmap='jet', vmin=vMinMax[0], vmax=vMinMax[1])
 
         #tcf = axes.tricontourf(xList, yList, scalarList, 100, cmap='jet')
         plt.colorbar(tcf, orientation='horizontal', shrink=0.5, label=barLabel)
