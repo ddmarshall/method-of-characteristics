@@ -44,10 +44,10 @@ def wall_shock_point(pt_w_u, y_x, dydx, pt1, pt3, pcTOL, delta, gasProps, shockD
     #Get initial shock at wall point 
     thet_i = math.atan(v_w_i/u_w_i) #initial flow angle 
     wallDef = math.atan(dydx(x_w_i)) #wall angle 
-    delta = abs(wallDef - thet_i) #change in flow direction due to wall 
+    def_ = abs(wallDef - thet_i) #change in flow direction due to wall 
     
-    shockObj = obs.Oblique_Shock(M_w_i, gam, thet=delta)
-    beta_w = shockObj.beta_w
+    shockObj = obs.Oblique_Shock(M_w_i, gam, thet=def_)
+    beta_wall = shockObj.beta_w
 
 
     T0w_Tw = 1 + 0.5*(gam - 1)*shockObj.M2**2 
@@ -56,7 +56,7 @@ def wall_shock_point(pt_w_u, y_x, dydx, pt1, pt3, pcTOL, delta, gasProps, shockD
     u_w = V_w*math.cos(wallDef)
     v_w = V_w*math.sin(wallDef)
     x_w, y_w = x_w_i, y_w_i
-    ptw_dwn = point(u_w, v_w, x_w, y_w, T_w) #wall point downstream of shock 
+    ptw_dwn = point(u=u_w, v=v_w, x=x_w, y=y_w, T=T_w) #wall point downstream of shock 
 
     a1 = f.a(a0, gam, u1, v1)
     a3 = f.a(a0, gam, u3, v3)
@@ -65,15 +65,15 @@ def wall_shock_point(pt_w_u, y_x, dydx, pt1, pt3, pcTOL, delta, gasProps, shockD
     elif shockDir=="pos":
         lam1, lam3 = f.lam_min(u1, v1, a1), f.lam_min(u3, v3, a3)
     
-    lam13 = f.lam(lam1, lam3)
+    lam13 = f.lam(lam1, lam3) #average slope between point 1 and 3 
 
     def solve_shock(thet4, beta4, ret="thet"):
         
-        lam_s = math.tan(0.5*(beta_w + beta4)) #shock slope
+        lam_s = math.tan(0.5*(beta_wall + beta4)) #shock slope
         if shockDir=="neg":
             lam_s = -1*lam_s
 
-        #find intersection point of shock and segment 1-3 (assuming char is a line with slope lam_13)
+        #find intersection point of shock and char 1-3 (assuming char is a line with slope lam_13)
         x4 = (lam13*x3 - lam_s*x_w - y3 + y_w)/(lam13 - lam_s)
         y4 = lam_s*(x4 - x_w) + y_w
 
@@ -131,21 +131,129 @@ def wall_shock_point(pt_w_u, y_x, dydx, pt1, pt3, pcTOL, delta, gasProps, shockD
         elif ret=="sol":
 
             pt4_dwn = point(x=x4, y=y4, u=u4, v=v4, T=T4)
-            pt4_ups = point(u=u4_i, v=v4_i, T=T4_i)
+            pt4_ups = point(x=x4, y=y4, u=u4_i, v=v4_i, T=T4_i)
             return [pt4_dwn, pt4_ups, thet4, beta4, ptw_dwn]
 
 
-    shock = obs.Oblique_Shock(M_w_i, gam, thet=delta)
-
     def err_func(thet_guess): 
-        thet,_  = solve_shock(thet_guess, shock.beta_w)
+        thet,beta  = solve_shock(thet_guess, beta_wall)
+        thet,_ = solve_shock(thet_guess,beta)
         return thet - thet_guess
 
-    res = scipy.optimize.fsolve(err_func, x0=delta)
+    #solve with correct deflection at pt 4
+    res = scipy.optimize.fsolve(err_func, x0=def_)
     thet4 = res[0]
-    beta4 = shock.beta_w
+
+    return solve_shock(thet4, beta_wall, ret="sol")
+
+
+
+def interior_shock_point(pt_s, thet_s, beta_s, pt1, pt3, pt_a, pcTOL, delta, gasProps, shockDir):
+    """
+    docstring
+    """
+    #unpacking inputs 
+    x_s, y_s = pt_s.x, pt_s.y
+    x3, y3, u3, v3, T3 = pt3.x, pt3.y, pt3.u, pt3.v, pt3.T
+    x1, y1, u1, v1, T1 = pt1.x, pt1.y, pt1.u, pt1.v, pt1.T
+    gam, R, T0, a0 = gasProps.gam, gasProps.R, gasProps.T0, gasProps.a0
+
+
+    f = up.operator_funcs()
+    a1 = f.a(a0, gam, u1, v1)
+    a3 = f.a(a0, gam, u3, v3)
+    if shockDir=="neg":
+        lam1, lam3 = f.lam_plus(u1, v1, a1), f.lam_plus(u3, v3, a3)
+    elif shockDir=="pos":
+        lam1, lam3 = f.lam_min(u1, v1, a1), f.lam_min(u3, v3, a3)
+    
+    lam13 = f.lam(lam1, lam3)
+
+
+    def solve_shock(thet4, beta4, ret): 
+        
+        lam_s = math.tan(0.5*(beta4 + beta_s))
+        if shockDir=="neg":
+            lam_s = -1*lam_s
+
+        #find intersection point of shock and segment 1-3 (assuming char is a line with slope lam_13)
+        x4 = (lam13*x3 - lam_s*x_s - y3 + y_s)/(lam13 - lam_s)
+        y4 = lam_s*(x4 - x_s) + y_s
+
+        #linear interpolate to get velocity and temperature 
+        linInt = lambda x, p1, p3: (p3-p1)/(x3-x1)*(x-x1) + p1
+        u4_i = linInt(x4, u1, u3)
+        v4_i = linInt(x4, v1, v3)
+        T4_i = linInt(x4, T1, T3)
+        M4_i = math.sqrt((u4_i**2 + v4_i**2)/(gam*R*T4_i))
+
+        #apply oblique shock relations to get downstream conditions
+        shockObj = obs.Oblique_Shock(M4_i, gam, thet=thet4)
+        beta4 = shockObj.beta_w
+        
+        M4 = shockObj.M2
+        T04_T4 = 1 + 0.5*(gam - 1)*M4**2 
+        T4 = T0/T04_T4
+        V4 = M4*math.sqrt(gam*R*T4)
+        thet4_i = math.atan(v4_i/u4_i) #initial flow angle 
+
+        if shockDir == "neg":thet4 = -1*thet4 
+
+        fa4 = thet4_i + thet4 #downstream flow angle after shock 
+        u4 = V4*math.cos(fa4)  
+        v4 = V4*math.sin(fa4)
+
+        pt4 = point(u4, v4, x4, y4)
+
+        if shockDir == "neg":
+            pt1 = pt4
+            pt2 = pt_a
+        elif shockDir == "pos":
+            pt2 = pt4
+            pt1 = pt_a
+
+        #interior point solution 
+        [x3p, y3p, u3p, v3p] = up.interior_point(pt1, pt2, gasProps, delta, pcTOL, f) #generate 3' point 
+        pt3p = point(u3p, v3p, x3p, y3p)
+
+        #reference point
+        #TODO Potentially need to switch to interpolation 
+        [xref, yref, uref, vref] = up.interior_point(pt2, pt1, gasProps, delta, pcTOL, f)
+        pt_ref = point(uref, vref, xref, yref)
+
+        #calculate shock point 
+        if shockDir == "neg":
+            pt1, pt2 = pt3p, pt_ref 
+        elif shockDir == "pos":
+            pt1, pt2 = pt_ref, pt3p
+        
+        [x4, y4, u4, v4] = up.interior_point(pt1, pt2, gasProps, delta, pcTOL, f)
+
+
+        #get new flow deflection angle at 4
+        V4_i = np.array([u4_i, v4_i])
+        V4 = np.array([u4, v4])
+
+        thet4 = abs(math.acos(np.dot(V4, V4_i)/(math.sqrt(u4_i**2 + v4_i**2)*math.sqrt(u4**2 + v4**2))))
+
+        if ret=="thet": return thet4, beta4
+        elif ret=="sol":
+
+            pt4_dwn = point(x=x4, y=y4, u=u4, v=v4, T=T4)
+            pt4_ups = point(u=u4_i, v=v4_i, T=T4_i)
+            return [pt4_dwn, pt4_ups, thet4, beta4, ptw_dwn] 
+
+
+    def err_func(thet_guess): 
+        thet,_  = solve_shock(thet_guess, beta_s)
+        return thet - thet_guess
+
+    res = scipy.optimize.fsolve(err_func, x0=thet_s)
+    thet4 = res[0]
+    #beta4 = beta_s
     
     return solve_shock(thet4, beta4, ret="sol") 
+
 
 
 if __name__ == "__main__":
@@ -200,3 +308,6 @@ if __name__ == "__main__":
     y_cowl_inv = lambda x: y_cowl(x)*-1
     dydx_cowl_inv = lambda x: dydx_cowl(x)*-1
     pt4_dwn_inv, pt4_ups_inv, thet4_inv, beta4_inv, ptw_dwn_inv = wall_shock_point(pt_w_u, y_cowl_inv, dydx_cowl_inv, pt1, pt3, 0.0001, 1, gas, "pos") 
+    
+    print(f"\nx={pt4_dwn.x}, \ty={pt4_dwn.y}, \tu={pt4_dwn.u}, \tv={pt4_dwn.v}")
+    print(f"x={pt4_dwn_inv.x}, \ty={pt4_dwn_inv.y}, \tu={pt4_dwn_inv.u}, \tv={pt4_dwn_inv.v}\n")

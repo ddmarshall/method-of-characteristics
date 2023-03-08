@@ -3,6 +3,7 @@ Strings everything together and runs an inlet solution
 ! saving to pickle is current not working
 """
 class main:
+    
     def __init__(self, inputFile=None, geomObj=None, saveFile=None, plotFile=None):
         ans = None
        
@@ -26,6 +27,8 @@ class main:
         if plotFile is not None: 
             self.plot_solution(plotFile)
 
+
+
     def load_inputs(self, inpFile, geomObj):
         print(f"\nloading input file: {inpFile}")
         import input as inp
@@ -41,6 +44,8 @@ class main:
                 frst.T = T0/(1 + 0.5*(gam - 1)*M**2)
 
         self.freestream = freeStream(inpObj)
+
+
 
     def run_solution(self):
         print("\nrunning solution...\n")
@@ -81,6 +86,8 @@ class main:
         mesh = moc.mesh(self.idlObj, inp.geom, gas, inp.delta, inp.pcTOL, eval(inp.kill))
         self.mesh = mesh 
 
+
+
     def store_solution(self, saveFile):
         #calling this function will overwrite existing files
         print(f"\npickling solution results to {saveFile}")
@@ -88,6 +95,8 @@ class main:
         file = open(saveFile, 'ab')
         pickle.dump(self.mesh, file)
         file.close()
+
+
 
     def load_solution(self, saveFile):
         print(f"\nloading solution file: {saveFile}")
@@ -101,6 +110,8 @@ class main:
             self.coneSol = res.coneSol
         except: pass 
         file.close()
+
+
 
     def plot_solution(self, plotFile):
         """
@@ -119,7 +130,22 @@ class main:
             figname = key #TODO do something with this?
             #hand off subDict to the post processing module
             post_process.create_slice_plot(subDict, self)
+        
+        #!TEST CODE: 
+        fig = plt.figure(figsize=(16,10)) #create figure object
+        ax1 = fig.add_subplot(2,1,1) 
+        ax2 = fig.add_subplot(2,1,2)
+        ax1.set_xlim(0,4.3)
+        ax2.set_xlim(0,4.3)
+        ax1.set_xlabel('x'), ax1.set_ylabel('p/p_0'), ax1.grid(linewidth=0.3, color='grey'), ax1.set_title('cowl surface')
+        ax2.set_xlabel('x'), ax2.set_ylabel('p/p_0'), ax2.grid(linewidth=0.3, color='grey'), ax2.set_title('centerbody surface')
+        ax1.plot([pt.x for pt in self.mesh.wallPtsUpper],[pt.p/self.inputs.p0 for pt in self.mesh.wallPtsUpper], '-o', color='r')
+        ax2.plot([pt.x for pt in self.mesh.wallPtsLower],[pt.p/self.inputs.p0 for pt in self.mesh.wallPtsLower], '-o', color='r')
+       
+
         plt.show() 
+
+
 
     def print_details(self):
         """
@@ -128,8 +154,9 @@ class main:
         """
         pass 
 
+
+
 if __name__ == "__main__":
-    import post_processing.post_process as post_process
     import example_geometry as geom
     inlet = geom.Geom()
     sol = main(inputFile='user_inputs.json', geomObj=inlet, plotFile="plot_profile_test.json") #run solution then plot results

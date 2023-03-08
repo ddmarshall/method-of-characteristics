@@ -7,10 +7,13 @@ import math
 module responsible for generating plots and figures
 """
 class create_slice_plot:
+    
     def __init__(self, plotDict, mainObj):
         
         fig,ax = self.initialize_figure() #TODO take in default settings dictionary
         self.plot_from_plotDict(plotDict, ax, mainObj) #
+
+
 
     def initialize_figure(self): 
         fig = plt.figure(figsize=(16,7)) #create figure object
@@ -18,6 +21,8 @@ class create_slice_plot:
         ax.set_ylim(0,1.25)
         ax.set_xlabel('x'), ax.set_ylabel('y'), ax.grid(linewidth=0.3, color='grey')
         return fig, ax 
+
+
 
     def plot_from_plotDict(self, plotDict, axes, mainObj):
         """
@@ -48,6 +53,8 @@ class create_slice_plot:
             else: 
                 raise ValueError(f"invalid displayer type: {typ}")
 
+
+
     def plot_coneSol(self, axes, cone, inletGeom):
         axes.set_title(f"M = {cone.M_inf}, \u03B3 = {cone.gam}, R = {cone.R} J/(kg*K), T_0 = {cone.T0} K") 
         xint = np.array([0, 1])
@@ -59,6 +66,8 @@ class create_slice_plot:
 
         axes.plot(xint, [x*math.tan(cone.shock_ang) for x in xint], label=f'shock = {round(math.degrees(cone.shock_ang),2)} deg', color='red', linewidth=1) 
 
+
+
     def plot_inletGeom(self, axes, inletGeom):
         #plot inlet geometry: 
         x_cowl = np.linspace(inletGeom.cowl_bounds[0], inletGeom.cowl_bounds[1], 1000)
@@ -67,6 +76,8 @@ class create_slice_plot:
         axes.plot(x_cb, [inletGeom.y_centerbody(x) for x in x_cb], '-w', linewidth=1.3)
         axes.axhline(0, color='w', linestyle='dashed', linewidth=1) 
          
+
+
     def plot_idl(self, axes, idl, annotate=None): 
         axes.plot(idl.x, idl.y, '-o', linewidth=0.5, markersize=2, color='aquamarine')
         for i,x in enumerate(idl.x): 
@@ -76,6 +87,8 @@ class create_slice_plot:
                 text = f"V={round(idl.u[i],1)}, {round(idl.v[i],1)}"
                 xy = (x,idl.y[i])
                 axes.annotate(text, xy)
+
+
 
     def plot_mesh(self, axes, mesh, annotate=False):
         
@@ -89,6 +102,8 @@ class create_slice_plot:
                 plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[1]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[1]].y], color='aquamarine', linewidth=0.5)
             if c is not None:
                 plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[2]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[2]].y], color='aquamarine', linewidth=0.5)
+
+
 
     def plot_scalar_contours(self, axes, scalar, idl=None, coneSol=None, mesh=None, freeStream=None, barLabel=None):
         """
@@ -132,9 +147,3 @@ class create_slice_plot:
         #tcf = axes.tricontourf(xList, yList, scalarList, 100, cmap='jet')
         plt.colorbar(tcf, orientation='horizontal', shrink=0.5, label=barLabel)
         if barLabel is None: barLabel = scalar
-
-def plot_streamlines(self, seedPts):
-    """
-    generates streamlines from list of seedpoints. Uses triangular interpolation with characteristic mesh
-    """
-    pass

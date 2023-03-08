@@ -30,6 +30,7 @@ class mesh:
         self.generate_mesh()
         self.compile_mesh_points()
         [pt.get_point_properties(self.gasProps) for pt in self.meshPts]
+        self.compile_wall_points(self.geom.y_cowl, self.geom.y_centerbody)
 
 
 
@@ -522,6 +523,22 @@ class mesh:
             mdot += np.dot(np.multiply(rho_avg, V), np.multiply(nHat, A))
         
         return mdot
+
+
+
+    def compile_wall_points(self, y_upper, y_lower): 
+        """
+        stores upper and lower wall mesh points
+        """
+        self.wallPtsUpper = []
+        self.wallPtsLower = []
+
+        for pt in self.meshPts:
+            if pt.isWall: 
+                if abs(y_upper(pt.x) - pt.y) < 1e-8:
+                    self.wallPtsUpper.append(pt)
+                elif abs(y_lower(pt.x) - pt.y) < 1e-8:
+                    self.wallPtsLower.append(pt)  
 
 
 
