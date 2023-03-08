@@ -132,7 +132,7 @@ class main:
             post_process.create_slice_plot(subDict, self)
         
         #!TEST CODE: 
-        fig = plt.figure(figsize=(16,10)) #create figure object
+        fig = plt.figure(figsize=(16,8)) #create figure object
         ax1 = fig.add_subplot(2,1,1) 
         ax2 = fig.add_subplot(2,1,2)
         ax1.set_xlim(0,4.3)
@@ -141,8 +141,7 @@ class main:
         ax2.set_xlabel('x'), ax2.set_ylabel('p/p_0'), ax2.grid(linewidth=0.3, color='grey'), ax2.set_title('centerbody surface')
         ax1.plot([pt.x for pt in self.mesh.wallPtsUpper],[pt.p/self.inputs.p0 for pt in self.mesh.wallPtsUpper], '-o', color='r')
         ax2.plot([pt.x for pt in self.mesh.wallPtsLower],[pt.p/self.inputs.p0 for pt in self.mesh.wallPtsLower], '-o', color='r')
-       
-
+    
         plt.show() 
 
 

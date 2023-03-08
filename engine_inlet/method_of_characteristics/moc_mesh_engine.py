@@ -570,6 +570,6 @@ class mesh_point:
         a = math.sqrt(a0**2 + 0.5*(gam-1)*V**2)
         self.mach = V/a #mach number 
         self.T = T0/(1+0.5*(gam-1)*(V/a)**2) #static temperature
-        self.p = p0*(T0/self.T)**(gam/(gam-1)) #static pressure 
+        self.p = p0/((1 + 0.5*(gam-1)*(V/a)**2)**(gam/(gam-1))) #static pressure 
 
         self.rho = self.p/(gasProps.R*self.T) #ideal gas law
