@@ -25,8 +25,6 @@ class Oblique_Shock:
         
         self.solve_weak_oblique_shock(M1, self.thet, gam, R=R)
 
-
-
     def get_shock_wave_angle(self, M, thet, gam): 
         """
         calculates the shock wave angle required for a given upstream mach number, flow deflection from upstream angle
@@ -40,30 +38,28 @@ class Oblique_Shock:
         #check to see if given thet and M are allowable
         mu = math.asin(1/M) #mach angle 
         
-        """
-        res = scipy.optimize.minimize(lambda beta, M, gam: -1*self.get_flow_deflection(beta, M, gam), x0=0.5*(math.pi/2 + mu), args=(M,gam))
+        func = lambda beta, M, gam: -1*self.get_flow_deflection(beta, M, gam)
+        res = scipy.optimize.minimize(func, x0=0.5*(math.pi/2 + mu), args=(M,gam))
+        betaThetMax = float(res.x) #shock wave angle for max deflection
         thetMax = self.get_flow_deflection(float(res.x), M, gam)
         if thet > thetMax:
             raise ValueError("Upstream Mach Number and Deflection Angle Will Result in Detached Shock")
-        """
+        
         def thetBetaM(beta, thet, M, gam):
             return (2/math.tan(beta))*(M**2*math.sin(beta)**2 - 1)/(M**2*(gam + math.cos(2*beta)) + 2) - math.tan(thet)
 
-        beta_weak = scipy.optimize.root_scalar(thetBetaM, args=(thet,M,gam), method='bisect', bracket=[mu, 0.5*(mu + math.pi/2)])
-        beta_strong = scipy.optimize.root_scalar(thetBetaM, args=(thet,M,gam), method='bisect', bracket=[0.5*(mu + math.pi/2), math.pi/2])
+        beta_weak = scipy.optimize.root_scalar(thetBetaM, args=(thet,M,gam), method='bisect', bracket=[mu, betaThetMax])
+        beta_strong = scipy.optimize.root_scalar(thetBetaM, args=(thet,M,gam), method='bisect', bracket=[betaThetMax, math.pi/2])
 
         return beta_weak.root, beta_strong.root
-
-
 
     def get_flow_deflection(self, beta, M, gam): 
         """
         gives the flow deflection angle (relative to initial flow direction) given a shock wave angle and upstream mach number
         """
-        thet = math.atan(2*((M**2*math.sin(beta)**2 - 1)/(M**2*(gam + math.cos(2*beta) + 2)))/math.tan(beta))
-        self.thet = thet
-
-
+        thet = math.atan(2/math.tan(beta))*(M**2*math.sin(beta)**2 - 1)/(M**2*(gam + math.cos(2*beta)) + 2)
+        self.thet = abs(thet)
+        return abs(thet) 
 
     def solve_weak_oblique_shock(self, M1, thet, gam, R=None, beta=None): 
 
