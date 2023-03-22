@@ -6,6 +6,7 @@ import numpy as np
 class for generating initial data line object using flow solution from taylor maccoll module
 """
 class generate_tmc_initial_data_line: 
+    
     def __init__(self, geom, tmc_res, gasProps, nPts, endPoints=None, curve=None):
         """
         tmc_res: results object from taylor maccoll function computation

@@ -19,7 +19,6 @@ class operator_funcs:
         self.lam_plus = lambda u, v, a : (u*v + a*math.sqrt(u**2 + v**2 - a**2))/(u**2 - a**2)
 
 
-
 def get_percent_changes(pt_old, pt_new):
     """
     Evaluates percent change in velocity and position over one iteration
@@ -33,7 +32,6 @@ def get_percent_changes(pt_old, pt_new):
     pcPos = delPos/pos_old
 
     return pcVel, pcPos
-
 
 
 def interior_point(pt1, pt2, gasProps, delta, pcTOL, funcs):
@@ -94,7 +92,6 @@ def interior_point(pt1, pt2, gasProps, delta, pcTOL, funcs):
         pc_it = max([pcVel, pcPos])
 
     return [x3, y3, u3, v3]
-
 
 
 def direct_wall(pt1, y_x, dydx, gasProps, delta, pcTOL, funcs, charDir):
@@ -175,7 +172,6 @@ def direct_wall(pt1, y_x, dydx, gasProps, delta, pcTOL, funcs, charDir):
     return [x3, y3, u3, v3] 
 
 
-
 def inverse_wall_abv(pt1, pt2, pt3, gasProps, delta, pcTOL, funcs, charDir):
     """
     1-2 is negative characteristic
@@ -239,7 +235,6 @@ def inverse_wall_abv(pt1, pt2, pt3, gasProps, delta, pcTOL, funcs, charDir):
     return [xa, ya, ua, va, u3, v3]
 
 
-
 def inverse_wall_bel(pt1, pt2, pt3, gasProps, delta, pcTOL, funcs):
     """
     1-2 is positive characteristics
@@ -301,7 +296,6 @@ def inverse_wall_bel(pt1, pt2, pt3, gasProps, delta, pcTOL, funcs):
         pc_it = max([pcVel, pcPos])
 
     return [xa, ya, ua, va, u3, v3]
-
 
 
 def symmetry_boundary(pt2, gasProps, delta, pcTOL, funcs): 

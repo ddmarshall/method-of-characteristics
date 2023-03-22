@@ -27,8 +27,6 @@ class main:
         if plotFile is not None: 
             self.plot_solution(plotFile)
 
-
-
     def load_inputs(self, inpFile, geomObj):
         print(f"\nloading input file: {inpFile}")
         import input as inp
@@ -44,8 +42,6 @@ class main:
                 frst.T = T0/(1 + 0.5*(gam - 1)*M**2)
 
         self.freestream = freeStream(inpObj)
-
-
 
     def run_solution(self):
         print("\nrunning solution...\n")
@@ -86,8 +82,6 @@ class main:
         mesh = moc.mesh(self.idlObj, inp.geom, gas, inp.delta, inp.pcTOL, eval(inp.kill))
         self.mesh = mesh 
 
-
-
     def store_solution(self, saveFile):
         #calling this function will overwrite existing files
         print(f"\npickling solution results to {saveFile}")
@@ -95,8 +89,6 @@ class main:
         file = open(saveFile, 'ab')
         pickle.dump(self.mesh, file)
         file.close()
-
-
 
     def load_solution(self, saveFile):
         print(f"\nloading solution file: {saveFile}")
@@ -110,8 +102,6 @@ class main:
             self.coneSol = res.coneSol
         except: pass 
         file.close()
-
-
 
     def plot_solution(self, plotFile):
         """
@@ -144,8 +134,6 @@ class main:
     
         plt.show() 
 
-
-
     def print_details(self):
         """
         prints all relevant solution information to console
@@ -154,9 +142,11 @@ class main:
         pass 
 
 
-
 if __name__ == "__main__":
+
     import example_geometry as geom
     inlet = geom.Geom()
     sol = main(inputFile='user_inputs.json', geomObj=inlet, plotFile="plot_profile_test.json") #run solution then plot results
-pass        
+    sol.store_solution('test.pickle')
+    pass
+        

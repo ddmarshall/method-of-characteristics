@@ -2,6 +2,7 @@
 This class generates a universal input object from a set of user input files
 """
 class inputObj: 
+    
     def __init__(self, inpFile, geomObj):
         
         #check file name extension for filetype
