@@ -6,13 +6,11 @@ Development of unit processes for rotational, isentropic, steady, 2D/axisymmetri
 From Zucrow and Hoffman Ch 17
 """
 class Point:
-
     def __init__(self,x,y,u,v):
           self.x,self.y,self.u,self.v = x,y,u,v
 
 
 class Funcs: 
-
     def __init__(self):
         self.V =        lambda u,v: math.sqrt(u**2 + v**2)
         self.thet =     lambda u,v: math.atan(v/u)
@@ -52,12 +50,18 @@ class Funcs:
         self.linSolvePt4Props = solve_point_4_props
              
 
+class Gas: 
+    def __init__(self,R,T,P,gam):
+        self.R,self.T,self.P,self.gam = R,T,P,gam
+
+
 def solve_interior(pt1, pt2, gasProps, delta, pcTOL, funcs): 
 
     #unpack
     u1, v1, x1, y1 = pt1.u, pt1.v, pt1.x, pt1.y
     u2, v2, x2, y2 = pt2.u, pt2.v, pt2.x, pt2.y
-    R, T, cp, P, gam = gasProps.R, gasProps.T, gasProps.cp, gasProps.P, gasProps.gam
+    R, T, P, gam = gasProps.R, gasProps.T, gasProps.P, gasProps.gam
+    cp = gam*R/(gam-1)
 
     #step 0 - get initial values at point 1 and 2
     V1, V2 = funcs.V(u1,v1), funcs.V(u2,v2)
@@ -78,11 +82,12 @@ def solve_interior(pt1, pt2, gasProps, delta, pcTOL, funcs):
 
     #step 3 - solve linear system to obtain position of point 4 
     [x4, y4] = funcs.linSolvePt4(lam_p, x2, y2, lam_m, x1, y1)
-    T_p, T_m = funcs.T_plus(S_p, x4, x2, Q_p, p2), funcs.T_min(S_m, x4, x1, Q_m, p1, thet1) 
+    T_p, T_m = funcs.T_plus(S_p, x4, x2, Q_p, p2, thet2), funcs.T_min(S_m, x4, x1, Q_m, p1, thet1) 
 
     #step 4 - iteratively locate point 3  
     thet3 = 0.5*(thet1 + thet2) #intialization value 
     lam12 = (y1 - y2)/(x1 - x2)
+    x3, y3 = 0.5*(x1 + x2), 0.5*(y1 + y2) #intial guess 
     pcChange = pcTOL 
     while pcChange >= pcTOL: 
         lam_0 = math.tan(thet3)
@@ -107,18 +112,71 @@ def solve_interior(pt1, pt2, gasProps, delta, pcTOL, funcs):
 
     pcChange = pcTOL
     while pcChange >= pcTOL:
+        #store values from previous iteration
+        p4_old, thet4_old, V4_old, rho4_old = p4, thet4, V4, rho4
+
         #step 6 - calculate average properties along characteristics 
+        #positive characteristic 
+        p24     = 0.5*(p2 + p4)
+        thet24  = 0.5*(thet2 + thet4)
+        V24     = 0.5*(V2 + V4)
+        rho24   = 0.5*(rho2 + rho4)
+        y24     = 0.5*(y2 + y4)
+        #negative characteristic 
+        p14     = 0.5*(p1 + p4)
+        thet14  = 0.5*(thet1 + thet4)
+        V14     = 0.5*(V1 + V4)
+        rho14   = 0.5*(rho1 + rho4)
+        y14     = 0.5*(y1 + y4)
 
-        
+        a_p, a_m = funcs.a(gam, p24, rho24), funcs.a(gam, p14, rho14)
+        M_p, M_m = funcs.M(V24, a_p), funcs.M(V14, a_m)
+        alph_p, alph_m = funcs.alph(M_p), funcs.alph(M_m)
+        lam_p, lam_m = funcs.lam_plus(thet24, alph_p), funcs.lam_min(thet14, alph_m)       
+        Q_p, Q_m = funcs.Q(M_p, rho24, V24), funcs.Q(M_m, rho14, V14)
+        S_p, S_m = funcs.S_plus(delta, thet24, y24, M_p, alph_p), funcs.S_min(delta, thet14, y14, M_m, alph_m)
+
         #step 7 - solve for point 4
-
+        [x4, y4] = funcs.linSolvePt4(lam_p, x2, y2, lam_m, x1, y1)
+        T_p, T_m = funcs.T_plus(S_p, x4, x2, Q_p, p2, thet2), funcs.T_min(S_m, x4, x1, Q_m, p1, thet1)
         
         #step 8 - solve for point 3 iteratively
-
+        pcChange_int = pcTOL 
+        while pcChange_int >= pcTOL: 
+            lam_0 = math.tan(0.5*(thet3+thet4))
+            x3_old, y3_old = x3, y3 
+            [x3, y3] = funcs.linSolvePt3(lam_0, x4, y4, lam12, x2, y2)
+            posChange = [x3-x3_old, y3-y3_old] 
+            pcChange_int = math.sqrt(posChange[0]**2 + posChange[1]**2)/math.sqrt(x3_old**2 + y3_old**2)
+            thet3 = thet2 + (y3-y2)/(y1-y2)*(thet1 - thet2)
+        
+        p3 = funcs.linInt(x1,x2,x3,p1,p2)
+        rho3 = funcs.linInt(x1,x2,x3,rho1,rho2)
+        V3 = funcs.linInt(x1,x2,x3,V1,V2)
 
         #step 9 - solve for new point 4 
+        p0 = 0.5*(p3 + p4)
+        rho0 = 0.5*(rho3 + rho4)
+        V0 = 0.5*(V3 + V4)
+        a0 = funcs.a(gam, p0, rho0)
+        R0 = funcs.R0(rho0, V0)
+        A0 = funcs.A0(a0)
+        T01 = funcs.T01(R0, V0, p0)
+        T02 = funcs.T02(A0, rho0, p0)
+        [p4, thet4, V4, rho4] = funcs.linSolvePt4Props(Q_p, Q_m, T_p, T_m, R0, A0, T01, T02)
 
 
         #check if convergence has been reached
+        abs((p4-p4_old)/p4_old)
+        pcChange = max([abs((p4-p4_old)/p4_old), abs((thet4-thet4_old)/thet4_old), abs((V4-V4_old)/V4_old), abs((rho4-rho4_old)/rho4_old)])
 
-        pass 
+    return p4, thet4, V4, rho4, x4, y4
+
+
+if __name__ == "__main__":
+    pt1 = Point(0.131460, 0.040118, 2473.4, 812.8)
+    pt2 = Point(0.135683, 0.037123, 2502.8, 737.6)
+    funcs = Funcs()
+    gasProps = Gas(320, 3000, 70e5, 1.2)
+    p4,thet4,V4,rho4,x4,y4 = solve_interior(pt1, pt2, gasProps, 1, 0.0001, funcs)
+    pass 
