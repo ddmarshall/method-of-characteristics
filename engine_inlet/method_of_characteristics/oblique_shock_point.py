@@ -40,8 +40,10 @@ def wall_shock_point(pt_w_u, y_x, dydx, pt1, pcTOL, delta, gasProps, shockDir):
     #generate pt 3
     if shockDir == "neg":
         [x3, y3, u3, v3] = up.interior_point(pt1, pt_w_u, gasProps, delta, pcTOL, f)
+        #print(f"interior point solution: x,y,u,v = {x3,y3,u3,v3}")
     elif shockDir == "pos":
         [x3, y3, u3, v3] = up.interior_point(pt_w_u, pt1, gasProps, delta, pcTOL, f)
+        #print(f"interior point solution: x,y,u,v = {x3,y3,u3,v3}")
     a3 = f.a(a0, gam, u3, v3)
     M3 = math.sqrt(u3**2 + v3**2)/a3
     T3 = T0/(1 + 0.5*(gam-1)*M3**2)
@@ -49,7 +51,7 @@ def wall_shock_point(pt_w_u, y_x, dydx, pt1, pcTOL, delta, gasProps, shockDir):
     #Get initial shock at wall point 
     thet_i = math.atan(v_w_i/u_w_i) #initial flow angle 
     wallDef = math.atan(dydx(x_w_i)) #wall angle 
-    def_ = abs(wallDef - thet_i) #change in flow direction due to wall 
+    def_ = abs(wallDef - thet_i) #absolute change in flow direction due to wall 
     #print(f"wall flow deflection = {round(math.degrees(def_),3)}")
     
     shockObj = obs.Oblique_Shock(M_w_i, gam, thet=def_)
@@ -86,8 +88,8 @@ def wall_shock_point(pt_w_u, y_x, dydx, pt1, pcTOL, delta, gasProps, shockDir):
         x4 = (lam_s*x_w - y_w - lam13*x1 + y1)/(lam_s - lam13)
         y4 = lam_s*(x4 - x_w) + y_w
 
-        #linear interpolate to get velocity and temperature 
-        linInt = lambda x, p1, p3: (p3-p1)/(x3-x1)*(x-x1) + p1
+        #linear interpolate to get velocity and temperature of upstream side of shock point
+        linInt = lambda x, p1, p3: ((p3-p1)/(x3-x1))*(x-x1) + p1
         u4_i = linInt(x4, u1, u3)
         v4_i = linInt(x4, v1, v3)
         T4_i = linInt(x4, T1, T3)
@@ -202,7 +204,7 @@ if __name__ == "__main__":
         else:
             return None
 
-    pt4_dwn, pt4_ups, thet4, beta4, ptw_dwn = wall_shock_point(pt_w_u, y_cowl, dydx_cowl, pt1, 0.0001, 1, gas, "neg")
+    pt4_dwn, pt4_ups, thet4, beta4, ptw_dwn = wall_shock_point(pt_w_u, y_cowl, dydx_cowl, pt1, 0.000001, 1, gas, "neg")
     print(f"\nx={pt4_dwn.x}, \ty={pt4_dwn.y}, \tu={pt4_dwn.u}, \tv={pt4_dwn.v}")
 
     #Now flip over x-axis to test positive shock direction
@@ -212,6 +214,6 @@ if __name__ == "__main__":
 
     y_cowl_inv = lambda x: y_cowl(x)*-1
     dydx_cowl_inv = lambda x: dydx_cowl(x)*-1
-    pt4_dwn_inv, pt4_ups_inv, thet4_inv, beta4_inv, ptw_dwn_inv = wall_shock_point(pt_w_u, y_cowl_inv, dydx_cowl_inv, pt1, 0.0001, 1, gas, "pos") 
+    pt4_dwn_inv, pt4_ups_inv, thet4_inv, beta4_inv, ptw_dwn_inv = wall_shock_point(pt_w_u, y_cowl_inv, dydx_cowl_inv, pt1, 0.000001, 1, gas, "pos") 
 
     print(f"x={pt4_dwn_inv.x}, \ty={pt4_dwn_inv.y}, \tu={pt4_dwn_inv.u}, \tv={pt4_dwn_inv.v}\n")
