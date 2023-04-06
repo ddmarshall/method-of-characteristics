@@ -1,6 +1,7 @@
 import math
 import scipy.optimize
 import unit_processes as up
+import unit_processes_ZH as upzh
 import numpy as np
 import oblique_shock as obs
 
@@ -39,10 +40,14 @@ def wall_shock_point(pt_w_u, y_x, dydx, pt1, pcTOL, delta, gasProps, shockDir):
 
     #generate pt 3
     if shockDir == "neg":
-        [x3, y3, u3, v3] = up.interior_point(pt1, pt_w_u, gasProps, delta, pcTOL, f)
+        #[x3, y3, u3, v3] = up.interior_point(pt1, pt_w_u, gasProps, delta, pcTOL, f)
+        [x3, y3, u3, v3] = upzh.interior_point(pt1, pt_w_u, gasProps, delta, pcTOL, f)
+
         #print(f"interior point solution: x,y,u,v = {x3,y3,u3,v3}")
     elif shockDir == "pos":
-        [x3, y3, u3, v3] = up.interior_point(pt_w_u, pt1, gasProps, delta, pcTOL, f)
+        #[x3, y3, u3, v3] = up.interior_point(pt_w_u, pt1, gasProps, delta, pcTOL, f)
+        [x3, y3, u3, v3] = upzh.interior_point(pt_w_u, pt1, gasProps, delta, pcTOL, f)
+
         #print(f"interior point solution: x,y,u,v = {x3,y3,u3,v3}")
     a3 = f.a(a0, gam, u3, v3)
     M3 = math.sqrt(u3**2 + v3**2)/a3
@@ -121,16 +126,20 @@ def wall_shock_point(pt_w_u, y_x, dydx, pt1, pcTOL, delta, gasProps, shockDir):
         pt4 = point(u4, v4, x4, y4)
 
         if shockDir == "neg":
-            [x3p, y3p, u3p, v3p] = up.direct_wall(pt4, y_x, dydx, gasProps, delta, pcTOL, f, charDir="pos")#get downstream wall point 
-            [x_r, y_r, u_r, v_r] = up.direct_wall(pt4, y_x, dydx, gasProps, delta, pcTOL, f, charDir="neg")#get upstream reference point
+            #[x3p, y3p, u3p, v3p] = up.direct_wall(pt4, y_x, dydx, gasProps, delta, pcTOL, f, charDir="pos")#get downstream wall point 
+            #[x_r, y_r, u_r, v_r] = up.direct_wall(pt4, y_x, dydx, gasProps, delta, pcTOL, f, charDir="neg")#get upstream reference point
+            [x3p, y3p, u3p, v3p] = upzh.direct_wall(pt4, y_x, dydx, gasProps, delta, pcTOL, f, charDir="pos")#get downstream wall point 
+            [x_r, y_r, u_r, v_r] = upzh.direct_wall(pt4, y_x, dydx, gasProps, delta, pcTOL, f, charDir="neg")#get upstream reference point
             pt_r = point(u_r, v_r, x_r, y_r)
             pt3p = point(u3p, v3p, x3p, y3p)
             pt1 = pt3p
             pt2 = pt_r 
 
         elif shockDir == "pos":
-            [x3p, y3p, u3p, v3p] = up.direct_wall(pt4, y_x, dydx, gasProps, delta, pcTOL, f, charDir="neg")#get downstream wall point 
-            [x_r, y_r, u_r, v_r] = up.direct_wall(pt4, y_x, dydx, gasProps, delta, pcTOL, f, charDir="pos")#get upstream reference point
+            #[x3p, y3p, u3p, v3p] = up.direct_wall(pt4, y_x, dydx, gasProps, delta, pcTOL, f, charDir="neg")#get downstream wall point 
+            #[x_r, y_r, u_r, v_r] = up.direct_wall(pt4, y_x, dydx, gasProps, delta, pcTOL, f, charDir="pos")#get upstream reference point
+            [x3p, y3p, u3p, v3p] = upzh.direct_wall(pt4, y_x, dydx, gasProps, delta, pcTOL, f, charDir="neg")#get downstream wall point 
+            [x_r, y_r, u_r, v_r] = upzh.direct_wall(pt4, y_x, dydx, gasProps, delta, pcTOL, f, charDir="pos")#get upstream reference point
             pt_r = point(u_r, v_r, x_r, y_r)
             pt3p = point(u3p, v3p, x3p, y3p)
             pt1 = pt_r
@@ -138,7 +147,9 @@ def wall_shock_point(pt_w_u, y_x, dydx, pt1, pcTOL, delta, gasProps, shockDir):
             
         #compute new shock point 
         x4_i, y4_i = x4, y4
-        [x4, y4, u4, v4] = up.interior_point(pt1, pt2, gasProps, delta, pcTOL, f)
+        #[x4, y4, u4, v4] = up.interior_point(pt1, pt2, gasProps, delta, pcTOL, f)
+        [x4, y4, u4, v4] = upzh.interior_point(pt1, pt2, gasProps, delta, pcTOL, f)
+
         #print(f"updated shock point location: x={round(x4,4)}, y={round(y4,4)}" )
         #print(f"updated downstream velocity: u={round(u4, 4)}, v={round(v4,4)}")
 

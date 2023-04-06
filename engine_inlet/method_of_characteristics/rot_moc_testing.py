@@ -67,7 +67,7 @@ class Gas:
         self.R,self.T,self.P,self.gam = R,T,P,gam
 
 
-def solve_interior(pt1, pt2, gasProps, delta, pcTOL, funcs): 
+def interior_point(pt1, pt2, gasProps, delta, pcTOL, funcs): 
     """
     interior point solution
     pt1 - upper point (negative characteristic source)
@@ -188,7 +188,7 @@ def solve_interior(pt1, pt2, gasProps, delta, pcTOL, funcs):
     return p4, thet4, V4, rho4, x4, y4
 
 
-def solve_direct_wall(pt2, pt3, y_x, dydx_x, charDir, gasProps, delta, pcTOL, funcs):
+def direct_wall(pt2, pt3, y_x, dydx_x, charDir, gasProps, delta, pcTOL, funcs):
     """
     pt2 - interior point downstream of pt3
     pt3 - upstream wall point
@@ -300,7 +300,7 @@ if __name__ == "__main__":
     pt3 = Point(0.055943, 0.058845, 2252.9*math.cos(math.radians(30.752)), 2252.9*math.sin(math.radians(30.752)))
     y_x = lambda x: (22.1852 + 0.71568*(x*1000) - 0.0010787*(x*1000)**2)/1000
     dydx_x = lambda x: 0.71568 - 0.0021574*(x*1000)
-    p4,thet4,V4,rho4,x4,y4 = solve_direct_wall(pt2, pt3, y_x, dydx_x, "pos", gasProps, 1, 0.00001, funcs)
+    p4,thet4,V4,rho4,x4,y4 = direct_wall(pt2, pt3, y_x, dydx_x, "pos", gasProps, 1, 0.00001, funcs)
     print(f"direct wall above solution: p4, thet4, V4, rho4, x4, y4: \n\t{p4, math.degrees(thet4), V4, rho4, x4, y4}")
 
     #Direct Wall Solution (below)
@@ -308,5 +308,5 @@ if __name__ == "__main__":
     dydx_x_mod = lambda x: -1*dydx_x(x)
     pt2.y, pt2.v = pt2.y*-1, pt2.v*-1
     pt3.y, pt3.v = pt3.y*-1, pt3.v*-1
-    p4,thet4,V4,rho4,x4,y4 = solve_direct_wall(pt2, pt3, y_x_mod, dydx_x_mod, "neg", gasProps, 1, 0.00001, funcs)
+    p4,thet4,V4,rho4,x4,y4 = direct_wall(pt2, pt3, y_x_mod, dydx_x_mod, "neg", gasProps, 1, 0.00001, funcs)
     print(f"direct wall below solution: p4, thet4, V4, rho4, x4, y4: \n\t{p4, math.degrees(thet4), V4, rho4, x4, y4}") 
