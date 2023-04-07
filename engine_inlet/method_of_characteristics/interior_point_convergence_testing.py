@@ -306,5 +306,5 @@ if __name__ == "__main__":
     pt1s = [pt1_1, pt1_2]
     pt2s = [pt2_1, pt2_2]
 
-    #interior_convergence_study(pt1s, pt2s, gas, delta, 0.0001, funcs)
+    #interior_convergence_study(pt1s, pt2s, gas, delta, 0.0000001, funcs)
     interior_convergence_study_ZH(pt1s, pt2s, gas, 0.001)

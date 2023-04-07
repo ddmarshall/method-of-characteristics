@@ -31,7 +31,8 @@ def wall_shock_point(pt_w_u, y_x, dydx, pt1, pcTOL, delta, gasProps, shockDir):
     shockDir: ("neg"/"pos") direction of shock (use neg for wall above, pos for wall below)  
     """
     #unpacking
-    gam, R, T0, a0 = gasProps.gam, gasProps.R, gasProps.T0, gasProps.a0
+    gam, R, T0 = gasProps.gam, gasProps.R, gasProps.T0
+    a0 = math.sqrt(gam*R*T0)
     M_w_i, T_w_i, u_w_i, v_w_i, x_w_i, y_w_i = pt_w_u.mach, pt_w_u.T, pt_w_u.u, pt_w_u.v, pt_w_u.x, pt_w_u.y
     u1,v1,x1,y1,T1 = pt1.u, pt1.v, pt1.x, pt1.y, pt1.T
 
@@ -177,6 +178,35 @@ def wall_shock_point(pt_w_u, y_x, dydx, pt1, pcTOL, delta, gasProps, shockDir):
     sol = scipy.optimize.minimize_scalar(errFunc, bounds=[0.8*beta_wall, 1.2*beta_wall])
     beta4 = float(sol.x)
     return solve_shock(beta4, ret="sol")
+
+
+def interior_shock_point(pt_s_u, pt1, pt_a, pcTOL, delta, gasProps, shockDir):
+    """
+    pt_s_u - upstream side of upstream shock point to propogate shock from (mouthful)
+    pt1 - interior point to pair with shock point
+    pt_a - point connected to downstream side of shock point through opposite family characteristic 
+    pcTOL: moc operator percent-change tolerance 
+    delta: (0/1) 2D or axisymmetric 
+    gasProps: gas properties object
+    shockDir: ("neg"/"pos") direction of shock (use neg for wall above, pos for wall below)  
+    """
+    #unpacking
+    gam, R, T0 = gasProps.gam, gasProps.R, gasProps.T0
+    M_s_i, T_s_i, u_s_i, v_s_i, x_s_i, y_s_i = pt_s_u.mach, pt_s_u.T, pt_s_u.u, pt_s_u.v, pt_s_u.x, pt_s_u.y
+    u1,v1,x1,y1,T1 = pt1.u, pt1.v, pt1.x, pt1.y, pt1.T
+
+    #load in operator functions 
+    f = up.operator_funcs()
+
+    #interior point solution 
+    [x3, y3, u3, v3] = upzh.interior_point(pt1, pt_s_u, gasProps, delta, pcTOL, f)
+    pt3 = point(u3, v3, x3, y3)
+
+    #locate point 4 using characteristic between 1 and 3. Gives upstream properties of point 4
+
+    #get downstream properties at point 4 using oblique shock relations
+
+    #
 
 
 if __name__ == "__main__":

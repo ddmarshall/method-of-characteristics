@@ -288,12 +288,12 @@ if __name__ == "__main__":
     
     funcs = Funcs()
     gasProps = Gas(320, 3000, 70e5, 1.2)
-    """
+    
     #Interior Point Solution: 
     pt1 = Point(0.131460, 0.040118, 2473.4, 812.8)
     pt2 = Point(0.135683, 0.037123, 2502.8, 737.6)
-    p4,thet4,V4,rho4,x4,y4 = solve_interior(pt1, pt2, gasProps, 1, 0.0001, funcs)
-    """
+    p4,thet4,V4,rho4,x4,y4 = interior_point(pt1, pt2, gasProps, 1, 0.0001, funcs)
+    print(f"interior piont solution: p4, thet4, V4, rho4, x4, y4: \n\t{p4, math.degrees(thet4), V4, rho4, x4, y4}")
 
     #Direct Wall Solution (above): 
     pt2 = Point(0.060480, 0.059625, 2274.2*math.cos(math.radians(30.122)), 2274.2*math.sin(math.radians(30.122)))
