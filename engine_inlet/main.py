@@ -1,6 +1,5 @@
 """
 Strings everything together and runs an inlet solution
-! saving to pickle is current not working
 """
 class main:
     
@@ -147,6 +146,4 @@ if __name__ == "__main__":
     import example_geometry as geom
     inlet = geom.Geom()
     sol = main(inputFile='user_inputs.json', geomObj=inlet, plotFile="plot_profile_test.json") #run solution then plot results
-    sol.store_solution('test.pickle')
-    pass
-        
+    #sol.store_solution('test.pickle')

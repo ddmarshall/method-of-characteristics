@@ -6,7 +6,7 @@ import numpy as np
 import oblique_shock as obs
 
 """
-Currently this tests out the wall shock point calculation as described in B.H. Anderson Paper
+Currently, this tests out the wall shock point calculation as described in B.H. Anderson Paper
 """
 
 class point:

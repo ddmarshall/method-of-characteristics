@@ -55,19 +55,19 @@ def interior_point(pt1, pt2, gasProps, delta, pcTOL, funcs):
     def solve_interior_point(u13, v13, y13, u23, v23, y23, first_iter=None): 
         #Calculate coefficients
         a1 = funcs.a(a0, gam, u1, v1)
-
+        a2 = funcs.a(a0, gam, u2, v2)
         if first_iter: 
             lam13 = funcs.lam_plus(u1, v1, a1)
+            lam23 = funcs.lam_min(u2, v2, a2)
         else: 
             a3 = funcs.a(a0, gam, u3, v3)
             lam13 = 0.5*(funcs.lam_plus(u1, v1, a1) + funcs.lam_plus(u3, v3, a3))
+            lam23 = 0.5*(funcs.lam_min(u2, v2, a2) + funcs.lam_min(u3, v3, a3))
 
         a13 = funcs.a(a0, gam, u13, v13)
         S13, Q13 = funcs.S(delta, a13, v13, y13), funcs.Q(u13, a13)
         R13 = funcs.R(u13, v13, Q13, lam13)
 
-        a2 = funcs.a(a0, gam, u2, v2)
-        lam23 = funcs.lam_min(u2, v2, a2)
         a23 = funcs.a(a0, gam, u23, v23)
         S23, Q23 = funcs.S(delta, a23, v23, y23), funcs.Q(u23, a23)
         R23 = funcs.R(u23, v23, Q23, lam23)
