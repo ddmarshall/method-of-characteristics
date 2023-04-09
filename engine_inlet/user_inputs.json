@@ -8,16 +8,13 @@
     "Flow Properties":{
         "Freestream Mach":              2.5
     },
-    "Geometry":{
-        "file":                         "example_geometry.py"
-    },
     "MOC Settings":{
         "Delta":                        1,
-        "Unit Process Converge TOL":    0.001
+        "Unit Process Converge TOL":    0.0001,
+        "kill function":                "lambda mesh: mesh.numPointsGen >= 10000"
     },
     "Initial Data Line":{
-        "function":                     "lambda x: 4*(x-2.5)**2",
-        "distribution":                 ["linear",20],
-        "endpoints":                    [2.01, 2.15]
+        "endpoints":                    [[2,"cowl"], [2.2,"centerbody"]],
+        "num points":                   15
     }
 }

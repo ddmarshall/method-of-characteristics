@@ -6,7 +6,8 @@ import numpy as np
 class for generating initial data line object using flow solution from taylor maccoll module
 """
 class generate_tmc_initial_data_line: 
-    def __init__(self, tmc_res, curve, gasProps):
+    
+    def __init__(self, geom, tmc_res, gasProps, nPts, endPoints=None, curve=None):
         """
         tmc_res: results object from taylor maccoll function computation
         curve: object containing attributes: 
@@ -19,20 +20,24 @@ class generate_tmc_initial_data_line:
 
         ultimately return initial data line as object which can be handed off to moc sequence 
         """
-        self.curveParams = curve
-        self.check_idl(tmc_res)
-        self.generate_idl(tmc_res)
+        if curve is not None: 
+            self.curveParams = curve
+            self.check_idl(tmc_res)
+            self.generate_idl_from_curve(tmc_res)
+        else: 
+
+            self.generate_2_point_idl(geom, tmc_res, nPts, endPoints)
+        
         self.get_properties_on_idl(gasProps)
 
     def check_idl(self, tmc_res):
         """
-        TODO: check for an invalid initial data line
+        TODO: check for an invalid initial data line curve
         """
-        #make sure curve lies between cone surface and shock surface - throw error if not
 
         return
 
-    def generate_idl(self, tmc_res):
+    def generate_idl_from_curve(self, tmc_res):
         """
         TODO: docstring
         """
@@ -78,6 +83,31 @@ class generate_tmc_initial_data_line:
         
         #x&y and u&v discrete points on data line
         self.x, self.y, self.u, self.v = xlist, ylist, ulist, vlist
+
+    def generate_2_point_idl(self, geom, tmc_res, nPts, endPoints):
+       
+        if endPoints[0][1] == "cowl":
+            endPoints[0][1] = geom.y_cowl(endPoints[0][0])
+            self.cowlPoint = True
+
+        if endPoints[1][1] == "centerbody":
+            endPoints[1][1] =  geom.y_centerbody(endPoints[1][0])
+            self.cbPoint = True 
+            
+        a = np.array(endPoints[0])
+        b = np.array(endPoints[1])
+        spacing = np.linspace(0,1,nPts)
+        pts = [np.multiply(spac, b-a) + a for spac in spacing]
+
+        self.x = [pt[0] for pt in pts]
+        self.y = [pt[1] for pt in pts]
+        
+        self.u = []
+        self.v = []
+        for i,X in enumerate(self.x):
+            U,V = tmc_res.f_veloc_uv(math.atan(self.y[i]/X))
+            self.u.append(U)
+            self.v.append(V)
 
     def get_properties_on_idl(self, gasProps):
         #unpacking

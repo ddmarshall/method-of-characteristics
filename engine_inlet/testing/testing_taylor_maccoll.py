@@ -10,7 +10,7 @@ import taylor_maccoll_cone.taylor_maccoll as taylor_maccoll
 
 class Test_Taylor_Maccoll(unittest.TestCase):
 
-    def test_TMC_Cone_Shock_Angle(self):
+    def test_TMC_Cone(self):
         """
         Expected Results from Compressible Aerodynamics Calculator 3.1 
         https://devenport.aoe.vt.edu/aoe3114/calc.html
@@ -18,10 +18,14 @@ class Test_Taylor_Maccoll(unittest.TestCase):
         #instantiate object: 
         cone_ang = math.radians(30)
         M_inf = 3
-        gam = 1.4
-        R = 287.05
-        T0 = 288.15
-        cone_flow = taylor_maccoll.TaylorMaccoll_Cone(cone_ang, M_inf, gam, R, T0)
+        
+        class gasProps:
+            def __init__(self, gam, R, T0): 
+                self.gam, self.R, self.T0 = gam, R, T0
+
+        gas = gasProps(1.4, 287.05, 288.15)
+
+        cone_flow = taylor_maccoll.TaylorMaccoll_Cone(cone_ang, M_inf, gas)
         #Compare calculated shock angle with expected angle: 
         shock_ang_exp = math.radians(39.8169519) 
         self.assertAlmostEqual(cone_flow.shock_ang, shock_ang_exp, places=1)

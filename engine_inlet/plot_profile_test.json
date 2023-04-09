@@ -1,7 +1,4 @@
-{   
-    "solution file":"filename.pickle",
-
-    "default plot settings":{
+{   "default plot settings":{
         "style": "dark_background",
         "figure size": [16,9],
         "xlim": [0,4],
@@ -10,18 +7,33 @@
         "ylabel": "y"
     },
 
-    "fig1":{
-    
-        "geom":{
+    "fig0":{
+        "0":{
             "type": "geom"
         },
-           
-        "mesh1":{
+        "1":{
             "type": "mesh",
-            "plot title": "calculated mesh",
-            "linewidth": 0.5,
-            "annotate nodes": false,
-            "line color": "gold"
+            "annotate": false
+        }
+    },
+
+    "fig1":{
+        "0":{
+            "type": "geom"
+        },
+        "1":{
+            "type": "scalar",
+            "scalar": "mach"       
+        }
+    },
+
+    "fig2":{
+        "0":{
+            "type": "geom"
+        },
+        "1":{
+            "type": "scalar",
+            "scalar": "T"
         }
     }
 }
