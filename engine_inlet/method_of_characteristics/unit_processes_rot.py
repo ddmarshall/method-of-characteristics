@@ -10,7 +10,7 @@ class Point:
           self.x,self.y,self.u,self.v = x,y,u,v
 
 
-class Funcs: 
+class operator_funcs: 
     def __init__(self):
         self.V =        lambda u,v: math.sqrt(u**2 + v**2)
         self.thet =     lambda u,v: math.atan(v/u)
@@ -63,11 +63,11 @@ class Funcs:
 
 
 class Gas: 
-    def __init__(self,R,T,P,gam):
-        self.R,self.T,self.P,self.gam = R,T,P,gam
+    def __init__(self,R,T0,P0,gam):
+        self.R,self.T0,self.P0,self.gam = R,T0,P0,gam
 
 
-def interior_point(pt1, pt2, gasProps, delta, pcTOL, funcs): 
+def interior_point(pt2, pt1, gasProps, delta, pcTOL, funcs): 
     """
     interior point solution
     pt1 - upper point (negative characteristic source)
@@ -76,14 +76,14 @@ def interior_point(pt1, pt2, gasProps, delta, pcTOL, funcs):
     #unpack
     u1, v1, x1, y1 = pt1.u, pt1.v, pt1.x, pt1.y
     u2, v2, x2, y2 = pt2.u, pt2.v, pt2.x, pt2.y
-    R, T, P, gam = gasProps.R, gasProps.T, gasProps.P, gasProps.gam
+    R, T0, P0, gam = gasProps.R, gasProps.T0, gasProps.P0, gasProps.gam
     cp = gam*R/(gam-1)
 
     #step 0 - get initial values at point 1 and 2
     V1, V2 = funcs.V(u1,v1), funcs.V(u2,v2)
-    t1, t2 = funcs.t(T, V1, cp), funcs.t(T, V2, cp)
+    t1, t2 = funcs.t(T0, V1, cp), funcs.t(T0, V2, cp)
     thet1, thet2 = funcs.thet(u1, v1), funcs.thet(u2, v2)
-    p1, p2 = funcs.p(P, t1, T, gam), funcs.p(P, t2, T, gam)
+    p1, p2 = funcs.p(P0, t1, T0, gam), funcs.p(P0, t2, T0, gam)
     rho1, rho2 = funcs.rho(p1, R, t1), funcs.rho(p2, R, t2)
 
     #step 1 - solve for a, M, alpha at points 1 and 2 
@@ -174,21 +174,21 @@ def interior_point(pt1, pt2, gasProps, delta, pcTOL, funcs):
         p0 = 0.5*(p3 + p4)
         rho0 = 0.5*(rho3 + rho4)
         V0 = 0.5*(V3 + V4)
-        a0 = funcs.a(gam, p0, rho0)
+        a0_ = funcs.a(gam, p0, rho0)
         R0 = funcs.R0(rho0, V0)
-        A0 = funcs.A0(a0)
+        A0 = funcs.A0(a0_)
         T01 = funcs.T01(R0, V0, p0)
         T02 = funcs.T02(A0, rho0, p0)
         [p4, thet4, V4, rho4] = funcs.linSolvePt4Props(Q_p, Q_m, T_p, T_m, R0, A0, T01, T02)
 
-
         #check if convergence has been reached
         pChange = max([abs((p4-p4_old)/p4_old), abs((thet4-thet4_old)/thet4_old), abs((V4-V4_old)/V4_old), abs((rho4-rho4_old)/rho4_old)])
 
-    return p4, thet4, V4, rho4, x4, y4
+    u4, v4 = V4*math.cos(thet4), V4*math.sin(thet4)
+    return x4, y4, u4, v4, p4, rho4
 
 
-def direct_wall(pt2, pt3, y_x, dydx_x, charDir, gasProps, delta, pcTOL, funcs):
+def direct_wall(pt2, pt3, y_x, dydx_x, gasProps, delta, pcTOL, funcs, charDir):
     """
     pt2 - interior point downstream of pt3
     pt3 - upstream wall point
@@ -197,14 +197,14 @@ def direct_wall(pt2, pt3, y_x, dydx_x, charDir, gasProps, delta, pcTOL, funcs):
     #unpack inputs
     x2, y2, u2, v2 = pt2.x, pt2.y, pt2.u, pt2.v
     x3, y3, u3, v3 = pt3.x, pt3.y, pt3.u, pt3.v
-    R, T, P, gam = gasProps.R, gasProps.T, gasProps.P, gasProps.gam
+    R, T0, P0, gam = gasProps.R, gasProps.T0, gasProps.P0, gasProps.gam
     cp = gam*R/(gam-1)
 
     #step 0 - get flow properties at point 2 and 3 
     V2, V3 = funcs.V(u2, v2), funcs.V(u3, v3)
-    t2, t3 = funcs.t(T, V2, cp), funcs.t(T, V3, cp)
+    t2, t3 = funcs.t(T0, V2, cp), funcs.t(T0, V3, cp)
     thet2 = funcs.thet(u2, v2)
-    p2, p3 = funcs.p(P, t2, T, gam), funcs.p(P, t3, T, gam)
+    p2, p3 = funcs.p(P0, t2, T0, gam), funcs.p(P0, t3, T0, gam)
     rho2, rho3 = funcs.rho(p2, R, t2), funcs.rho(p3, R, t3)
 
     #step 1 - solve for a, M, alpha 2
@@ -280,33 +280,34 @@ def direct_wall(pt2, pt3, y_x, dydx_x, charDir, gasProps, delta, pcTOL, funcs):
 
         [x4, y4, p4, V4, rho4, thet4] = solve_wall_point(thet24, alph24, M24, rho24, V24, y24)
         pChange = max([abs((p4-p4_old)/p4_old), abs((thet4-thet4_old)/thet4_old), abs((V4-V4_old)/V4_old), abs((rho4-rho4_old)/rho4_old)])
-    
-    return p4, thet4, V4, rho4, x4, y4
+
+    u4, v4 = V4*math.cos(thet4), V4*math.sin(thet4)
+    return x4, y4, u4, v4, p4, rho4
 
 
 if __name__ == "__main__":
     
-    funcs = Funcs()
+    funcs = operator_funcs()
     gasProps = Gas(320, 3000, 70e5, 1.2)
     
     #Interior Point Solution: 
     pt1 = Point(0.131460, 0.040118, 2473.4, 812.8)
     pt2 = Point(0.135683, 0.037123, 2502.8, 737.6)
-    p4,thet4,V4,rho4,x4,y4 = interior_point(pt1, pt2, gasProps, 1, 0.0001, funcs)
-    print(f"interior piont solution: p4, thet4, V4, rho4, x4, y4: \n\t{p4, math.degrees(thet4), V4, rho4, x4, y4}")
+    x4, y4, u4, v4, p4, rho4 = interior_point(pt2, pt1, gasProps, 1, 0.0001, funcs)
+    print(f"interior piont solution: x4, y4, u4, v4, p4, rho4: \n\t{x4, y4, u4, v4, p4, rho4}")
 
     #Direct Wall Solution (above): 
     pt2 = Point(0.060480, 0.059625, 2274.2*math.cos(math.radians(30.122)), 2274.2*math.sin(math.radians(30.122)))
     pt3 = Point(0.055943, 0.058845, 2252.9*math.cos(math.radians(30.752)), 2252.9*math.sin(math.radians(30.752)))
     y_x = lambda x: (22.1852 + 0.71568*(x*1000) - 0.0010787*(x*1000)**2)/1000
     dydx_x = lambda x: 0.71568 - 0.0021574*(x*1000)
-    p4,thet4,V4,rho4,x4,y4 = direct_wall(pt2, pt3, y_x, dydx_x, "pos", gasProps, 1, 0.00001, funcs)
-    print(f"direct wall above solution: p4, thet4, V4, rho4, x4, y4: \n\t{p4, math.degrees(thet4), V4, rho4, x4, y4}")
+    x4, y4, u4, v4, p4, rho4 = direct_wall(pt2, pt3, y_x, dydx_x, "pos", gasProps, 1, 0.00001, funcs)
+    print(f"direct wall above solution: x4, y4, u4, v4, p4, rho4: \n\t{x4, y4, u4, v4, p4, rho4}")
 
     #Direct Wall Solution (below)
     y_x_mod = lambda x: -1*y_x(x)
     dydx_x_mod = lambda x: -1*dydx_x(x)
     pt2.y, pt2.v = pt2.y*-1, pt2.v*-1
     pt3.y, pt3.v = pt3.y*-1, pt3.v*-1
-    p4,thet4,V4,rho4,x4,y4 = direct_wall(pt2, pt3, y_x_mod, dydx_x_mod, "neg", gasProps, 1, 0.00001, funcs)
-    print(f"direct wall below solution: p4, thet4, V4, rho4, x4, y4: \n\t{p4, math.degrees(thet4), V4, rho4, x4, y4}") 
+    x4, y4, u4, v4, p4, rho4 = direct_wall(pt2, pt3, y_x_mod, dydx_x_mod, "neg", gasProps, 1, 0.00001, funcs)
+    print(f"direct wall below solution: x4, y4, u4, v4, p4, rho4: \n\t{x4, y4, u4, v4, p4, rho4}") 
