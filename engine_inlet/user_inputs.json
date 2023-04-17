@@ -14,7 +14,7 @@
         "kill function":                "lambda mesh: mesh.numPointsGen >= 10000"
     },
     "Initial Data Line":{
-        "endpoints":                    [[2,"cowl"], [2.2,"centerbody"]],
-        "num points":                   15
+        "endpoints":                    [[2,"cowl"], [2,"centerbody"]],
+        "num points":                   10
     }
 }

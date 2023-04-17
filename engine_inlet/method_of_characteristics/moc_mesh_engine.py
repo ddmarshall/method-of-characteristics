@@ -1,11 +1,13 @@
-#import method_of_characteristics.unit_processes as moc_op
-import method_of_characteristics.unit_processes_ZH as moc_op
+import method_of_characteristics.unit_processes as moc_op
+#import method_of_characteristics.unit_processes_ZH as moc_op
 import math
 import numpy as np
 """
 Module responsible for generating method-of-characteristics mesh and mesh points
 """
+
 class mesh:
+
     def __init__(self, idl, Geom, gasProps, delta, pcTOL, kill_func):
         self.C_pos, self.C_neg = [],[] #containers for characteristics lines
         self.triangle_obj = [] #container for point line segments
