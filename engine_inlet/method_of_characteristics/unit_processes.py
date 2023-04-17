@@ -82,7 +82,7 @@ def interior_point(pt1, pt2, gasProps, delta, pcTOL, funcs):
 
     #Iterate above process until values converge
     pc_it = pcTOL
-    while pc_it >= pcTOL:
+    while abs(pc_it) >= pcTOL:
         x3_old, y3_old, u3_old, v3_old = x3, y3, u3, v3
         u13, v13, y13 = 0.5*(u1 + u3), 0.5*(v1 + v3), 0.5*(y1 + y3)
         u23, v23, y23 = 0.5*(u2 + u3), 0.5*(v2 + v3), 0.5*(y2 + y3)
@@ -161,7 +161,7 @@ def direct_wall(pt1, y_x, dydx, gasProps, delta, pcTOL, funcs, charDir):
 
     #Iterate above process until values converge
     pc_it = pcTOL
-    while pc_it >= pcTOL:
+    while abs(pc_it) >= pcTOL:
         x3_old, y3_old, u3_old, v3_old = x3, y3, u3, v3
         u13, v13, y13 = 0.5*(u1 + u3), 0.5*(v1 + v3), 0.5*(y1 + y3)
         [x3, y3, u3, v3] = solve_direct_wall(u13, v13, y13)
@@ -171,12 +171,11 @@ def direct_wall(pt1, y_x, dydx, gasProps, delta, pcTOL, funcs, charDir):
 
     return [x3, y3, u3, v3] 
 
-
+"""
 def inverse_wall_abv(pt1, pt2, pt3, gasProps, delta, pcTOL, funcs, charDir):
-    """
-    1-2 is negative characteristic
-    3 is wall point downstream of 1-2
-    """
+    #1-2 is negative characteristic
+    #3 is wall point downstream of 1-2
+    
     #unpacking input data
     u1, v1, x1, y1 = pt1.u, pt1.v, pt1.x, pt1.y
     u2, v2, x2, y2 = pt2.u, pt2.v, pt2.x, pt2.y
@@ -224,7 +223,7 @@ def inverse_wall_abv(pt1, pt2, pt3, gasProps, delta, pcTOL, funcs, charDir):
 
     #iterate until solution converges:
     pc_it = pcTOL
-    while pc_it >= pcTOL:
+    while abs(pc_it) >= pcTOL:
 
         x3_old, y3_old, u3_old, v3_old = x3, y3, u3, v3
         [xa, ya, ua, va, u3, v3] = solve_inverse_wall(xa, ya, ua, va, u3, v3)
@@ -236,10 +235,10 @@ def inverse_wall_abv(pt1, pt2, pt3, gasProps, delta, pcTOL, funcs, charDir):
 
 
 def inverse_wall_bel(pt1, pt2, pt3, gasProps, delta, pcTOL, funcs):
-    """
-    1-2 is positive characteristics
-    3 is wall point downstream of 1-2
-    """
+    
+    #1-2 is positive characteristics
+    #3 is wall point downstream of 1-2
+    
     #unpacking input data
     u1, v1, x1, y1 = pt1.u, pt1.v, pt1.x, pt1.y
     u2, v2, x2, y2 = pt2.u, pt2.v, pt2.x, pt2.y
@@ -287,7 +286,7 @@ def inverse_wall_bel(pt1, pt2, pt3, gasProps, delta, pcTOL, funcs):
 
     #iterate until solution converges:
     pc_it = pcTOL
-    while pc_it >= pcTOL:
+    while abs(pc_it) >= pcTOL:
 
         x3_old, y3_old, u3_old, v3_old = x3, y3, u3, v3
         [xa, ya, ua, va, u3, v3] = solve_inverse_wall(xa, ya, ua, va, u3, v3)
@@ -337,7 +336,7 @@ def symmetry_boundary(pt2, gasProps, delta, pcTOL, funcs):
 
     #iterate until convergence is attained 
     pc_it = pcTOL
-    while pc_it >= pcTOL:
+    while abs(pc_it) >= pcTOL:
         x3_old, y3_old, u3_old, v3_old = x3, y3, u3, v3
         u23, v23, y23 = 0.5*(u2 + u3), 0.5*(v2 + v3), 0.5*(y2 + y3)
         [x3, y3, u3, v3] = solve_symmetry_boundary(u23, v23, y23)
@@ -346,3 +345,4 @@ def symmetry_boundary(pt2, gasProps, delta, pcTOL, funcs):
         pc_it = max([pcVel, pcPos])
 
     return [x3, y3, u3, v3]
+"""

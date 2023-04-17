@@ -127,7 +127,7 @@ def interior_point(pt2, pt1, gasProps, delta, pcTOL, funcs):
     [p4, thet4, V4, rho4] = funcs.linSolvePt4Props(Q_p, Q_m, T_p, T_m, R0, A0, T01, T02)
 
     pChange = pcTOL
-    while pChange >= pcTOL:
+    while abs(pChange) >= pcTOL:
         #store values from previous iteration
         p4_old, thet4_old, V4_old, rho4_old = p4, thet4, V4, rho4
 
@@ -180,10 +180,11 @@ def interior_point(pt2, pt1, gasProps, delta, pcTOL, funcs):
         T01 = funcs.T01(R0, V0, p0)
         T02 = funcs.T02(A0, rho0, p0)
         [p4, thet4, V4, rho4] = funcs.linSolvePt4Props(Q_p, Q_m, T_p, T_m, R0, A0, T01, T02)
+        print(f"interior solution p4, thet4, V4, rho4 = {round(p4,3), round(thet4,3), round(V4,3), round(rho4,3)}")
 
         #check if convergence has been reached
         pChange = max([abs((p4-p4_old)/p4_old), abs((thet4-thet4_old)/thet4_old), abs((V4-V4_old)/V4_old), abs((rho4-rho4_old)/rho4_old)])
-
+         
     u4, v4 = V4*math.cos(thet4), V4*math.sin(thet4)
     return x4, y4, u4, v4, p4, rho4
 
@@ -265,7 +266,7 @@ def direct_wall(pt2, pt3, y_x, dydx_x, gasProps, delta, pcTOL, funcs, charDir):
     
     #iterate 
     pChange = pcTOL
-    while pChange >= pcTOL:
+    while abs(pChange) >= pcTOL:
 
         p4_old, thet4_old, V4_old, rho4_old = p4, thet4, V4, rho4
 
@@ -284,7 +285,7 @@ def direct_wall(pt2, pt3, y_x, dydx_x, gasProps, delta, pcTOL, funcs, charDir):
     u4, v4 = V4*math.cos(thet4), V4*math.sin(thet4)
     return x4, y4, u4, v4, p4, rho4
 
-
+"""
 if __name__ == "__main__":
     
     funcs = operator_funcs()
@@ -311,3 +312,4 @@ if __name__ == "__main__":
     pt3.y, pt3.v = pt3.y*-1, pt3.v*-1
     x4, y4, u4, v4, p4, rho4 = direct_wall(pt2, pt3, y_x_mod, dydx_x_mod, "neg", gasProps, 1, 0.00001, funcs)
     print(f"direct wall below solution: x4, y4, u4, v4, p4, rho4: \n\t{x4, y4, u4, v4, p4, rho4}") 
+"""

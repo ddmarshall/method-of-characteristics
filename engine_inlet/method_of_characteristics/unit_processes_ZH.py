@@ -114,7 +114,7 @@ def interior_point(pt2, pt1, gasProps, delta, pcTOL, funcs):
         return [u4, v4, x4, y4]
     
     pc_it = pcTOL
-    while pc_it >= pcTOL:
+    while abs(pc_it) >= pcTOL:
         x4_old, y4_old = x4, y4
         u4_old, v4_old = u4, v4
         [u4, v4, x4, y4] = corrector(y1, y2, y4, u1, u2, u4, v1, v2, v4)
@@ -191,7 +191,7 @@ def direct_wall(pt2, y_x, dydx, gasProps, delta, pcTOL, funcs, charDir):
         return [x4, y4, u4, v4]
 
     pc_it = pcTOL
-    while pc_it >= pcTOL: 
+    while abs(pc_it) >= pcTOL: 
         u4_old, v4_old = u4, v4
         x4_old, y4_old = x4, y4
         [x4, y4, u4, v4] = corrector(x2, y2, u2, v2, x4, y4, u4, v4)

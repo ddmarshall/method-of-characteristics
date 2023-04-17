@@ -1,11 +1,12 @@
 import math
 import scipy.optimize
-import unit_processes as up #irrotational moc
+import unit_processes_rot as up #rotational moc
 import numpy as np
 import oblique_shock as obs
 
 """
-Currently, this tests out the wall shock point calculation as described in B.H. Anderson Paper. Makes use of IRROTATIONAL unit processes
+Currently, this tests out the wall shock point calculation as described in B.H. Anderson Paper. Makes use of ROTATIONAL unit processes
+!LOOKS LIKE THE ROTATIONAL OPERATORS SUFFER FROM CONVERGENCE ISSUES
 """
 
 class point:
@@ -39,9 +40,9 @@ def wall_shock_point(pt_w_ups, y_x, dydx, pt1, pcTOL, delta, gasProps, shockDir)
         pt3p: (point object) interior point downstream of shock
     """
     #unpacking
-    gam, R, T0, a0              = gasProps.gam, gasProps.R, gasProps.T0, gasProps.a0
+    gam, R, T0, a0                      = gasProps.gam, gasProps.R, gasProps.T0, gasProps.a0
     u_w_ups, v_w_ups, x_w_ups, y_w_ups  = pt_w_ups.u, pt_w_ups.v, pt_w_ups.x, pt_w_ups.y
-    u1,v1,x1,y1                 = pt1.u, pt1.v, pt1.x, pt1.y
+    u1,v1,x1,y1                         = pt1.u, pt1.v, pt1.x, pt1.y
 
     #load in operator functions 
     f = up.operator_funcs()
@@ -421,13 +422,13 @@ if __name__ == "__main__":
             if T is not None: self.T = T
 
     class GasProps: 
-        def __init__(self, gam, R, T0):
-            self.gam, self.R, self.T0 = gam, R, T0
+        def __init__(self, gam, R, T0, P0):
+            self.gam, self.R, self.T0, self.P0 = gam, R, T0, P0
             self.a0 = math.sqrt(gam*R*T0)
 
     #some test numbers: 
-    gam,R,T0 = 1.4, 287.05, 288.15
-    gas = GasProps(gam, R, T0)
+    gam,R,T0,P0 = 1.4, 287.05, 288.15, 101325
+    gas = GasProps(gam, R, T0, P0)
     
     def y_x_up(x):
         if x<1:
@@ -445,7 +446,7 @@ if __name__ == "__main__":
         return 0
 
     pt_w_ups = Point(u=500, v=0, x=1, y=1)
-    pt1 = Point(u=500, v=0, x=1, y=0.75)
+    pt1 = Point(u=500, v=0, x=1.02, y=0.75)
     pcTOL = 0.000001 #percent change tolerance for iterative processes 
     delta = 0 #2D geometry 
     [pt4_dwn, pt4_ups, def_4, beta4, ptw_dwn, pt3p] = wall_shock_point(pt_w_ups, y_x_up, dydx_up, pt1, pcTOL, delta, gas, "neg")
