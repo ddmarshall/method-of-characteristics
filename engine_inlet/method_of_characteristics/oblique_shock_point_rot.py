@@ -7,6 +7,7 @@ import oblique_shock as obs
 """
 Currently, this tests out the wall shock point calculation as described in B.H. Anderson Paper. Makes use of ROTATIONAL unit processes
 !LOOKS LIKE THE ROTATIONAL OPERATORS SUFFER FROM CONVERGENCE ISSUES
+!NEED A SLIGHTLY DIFFERENT APPROACH TO INPUTS FOR DIRECT WALL
 """
 
 class point:
@@ -49,9 +50,9 @@ def wall_shock_point(pt_w_ups, y_x, dydx, pt1, pcTOL, delta, gasProps, shockDir)
 
     #generate pt 3
     if shockDir == "neg":
-        [x3, _, u3, v3] = up.interior_point(pt1, pt_w_ups, gasProps, delta, pcTOL, f)
+        [x3, _, u3, v3, p3, rho3] = up.interior_point(pt1, pt_w_ups, gasProps, delta, pcTOL, f)
     elif shockDir == "pos":
-        [x3, _, u3, v3] = up.interior_point(pt_w_ups, pt1, gasProps, delta, pcTOL, f)
+        [x3, _, u3, v3, p3, rho3] = up.interior_point(pt_w_ups, pt1, gasProps, delta, pcTOL, f)
     a3 = f.a(a0, gam, u3, v3)
 
     #Get initial shock at wall point 
@@ -79,7 +80,7 @@ def wall_shock_point(pt_w_ups, y_x, dydx, pt1, pcTOL, delta, gasProps, shockDir)
     elif shockDir=="pos":
         lam1, lam3 = f.lam_min(u1, v1, a1), f.lam_min(u3, v3, a3)
     
-    lam13 = f.lam(lam1, lam3) #average slope between point 1 and 3 
+    lam13 = 0.5*(lam1 + lam3) #average slope between point 1 and 3 
    
     def solve_shock(def_4, ret="def"):
 
@@ -88,7 +89,6 @@ def wall_shock_point(pt_w_ups, y_x, dydx, pt1, pcTOL, delta, gasProps, shockDir)
         a = np.array([[-lam_w, 1],[-lam13, 1]])
         b = np.array([y_w - lam_w*x_w, y1 - lam13*x1])
         x4, y4 = np.linalg.solve(a,b)
-        #print(f"initial shock point x,y = {round(x4,4), round(y4,4)}")
 
         #linear interpolate to get velocity components
         u4_ups = linear_interpolate(x4, u1, u3, x1, x3)
@@ -109,22 +109,50 @@ def wall_shock_point(pt_w_ups, y_x, dydx, pt1, pcTOL, delta, gasProps, shockDir)
         v4 = V4*math.sin(thet4_dwn)
         pt4 = point(u4, v4, x4, y4)
 
+        #! currently next interior point solution (139) is failing to converge (getting stuck)
+        #! not sure if iterative solve is the way to go here...
+        def wall_points_iterative_solve(pt3p, pt_r, dir_3p, dir_ref): 
+            pChange = pcTOL
+            u3p, v3p, x3p, y3p = pt3p.u, pt3p.v, pt3p.x, pt3p.y
+            u_r, v_r, x_r, y_r = pt_r.u, pt_r.v, pt_r.x, pt_r.y
+            while pChange >= pcTOL:
+                V_r_old, pos_r_old = math.sqrt(u_r**2 + v_r**2), math.sqrt(x_r**2 + y_r**2)
+                V_3p_old, pos_3p_old = math.sqrt(u3p**2 + v3p**2), math.sqrt(x3p**2 + y3p**2)
+                
+                [x3p, y3p, u3p, v3p, _, _] = up.direct_wall(pt4, pt_r, y_x, dydx, gasProps, delta, pcTOL, f, charDir=dir_3p)#get downstream wall point
+                pt3p = point(u3p, v3p, x3p, y3p)
+                [x_r, y_r, u_r, v_r, _, _] = up.direct_wall(pt4, pt3p, y_x, dydx, gasProps, delta, pcTOL, f, charDir=dir_ref)#get upstream reference point
+                pt_r = point(u_r, v_r, x_r, y_r)
+                
+                V_r, pos_r = math.sqrt(u_r**2 + v_r**2), math.sqrt(x_r**2 + y_r**2)
+                V_3p, pos_3p = math.sqrt(u3p**2 + v3p**2), math.sqrt(x3p**2 + y3p**2)
+                velPChange = max([abs((V_r - V_r_old)/V_r_old), abs((V_3p - V_3p_old)/V_3p_old)])
+                posPChange = max([abs((pos_r - pos_r_old)/pos_r_old), abs((pos_3p - pos_3p_old)/pos_3p_old)])
+                pChange = max([velPChange, posPChange])
+
+            return pt_r, pt3p
+        
         if shockDir == "neg":
-            [x3p, y3p, u3p, v3p] = up.direct_wall(pt4, y_x, dydx, gasProps, delta, pcTOL, f, charDir="pos")#get downstream wall point 
-            [x_r, y_r, u_r, v_r] = up.direct_wall(pt4, y_x, dydx, gasProps, delta, pcTOL, f, charDir="neg")#get upstream reference point
-            pt_r = point(u_r, v_r, x_r, y_r)
+            [x3p, y3p, u3p, v3p, _, _] = up.direct_wall(pt4, ptw_dwn, y_x, dydx, gasProps, delta, pcTOL, f, charDir="pos")#get downstream wall point
             pt3p = point(u3p, v3p, x3p, y3p)
+            [x_r, y_r, u_r, v_r, _, _] = up.direct_wall(pt4, pt3p, y_x, dydx, gasProps, delta, pcTOL, f, charDir="neg")#get upstream reference point
+            pt_r = point(u_r, v_r, x_r, y_r)
+            pt_r, pt3p = wall_points_iterative_solve(pt3p, pt_r, "pos", "neg")
             pt1 = pt3p
             pt2 = pt_r 
 
         elif shockDir == "pos":
-            [x3p, y3p, u3p, v3p] = up.direct_wall(pt4, y_x, dydx, gasProps, delta, pcTOL, f, charDir="neg")#get downstream wall point 
-            [x_r, y_r, u_r, v_r] = up.direct_wall(pt4, y_x, dydx, gasProps, delta, pcTOL, f, charDir="pos")#get upstream reference point
-            pt_r = point(u_r, v_r, x_r, y_r)
+            [x3p, y3p, u3p, v3p, _, _] = up.direct_wall(pt4, ptw_dwn, y_x, dydx, gasProps, delta, pcTOL, f, charDir="neg")#get downstream wall point
             pt3p = point(u3p, v3p, x3p, y3p)
+            [x_r, y_r, u_r, v_r, _, _] = up.direct_wall(pt4, pt3p, y_x, dydx, gasProps, delta, pcTOL, f, charDir="pos")#get upstream reference point
+            pt_r = point(u_r, v_r, x_r, y_r)
+            pt_r, pt3p = wall_points_iterative_solve(pt3p, pt_r, "neg", "pos")
             pt1 = pt_r
             pt2 = pt3p
 
+
+
+                
         #check if reference point is upstream of shock wave 
         #!Delete this section if warning never comes up
         a_ref = f.a(a0, gam, pt_r.u, pt_r.v)
@@ -134,8 +162,7 @@ def wall_shock_point(pt_w_ups, y_x, dydx, pt1, pcTOL, delta, gasProps, shockDir)
             print("WARNING: reference point upstream of shock wave")
 
         #compute new shock point 
-        [x4, y4, u4, v4] = up.interior_point(pt1, pt2, gasProps, delta, pcTOL, f)
-        #print(f"updated shock point x,y = {round(x4,4), round(y4,4)}")
+        [x4, y4, u4, v4, _, _] = up.interior_point(pt1, pt2, gasProps, delta, pcTOL, f)
         thet4_upd = math.atan(v4/u4)
         def_4_upd = thet4_upd - thet4_ups #get new estimate for the flow deflection
         
