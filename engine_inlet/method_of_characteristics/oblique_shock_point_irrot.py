@@ -1,8 +1,10 @@
 import math
 import scipy.optimize
-import unit_processes as up #irrotational moc
+#import unit_processes as up #irrotational moc
+import method_of_characteristics.unit_processes as up #irrotational moc
 import numpy as np
-import oblique_shock as obs
+#import oblique_shock as obs
+import method_of_characteristics.oblique_shock as obs
 
 """
 Currently, this tests out the wall shock point calculation as described in B.H. Anderson Paper. Makes use of IRROTATIONAL unit processes
@@ -57,11 +59,12 @@ def wall_shock_point(pt_w_ups, y_x, dydx, pt1, pcTOL, delta, gasProps, shockDir)
     thet_w_i = math.atan(v_w_ups/u_w_ups) #initial flow angle 
     wallFlowAng = math.atan(dydx(x_w_ups)) #wall angle 
     def_w = wallFlowAng-thet_w_i # change in flow direction due to wall 
+    print(f"\nflow deflection at the wall: {math.degrees(def_w)} deg\n")
     
     a_w_ups = f.a(a0, gam, u_w_ups, v_w_ups)
     M_w_ups = math.sqrt(u_w_ups**2 + v_w_ups**2)/a_w_ups
     shockObj = obs.Oblique_Shock(M_w_ups, gam, deflec=def_w)
-    beta_wall = shockObj.beta #shock wave angle at the wall
+    beta_wall = shockObj.beta + thet_w_i #shock wave angle at the wall
 
     T0w_Tw = 1 + 0.5*(gam - 1)*shockObj.M2**2 
     T_w = T0/T0w_Tw
@@ -97,13 +100,13 @@ def wall_shock_point(pt_w_ups, y_x, dydx, pt1, pcTOL, delta, gasProps, shockDir)
 
         #oblique shock relations to get downstream conditions at point 4
         shockObj = obs.Oblique_Shock(M4_ups, gam, deflec=def_4)
-        beta4 = shockObj.beta
         M4_dwn = shockObj.M2
         T04_T4 = 1 + 0.5*(gam - 1)*M4_dwn**2 
         T4 = T0/T04_T4
         V4 = M4_dwn*math.sqrt(gam*R*T4)
         thet4_ups = math.atan(v4_ups/u4_ups) #initial flow angle 
         thet4_dwn = thet4_ups + def_4#downstream flow angle after shock
+        beta4 = shockObj.beta + thet4_ups
         u4 = V4*math.cos(thet4_dwn)  
         v4 = V4*math.sin(thet4_dwn)
         pt4 = point(u4, v4, x4, y4)
@@ -218,7 +221,7 @@ def interior_shock_point(pt_s_ups, pt_s_dwn, beta_s, def_s, pt1, pt_a, pcTOL, de
         M4_ups = math.sqrt(u4_ups**2 + v4_ups**2)/a4_ups
         shockObj = obs.Oblique_Shock(M4_ups, gam, deflec=def_4)
         M4_dwn = shockObj.M2
-        beta4 = shockObj.beta
+        beta4 = shockObj.beta + thet4_ups
         T04_T4 = 1 + 0.5*(gam - 1)*M4_dwn**2 #isentropic stagnation temperature ratio 
         T4_dwn = T0/T04_T4
         a4_dwn = math.sqrt(gam*R*T4_dwn) 
@@ -267,15 +270,19 @@ def interior_shock_point(pt_s_ups, pt_s_dwn, beta_s, def_s, pt1, pt_a, pcTOL, de
             pt4_dwn = point(x=x4_dwn, y=y4_dwn, u=u4_dwn, v=v4_dwn)
             pt4_ups = point(x=x4_dwn, y=y4_dwn, u=u4_ups, v=v4_ups)
             return [pt4_dwn, pt4_ups, def4_upd, beta4, pt3p]
-        
+    
+    
+    #iterative solution approach (seems to diverge occasionally)
     def_4 = def_s #initial guess deflection 
     defPercChange = pcTOL
-
+    print("\nInterior Shock Point Solution:")
     while abs(defPercChange) >= pcTOL:
         def_4_old = def_4
         def_4 = solve_shock(def_4)
+        print(f"\tupdated deflection: {math.degrees(def_4)} deg")
+
         defPercChange = (def_4 - def_4_old)/def_4_old
-     
+
     return solve_shock(def_4, ret="sol")
 
 
@@ -337,7 +344,7 @@ def to_wall_shock_point(pt_s_ups, pt_s_dwn, beta_s, def_s, pt1, pt_a, y_x, dydx,
         M4_ups = math.sqrt(u4_ups**2 + v4_ups**2)/a4_ups
         shockObj = obs.Oblique_Shock(M4_ups, gam, deflec=def_4)
         M4_dwn = shockObj.M2
-        beta4 = shockObj.beta
+        beta4 = shockObj.beta + thet4_ups
         T04_T4 = 1 + 0.5*(gam - 1)*M4_dwn**2 #isentropic stagnation temperature ratio 
         T4_dwn = T0/T04_T4
         a4_dwn = math.sqrt(gam*R*T4_dwn) 
@@ -396,11 +403,7 @@ def to_wall_shock_point(pt_s_ups, pt_s_dwn, beta_s, def_s, pt1, pt_a, y_x, dydx,
         def_4 = solve_shock(def_4)
         defPercChange = (def_4 - def_4_old)/def_4_old
         
-    return solve_shock(def_4, ret="sol")   
-
-
-    "non-iterative process of finding the shock angle at the wall"
-    pass 
+    return solve_shock(def_4, ret="sol")        
 
 
 def linear_interpolate(x, z1, z3, x1, x3):

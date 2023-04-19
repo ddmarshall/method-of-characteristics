@@ -67,7 +67,7 @@ class create_slice_plot:
         else: 
             axes.plot(xint, [x*math.tan(cone.cone_ang) for x in xint], label=f'cone = {round(math.degrees(cone.cone_ang),2)}', color='w', linewidth=1.3) #plot straight cone surface
 
-        axes.plot(xint, [x*math.tan(cone.shock_ang) for x in xint], label=f'shock = {round(math.degrees(cone.shock_ang),2)} deg', color='red', linewidth=1) 
+        axes.plot(xint, [x*math.tan(cone.shock_ang) for x in xint], label=f'shock = {round(math.degrees(cone.shock_ang),2)} deg', color='crimson', linewidth=2, linestyle='dashdot') 
 
     def plot_inletGeom(self, axes, inletGeom):
         #plot inlet geometry: 
@@ -100,11 +100,20 @@ class create_slice_plot:
             [axes.annotate(f"{pt.i}", (pt.x,pt.y)) for pt in mesh.meshPts]
                 
         for tri in mesh.triangle:
-            _,b,c = tri
+            a,b,c = tri
+            if a is None: 
+                continue
             if b is not None: 
                 plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[1]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[1]].y], color='aquamarine', linewidth=0.5)
             if c is not None:
                 plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[2]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[2]].y], color='aquamarine', linewidth=0.5)
+
+        if len(mesh.shock_segs) > 0:
+            for i,ind in enumerate(mesh.shock_segs):
+                if i != 0: 
+                    prevPt = mesh.meshPts[mesh.shock_segs[i-1]]
+                    pt = mesh.meshPts[ind]
+                    plt.plot([pt.x, prevPt.x],[pt.y, prevPt.y], color='crimson', linewidth=2, linestyle='dashdot')
 
     def plot_scalar_contours(self, axes, scalar, vMinMax, idl=None, coneSol=None, mesh=None, freeStream=None, barLabel=None,):
         """

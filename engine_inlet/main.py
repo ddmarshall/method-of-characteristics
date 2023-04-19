@@ -77,8 +77,9 @@ class main:
         #mesh = moc.mesh(self.idlObj, inp.geom, gas, inp.delta, inp.pcTOL) #create mesh object
         #mesh.generate_mesh(eval(inp.kill)) #generate mesh
 
-        
-        mesh = moc.mesh(self.idlObj, inp.geom, gas, inp.delta, inp.pcTOL, eval(inp.kill))
+        mesh = moc.Mesh(self.idlObj, inp.geom, gas, inp.delta, inp.pcTOL, eval(inp.kill), explicit_shocks=True) #shocked mesh 
+        #mesh = moc.Mesh(self.idlObj, inp.geom, gas, inp.delta, inp.pcTOL, eval(inp.kill)) #shockless mesh 
+
         self.mesh = mesh 
 
     def store_solution(self, saveFile):
@@ -121,6 +122,7 @@ class main:
             post_process.create_slice_plot(subDict, self)
         
         #!TEST CODE: 
+        """
         fig = plt.figure(figsize=(16,8)) #create figure object
         ax1 = fig.add_subplot(2,1,1) 
         ax2 = fig.add_subplot(2,1,2)
@@ -130,7 +132,7 @@ class main:
         ax2.set_xlabel('x'), ax2.set_ylabel('p/p_0'), ax2.grid(linewidth=0.3, color='grey'), ax2.set_title('centerbody surface')
         ax1.plot([pt.x for pt in self.mesh.wallPtsUpper],[pt.p/self.inputs.p0 for pt in self.mesh.wallPtsUpper], '-o', color='r')
         ax2.plot([pt.x for pt in self.mesh.wallPtsLower],[pt.p/self.inputs.p0 for pt in self.mesh.wallPtsLower], '-o', color='r')
-    
+        """
         plt.show() 
 
     def print_details(self):
