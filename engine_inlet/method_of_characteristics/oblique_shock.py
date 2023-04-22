@@ -54,7 +54,8 @@ class Oblique_Shock:
         betaThetMax = float(res.x) #shock wave angle for max deflection
         deflecMax = self.get_flow_deflection(float(res.x), M, gam)
         if abs(deflec) > deflecMax:
-            raise ValueError("Upstream Mach Number and Deflection Angle Will Result in Detached Shock")
+            print(f"Warning: For Upstream Mach Number ({M}), Deflection Angle ({math.degrees(deflec)} deg) is greater than max deflection: ({math.degrees(deflecMax)} deg). Returning 90 deg wave angle.")
+            return k*math.pi/2, None
         
         def thetBetaM(beta, deflec, M, gam):
             return (2/math.tan(beta))*(M**2*math.sin(beta)**2 - 1)/(M**2*(gam + math.cos(2*beta)) + 2) - math.tan(deflec)

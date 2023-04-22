@@ -108,7 +108,7 @@ class create_slice_plot:
             if c is not None:
                 plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[2]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[2]].y], color='aquamarine', linewidth=0.5)
 
-        if len(mesh.shock_segs) > 0:
+        if hasattr(mesh, "shock_segs"):
             for i,ind in enumerate(mesh.shock_segs):
                 if i != 0: 
                     prevPt = mesh.meshPts[mesh.shock_segs[i-1]]

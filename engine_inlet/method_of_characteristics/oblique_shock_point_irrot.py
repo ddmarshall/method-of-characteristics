@@ -59,7 +59,7 @@ def wall_shock_point(pt_w_ups, y_x, dydx, pt1, pcTOL, delta, gasProps, shockDir)
     thet_w_i = math.atan(v_w_ups/u_w_ups) #initial flow angle 
     wallFlowAng = math.atan(dydx(x_w_ups)) #wall angle 
     def_w = wallFlowAng-thet_w_i # change in flow direction due to wall 
-    print(f"\nflow deflection at the wall: {math.degrees(def_w)} deg\n")
+    print(f"\n\tflow deflection at the wall: {math.degrees(def_w)} deg\n")
     
     a_w_ups = f.a(a0, gam, u_w_ups, v_w_ups)
     M_w_ups = math.sqrt(u_w_ups**2 + v_w_ups**2)/a_w_ups
@@ -279,10 +279,9 @@ def interior_shock_point(pt_s_ups, pt_s_dwn, beta_s, def_s, pt1, pt_a, pcTOL, de
     while abs(defPercChange) >= pcTOL:
         def_4_old = def_4
         def_4 = solve_shock(def_4)
-        print(f"\tupdated deflection: {math.degrees(def_4)} deg")
-
         defPercChange = (def_4 - def_4_old)/def_4_old
 
+    print(f"\tconverged deflection: {math.degrees(def_4)} deg")
     return solve_shock(def_4, ret="sol")
 
 
