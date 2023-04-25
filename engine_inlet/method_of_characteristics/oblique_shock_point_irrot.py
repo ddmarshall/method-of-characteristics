@@ -59,12 +59,13 @@ def wall_shock_point(pt_w_ups, y_x, dydx, pt1, pcTOL, delta, gasProps, shockDir)
     thet_w_i = math.atan(v_w_ups/u_w_ups) #initial flow angle 
     wallFlowAng = math.atan(dydx(x_w_ups)) #wall angle 
     def_w = wallFlowAng-thet_w_i # change in flow direction due to wall 
-    print(f"\n\tflow deflection at the wall: {math.degrees(def_w)} deg\n")
+    print(f"\n\tflow deflection at the wall: {math.degrees(def_w)} deg")
     
     a_w_ups = f.a(a0, gam, u_w_ups, v_w_ups)
     M_w_ups = math.sqrt(u_w_ups**2 + v_w_ups**2)/a_w_ups
     shockObj = obs.Oblique_Shock(M_w_ups, gam, deflec=def_w)
     beta_wall = shockObj.beta + thet_w_i #shock wave angle at the wall
+    print(f"\tshock wave angle at the wall: {math.degrees(beta_wall)} deg\n")
 
     T0w_Tw = 1 + 0.5*(gam - 1)*shockObj.M2**2 
     T_w = T0/T0w_Tw
@@ -391,8 +392,16 @@ def to_wall_shock_point(pt_s_ups, pt_s_dwn, beta_s, def_s, pt1, pt_a, y_x, dydx,
         if ret == "sol":
             pt4_dwn = point(x=x4_dwn, y=y4_dwn, u=u4_dwn, v=v4_dwn)
             pt4_ups = point(x=x4_dwn, y=y4_dwn, u=u4_ups, v=v4_ups)
+
+            #evalate if a reflection is expected to occur
             delta_thet_w = thet4_upd - math.atan(dydx(x4_dwn))
-            return [pt4_dwn, pt4_ups, def4_upd, beta4, delta_thet_w, pt3p]
+            reflec = False
+            if shockDir == "pos" and delta_thet_w > 0: reflec = True
+            elif shockDir == "neg" and delta_thet_w < 0: reflec = True 
+            elif delta_thet_w == 0:
+                reflec = None
+
+            return [pt4_dwn, pt4_ups, def4_upd, beta4, reflec, pt3p]
 
     def_4 = def_s #initial guess deflection 
     defPercChange = pcTOL

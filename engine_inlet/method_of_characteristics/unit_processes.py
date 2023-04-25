@@ -165,7 +165,7 @@ def direct_wall(pt1, y_x, dydx, gasProps, delta, pcTOL, funcs, charDir):
         x3_old, y3_old, u3_old, v3_old = x3, y3, u3, v3
         u13, v13, y13 = 0.5*(u1 + u3), 0.5*(v1 + v3), 0.5*(y1 + y3)
         [x3, y3, u3, v3] = solve_direct_wall(u13, v13, y13)
-        
+
         pcVel, pcPos = get_percent_changes([x3_old, y3_old, u3_old, v3_old],[x3, y3, u3, v3]) #get percent change across iteration
         pc_it = max([pcVel, pcPos])
 
