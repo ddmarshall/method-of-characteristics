@@ -48,12 +48,10 @@ class create_slice_plot:
             elif typ == "scalar":
                 self.plot_coneSol(axes, mainObj.coneSol, mainObj.inputs.geom)
                 scalar = plotDict[key]["scalar"]
-                #freeStScal = getattr(mainObj.freestream, scalar)
+                lims = plotDict[key]["limits"]
                 zs = [getattr(pt, scalar) for pt in mainObj.mesh.meshPts]
-                #zs.append(freeStScal)
-                vMinMax = [min(zs), max(zs)]
-                #self.plot_scalar_contours(axes, scalar, vMinMax, idl=mainObj.idlObj, mesh=mainObj.mesh, coneSol=mainObj.coneSol, freeStream = mainObj.freestream)
-                self.plot_scalar_contours(axes, scalar, vMinMax, idl=mainObj.idlObj, mesh=mainObj.mesh) #dumbed down to not include freestream 
+                self.plot_scalar_contours(axes, scalar, lims, idl=mainObj.idlObj, mesh=mainObj.mesh, coneSol=mainObj.coneSol, freeStream = mainObj.freestream)
+                #self.plot_scalar_contours(axes, scalar, lims, idl=mainObj.idlObj, mesh=mainObj.mesh) #dumbed down to not include freestream 
 
 
             else: 
@@ -115,7 +113,7 @@ class create_slice_plot:
                     pt = mesh.meshPts[ind]
                     plt.plot([pt.x, prevPt.x],[pt.y, prevPt.y], color='crimson', linewidth=2, linestyle='dashdot')
 
-    def plot_scalar_contours(self, axes, scalar, vMinMax, idl=None, coneSol=None, mesh=None, freeStream=None, barLabel=None,):
+    def plot_scalar_contours(self, axes, scalar, lims, idl=None, coneSol=None, mesh=None, freeStream=None, barLabel=None,):
         """
         TODO: freestream not plotting right. Screws up the blending
         """
@@ -138,11 +136,24 @@ class create_slice_plot:
 
         if mesh is not None: 
             #plot mesh region
-            xList += [pt.x for pt in mesh.meshPts]
-            yList += [pt.y for pt in mesh.meshPts]
-            scalarList = scalarList + [getattr(pt, scalar) for pt in mesh.meshPts] 
-            mocReg = matplotlib.tri.Triangulation(xList,yList) 
-            tcf = axes.tricontourf(mocReg, scalarList, 100, cmap='jet', vmin=vMinMax[0], vmax=vMinMax[1])
+
+            #sort mesh points by regions
+            mesh_point_regions = [[]]
+            for pt in mesh.meshPts: 
+                reg_ind = pt.reg
+                while reg_ind > len(mesh_point_regions)-1: 
+                    mesh_point_regions.append([])
+                mesh_point_regions[reg_ind].append(pt)
+                
+            for pts in mesh_point_regions: 
+                xList += [pt.x for pt in pts]
+                yList += [pt.y for pt in pts]
+                scalarList = scalarList + [getattr(pt, scalar) for pt in pts] 
+                mocReg = matplotlib.tri.Triangulation(xList,yList) 
+                axes.tricontourf(mocReg, scalarList, 100, cmap='jet', vmin=lims[0], vmax=lims[1])
+                scalarList = [] 
+                xList = []
+                yList = []
 
         #plot far field triangle
         if freeStream is not None and coneSol is not None: 
@@ -152,8 +163,8 @@ class create_slice_plot:
             z = getattr(freeStream, scalar)
             scalarList = [z,z,z]
             freestrReg = matplotlib.tri.Triangulation(xpts, ypts)
-            axes.tricontourf(freestrReg, scalarList, 100, cmap='jet', vmin=vMinMax[0], vmax=vMinMax[1])
+            axes.tricontourf(freestrReg, scalarList, 100, cmap='jet', vmin=lims[0], vmax=lims[1])
 
-        #tcf = axes.tricontourf(xList, yList, scalarList, 100, cmap='jet')
-        plt.colorbar(tcf, orientation='horizontal', shrink=0.5, label=barLabel)
+        map_ = matplotlib.cm.ScalarMappable(norm=matplotlib.colors.Normalize(vmin=lims[0], vmax=lims[1]), cmap='jet')
         if barLabel is None: barLabel = scalar
+        plt.colorbar(mappable=map_, orientation='horizontal', shrink=0.5, label=barLabel)
