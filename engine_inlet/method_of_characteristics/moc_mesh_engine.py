@@ -38,7 +38,6 @@ class Mesh:
 
         if explicit_shocks: 
             #adding first shock point
-            #shockPt_init = Mesh_Point(self.idl[0].x,self.idl[0].y, self.idl[0].u, self.idl[0].v, isWall=True, isIdl=True, isShock=True)
             shockPt_init = self.idl[0]
             shockPt_init.isShock = True
             #!HARD CODED (FORCING TOP POINT IN IDL TO BE SHOCK ORIGIN)
@@ -114,12 +113,11 @@ class Mesh:
             self.compute_wall_to_wall_shock(charDir, self.shockPts_frontside[-1])  
             if self.impending_shock_reflec:
                 charDir = "pos"
-                self.generate_mesh_for_shock_reflec(charDir)
+                self.generate_mesh_for_shock_reflec(charDir) 
                 self.compute_wall_to_wall_shock(charDir, self.shockPts_backside[-1])
-
+                return
                 charDir = "neg"
                 self.generate_mesh_for_shock_reflec(charDir) 
-
 
     def generate_initial_mesh_from_idl(self, charDir):
         """
@@ -237,7 +235,7 @@ class Mesh:
             dataLine = pointList[2:]
             if charDir=="pos": 
                 C_on, C_off = self.compute_next_neg_char(init_point, dataLine, onChars=C_on, offChars=C_off, continueChar=True, terminate_wall=False, check_for_intersect=False)
-            elif charDir=="neg":  
+            elif charDir=="neg":   
                 dataLine = [dataLine[0]] #!DEBUG
                 C_on, C_off = self.compute_next_pos_char(init_point, dataLine, onChars=C_on, offChars=C_off, continueChar=True, terminate_wall=False, check_for_intersect=False)
                 self.C_pos = C_on#!DEBUG
@@ -615,6 +613,7 @@ class Mesh:
             C_on[-1].append(pt3p)     
             if len(delPts) > 0: self.delete_mesh_points(delPts)
 
+
             pt_s_ups, pt_s_dwn = pt4_ups, pt4_dwn
             count += 1
             #check if next point is on the wall 
@@ -977,7 +976,7 @@ class Mesh_Point:
         #unpacking
         gam, a0, T0, p0 = gasProps.gam, gasProps.a0, gasProps.T0, gasProps.p0
         V = math.sqrt(self.u**2 + self.v**2)
-        a = math.sqrt(a0**2 + 0.5*(gam-1)*V**2)
+        a = math.sqrt(a0**2 - 0.5*(gam-1)*V**2)
         self.mach = V/a #mach number 
         self.T = T0/(1+0.5*(gam-1)*(V/a)**2) #static temperature
         self.p = p0/((1 + 0.5*(gam-1)*(V/a)**2)**(gam/(gam-1))) #static pressure 

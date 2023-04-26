@@ -116,7 +116,7 @@ class generate_tmc_initial_data_line:
         self.T, self.p, self.mach = [],[],[]
         for i,_ in enumerate(self.x):
             V = math.sqrt(self.u[i]**2 + self.v[i]**2)
-            a = math.sqrt(a0**2 + 0.5*(gam-1)*V**2)
+            a = math.sqrt(a0**2 - 0.5*(gam-1)*V**2)
             self.mach.append(V/a)
             self.T.append(T0/(1+0.5*(gam-1)*(V/a)**2))
             self.p.append(p0*(T0/self.T[i])**(gam/(gam-1)))
