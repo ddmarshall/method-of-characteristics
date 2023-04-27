@@ -10,7 +10,7 @@ class create_slice_plot:
     
     def __init__(self, plotDict, mainObj):
         
-        fig,ax = self.initialize_figure() #TODO take in default settings dictionary
+        fig,ax = self.initialize_figure()
         pos = [0.05, 1] #placeholder 
         self.display_sol_params(ax, pos, mainObj)
         self.plot_from_plotDict(plotDict, ax, mainObj) #
@@ -29,7 +29,6 @@ class create_slice_plot:
     def plot_from_plotDict(self, plotDict, axes, mainObj):
         """
         Loads input file and converts entries to object attributes
-        TODO write this
         """
         for key in plotDict.keys(): 
 
@@ -39,10 +38,11 @@ class create_slice_plot:
                 self.plot_inletGeom(axes, mainObj.inputs.geom)
 
             elif typ == "mesh":
-                anno=False
+                anno, mFlow = False, False
                 if plotDict[key]["annotate"] == True: anno=True
+                if plotDict[key]["show mass flow"] == True: mFlow=True
                 self.plot_coneSol(axes, mainObj.coneSol, mainObj.inputs.geom)
-                self.plot_mesh(axes, mainObj.mesh, annotate=anno)
+                self.plot_mesh(axes, mainObj.mesh, annotate=anno, mass_flow_plot=mFlow)
                 self.plot_idl(axes, mainObj.idlObj)
 
             elif typ == "scalar":
@@ -50,9 +50,8 @@ class create_slice_plot:
                 scalar = plotDict[key]["scalar"]
                 lims = plotDict[key]["limits"]
                 zs = [getattr(pt, scalar) for pt in mainObj.mesh.meshPts]
-                self.plot_scalar_contours(axes, scalar, lims, idl=mainObj.idlObj, mesh=mainObj.mesh, coneSol=mainObj.coneSol, freeStream = mainObj.freestream)
-                #self.plot_scalar_contours(axes, scalar, lims, idl=mainObj.idlObj, mesh=mainObj.mesh) #dumbed down to not include freestream 
-
+                #self.plot_scalar_contours(axes, scalar, lims, idl=mainObj.idlObj, mesh=mainObj.mesh, coneSol=mainObj.coneSol, freeStream = mainObj.freestream)
+                self.plot_scalar_contours(axes, scalar, lims, idl=mainObj.idlObj, mesh=mainObj.mesh) #dumbed down to not include freestream 
 
             else: 
                 raise ValueError(f"invalid displayer type: {typ}")
@@ -91,7 +90,7 @@ class create_slice_plot:
                 xy = (x,idl.y[i])
                 axes.annotate(text, xy)
 
-    def plot_mesh(self, axes, mesh, annotate=False):
+    def plot_mesh(self, axes, mesh, annotate=False, mass_flow_plot=False):
         
         axes.scatter([pt.x for pt in mesh.meshPts],[pt.y for pt in mesh.meshPts], color='aquamarine', s=2)
         if annotate: 
@@ -112,6 +111,13 @@ class create_slice_plot:
                     prevPt = mesh.meshPts[mesh.shock_segs[i-1]]
                     pt = mesh.meshPts[ind]
                     plt.plot([pt.x, prevPt.x],[pt.y, prevPt.y], color='crimson', linewidth=2, linestyle='dashdot')
+
+        if mass_flow_plot and hasattr(mesh, 'char_mass_flow'): 
+            fig2 = plt.figure()
+            ax2 = fig2.add_subplot(1,1,1)
+            ax2.plot(mesh.char_mass_flow[0], mesh.char_mass_flow[1], 'o-')
+            ax2.set_xlabel("characteristic line no."), ax2.set_ylabel("mass flow rate (kg/sec)")
+            ax2.grid(linewidth=0.3, color='grey')
 
     def plot_scalar_contours(self, axes, scalar, lims, idl=None, coneSol=None, mesh=None, freeStream=None, barLabel=None,):
         """

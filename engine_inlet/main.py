@@ -1,5 +1,6 @@
 """
-Strings everything together and runs an inlet solution
+***MAIN RUN FILE***
+Author: Shay Takei 
 """
 class main:
     
@@ -60,17 +61,10 @@ class main:
         gas = gasProps(inp.gam, inp.R, inp.T0, inp.p0) #create gas properties object 
 
         #run taylor maccoll
-        self.coneSol = tmc.TaylorMaccoll_Cone(math.radians(inp.geom.cone_ang_deg), inp.M_inf, gas) 
+        if self.inputs.delta == 1: #axisymmetric
+            self.coneSol = tmc.TaylorMaccoll_Cone(math.radians(inp.geom.cone_ang_deg), inp.M_inf, gas) 
 
-        #generate idl 
-        #class make_curve:
-        #    def __init__(self, y_x, dist, endpoints):
-        #        self.y_x, self.dist, self.endpoints = y_x, dist, endpoints
-        
-        #if inp.idlDist[0] == "linear": 
-        #    Dist = np.linspace(0,1+(1/inp.idlDist[1]),inp.idlDist[1]+1)
-
-        #curve = make_curve(eval(inp.idlFuncStr), Dist, inp.idlEndPts)
+        #generate IDL
         self.idlObj = idl.generate_tmc_initial_data_line(self.inputs.geom, self.coneSol, gas, self.inputs.nIdlPts, self.inputs.idlEndPts)
 
         #generate mesh
@@ -84,6 +78,7 @@ class main:
 
     def store_solution(self, saveFile):
         #calling this function will overwrite existing files
+        #! Currently broken (pickling doesn't work will stored functions I think...)
         print(f"\npickling solution results to {saveFile}")
         import pickle 
         file = open(saveFile, 'ab')
@@ -148,4 +143,3 @@ if __name__ == "__main__":
     import example_geometry as geom
     inlet = geom.Geom()
     sol = main(inputFile='user_inputs.json', geomObj=inlet, plotFile="plot_profile_test.json") #run solution then plot results
-    #sol.store_solution('test.pickle')

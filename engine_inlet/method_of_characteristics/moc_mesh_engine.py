@@ -1,5 +1,4 @@
 import method_of_characteristics.unit_processes as moc_op
-import method_of_characteristics.unit_processes_ZH as moc_opZH
 import method_of_characteristics.oblique_shock_point_irrot as shock
 import math
 import numpy as np
@@ -52,6 +51,7 @@ class Mesh:
         self.compile_mesh_points()
         [pt.get_point_properties(self.gasProps) for pt in self.meshPts]
         self.compile_wall_points(self.geom.y_cowl, self.geom.y_centerbody)
+        self.compute_local_mass_flow(self.C_pos)
 
     def generate_mesh(self):
         """
@@ -916,7 +916,7 @@ class Mesh:
         emptyLists = [i for i,char in enumerate(self.C_neg) if len(char) == 0]
         self.C_neg = [char for i,char in enumerate(self.C_neg) if i not in emptyLists]
 
-    def calculate_mass_flow(self, dl, delta):
+    def calculate_mass_flow(self, dl):
         """
         calculates the total mass flow rate across a data line
         dl: list of mesh points dl[0] and dl[-1] should be wall points for this calculation to be meaningful 
@@ -932,10 +932,10 @@ class Mesh:
             nHat = np.array([pt2.y - pt1.y, -1*(pt2.x - pt1.x)])
             nHat = np.divide(nHat, np.linalg.norm(nHat, ord=2))
 
-            if delta == 1:
+            if self.delta == 1:
                 A = math.pi*(pt1.y + pt2.y)*math.sqrt((pt1.x - pt2.x)**2 + (pt1.y - pt2.y)**2)
 
-            elif delta == 0: 
+            elif self.delta == 0: 
                 A = math.sqrt((pt1.x - pt2.x)**2 + (pt1.y - pt2.y)**2)
             
             mdot += np.dot(np.multiply(rho_avg, V), np.multiply(nHat, A))
@@ -955,6 +955,17 @@ class Mesh:
                     self.wallPtsUpper.append(pt)
                 elif abs(y_lower(pt.x) - pt.y) < 1e-8:
                     self.wallPtsLower.append(pt)  
+
+    def compute_local_mass_flow(self, C_posneg):
+        """
+        calculates the mass flow rate across characteristic lines through the mesh. Useful for assessing grid fineness 
+        """
+        self.char_mass_flow = [[],[]]
+
+        for i, char in enumerate(C_posneg):
+            if char[0].isWall and char[-1].isWall:  
+                self.char_mass_flow[1].append(self.calculate_mass_flow(char))
+                self.char_mass_flow[0].append(i)
 
 class Mesh_Point: 
     """
