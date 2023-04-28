@@ -49,21 +49,34 @@ class Oblique_Shock:
         k = 1
         if deflec < 0: k = -1
         
-        func = lambda beta, M, gam: -1*self.get_flow_deflection(beta, M, gam)
-        res = scipy.optimize.minimize(func, x0=0.5*(math.pi/2 + mu), args=(M,gam))
-        betaThetMax = float(res.x) #shock wave angle for max deflection
-        deflecMax = self.get_flow_deflection(float(res.x), M, gam)
-        if abs(deflec) > deflecMax:
+        deflec = abs(deflec)
+        
+        #check if deflection is greater than maximum possible deflection 
+        #func = lambda beta, M, gam: -1*self.get_flow_deflection(beta, M, gam)
+        #res = scipy.optimize.minimize(func, x0=0.5*(math.pi/2 + mu), args=(M,gam))
+        #betaThetMax = float(res.x) #shock wave angle for max deflection
+        #deflecMax = self.get_flow_deflection(float(res.x), M, gam)
+        term = (0.5*(gam+1) - math.cos(2*mu)) - math.sqrt(gam+1)*math.sqrt((0.5*(gam+1) - math.cos(2*mu))**2 + gam*(3-gam)/4)
+        beta_max = math.acos(term/gam)/2
+        deflecMax = self.get_flow_deflection(beta_max, M, gam)
+
+        if deflec > abs(deflecMax):
             print(f"Warning: For Upstream Mach Number ({M}), Deflection Angle ({math.degrees(deflec)} deg) is greater than max deflection: ({math.degrees(deflecMax)} deg). Returning 90 deg wave angle.")
             return k*math.pi/2, None
         
-        def thetBetaM(beta, deflec, M, gam):
-            return (2/math.tan(beta))*(M**2*math.sin(beta)**2 - 1)/(M**2*(gam + math.cos(2*beta)) + 2) - math.tan(deflec)
+        #calculate strong and weak shock solutions
+        #def thetBetaM(beta, deflec, M, gam):
+        #    return (2/math.tan(beta))*(M**2*math.sin(beta)**2 - 1)/(M**2*(gam + math.cos(2*beta)) + 2) - math.tan(deflec)
+        #beta_weak = scipy.optimize.root_scalar(thetBetaM, args=(abs(deflec),M,gam), method='bisect', bracket=[mu, betaThetMax])
+        #beta_strong = scipy.optimize.root_scalar(thetBetaM, args=(abs(deflec),M,gam), method='bisect', bracket=[betaThetMax, math.pi/2])
+        delta = 1
+        lam = math.sqrt((M**2 - 1)**2 - 3*(1 + 0.5*(gam-1)*M**2)*(1 + 0.5*(gam+1)*M**2)*math.tan(deflec)**2)
+        chi = ( (M**2 - 1)**3  - 9*(1 + 0.5*(gam-1)*M**2)*(1 + 0.5*(gam-1)*M**2 + 0.25*(gam+1)*M**4)*math.tan(deflec)**2 )/(lam**3)
+        beta_weak = math.atan((M**2 - 1 + 2*lam*math.cos((4*math.pi*delta + math.acos(chi))/3))/(3*(1 + 0.5*(gam-1)*M**2)*math.tan(deflec)))
+        delta = 0 
+        beta_strong = math.atan((M**2 - 1 + 2*lam*math.cos((4*math.pi*delta + math.acos(chi))/3))/(3*(1 + 0.5*(gam-1)*M**2)*math.tan(deflec)))
 
-        beta_weak = scipy.optimize.root_scalar(thetBetaM, args=(abs(deflec),M,gam), method='bisect', bracket=[mu, betaThetMax])
-        beta_strong = scipy.optimize.root_scalar(thetBetaM, args=(abs(deflec),M,gam), method='bisect', bracket=[betaThetMax, math.pi/2])
-
-        return k*beta_weak.root, k*beta_strong.root
+        return k*beta_weak, k*beta_strong
 
     def get_flow_deflection(self, beta, M, gam): 
         """
@@ -100,4 +113,4 @@ class Oblique_Shock:
 
         p01_p1 = (1 + 0.5*(gam-1)*M1**2)**(gam/(gam-1))
         p02_p2 = (1 + 0.5*(gam-1)*self.M2**2)**(gam/(gam-1))
-        self.p02_p01 = p02_p2*self.p2_p1/p01_p1
+        self.p02_p01 = p02_p2*self.p2_p1/p01_p1 

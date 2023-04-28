@@ -12,12 +12,5 @@
         "1":{"type":            "mesh",
             "annotate":         false,
             "show mass flow":   false}
-    },
-
-    "fig1":{
-        "0":{"type":            "geom"},
-        "1":{"type":            "scalar",
-            "scalar":           "mach",
-            "limits":           [0.9, 2.5]}
     }
 }

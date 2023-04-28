@@ -118,6 +118,7 @@ class create_slice_plot:
             ax2.plot(mesh.char_mass_flow[0], mesh.char_mass_flow[1], 'o-')
             ax2.set_xlabel("characteristic line no."), ax2.set_ylabel("mass flow rate (kg/sec)")
             ax2.grid(linewidth=0.3, color='grey')
+            ax2.set_xlim(0, max(mesh.char_mass_flow[0]))
 
     def plot_scalar_contours(self, axes, scalar, lims, idl=None, coneSol=None, mesh=None, freeStream=None, barLabel=None,):
         """

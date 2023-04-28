@@ -142,4 +142,6 @@ if __name__ == "__main__":
 
     import example_geometry as geom
     inlet = geom.Geom()
-    sol = main(inputFile='user_inputs.json', geomObj=inlet, plotFile="plot_profile_test.json") #run solution then plot results
+    plotfile = "plot_profile_mesh_only.json"
+    #plotfile = "plot_profile_test.json"
+    sol = main(inputFile='user_inputs.json', geomObj=inlet, plotFile=plotfile) #run solution then plot results

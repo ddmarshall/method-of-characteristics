@@ -51,7 +51,7 @@ class Mesh:
         self.compile_mesh_points()
         [pt.get_point_properties(self.gasProps) for pt in self.meshPts]
         self.compile_wall_points(self.geom.y_cowl, self.geom.y_centerbody)
-        self.compute_local_mass_flow(self.C_pos)
+        #self.compute_local_mass_flow(self.C_pos)
 
     def generate_mesh(self):
         """
@@ -114,12 +114,16 @@ class Mesh:
             self.compute_wall_to_wall_shock(charDir, self.shockPts_frontside[-1])
              
             if self.impending_shock_reflec:
-                charDir = "pos"
-                self.generate_mesh_for_shock_reflec(charDir) 
-                self.compute_wall_to_wall_shock(charDir, self.shockPts_backside[-1])
-                return
-                charDir = "neg"
-                self.generate_mesh_for_shock_reflec(charDir) 
+                
+                while True: 
+                     
+                    if charDir == "pos": charDir = "neg"
+                    elif charDir == "neg": charDir = "pos"
+                    try:self.generate_mesh_for_shock_reflec(charDir) 
+                    except:return 
+                    try:self.compute_wall_to_wall_shock(charDir, self.shockPts_backside[-1])
+                    except:return 
+                
 
     def generate_initial_mesh_from_idl(self, charDir):
         """
@@ -224,7 +228,7 @@ class Mesh:
         elif charDir == "neg":
             C_on = self.C_pos
             C_off = self.C_neg
-            y_x, dydx = self.geom.y_centerbody, self.geom.y_centerbody
+            y_x, dydx = self.geom.y_centerbody, self.geom.dydx_centerbody
 
         pointList = C_on[-1]
         
@@ -238,11 +242,8 @@ class Mesh:
             if charDir=="pos": 
                 C_on, C_off = self.compute_next_neg_char(init_point, dataLine, onChars=C_on, offChars=C_off, continueChar=True, terminate_wall=False, check_for_intersect=False)
             elif charDir=="neg":   
-                dataLine = [dataLine[0]] #!DEBUG
                 C_on, C_off = self.compute_next_pos_char(init_point, dataLine, onChars=C_on, offChars=C_off, continueChar=True, terminate_wall=False, check_for_intersect=False)
-                self.C_pos = C_on#!DEBUG
-                self.C_neg = C_off#!DEBUG
-                return #!DEBUG
+
 
             pointList = C_on[-1]
         
