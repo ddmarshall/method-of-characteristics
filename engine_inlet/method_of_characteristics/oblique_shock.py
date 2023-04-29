@@ -83,7 +83,7 @@ class Oblique_Shock:
         gives the flow deflection angle (relative to initial flow direction) given a shock wave angle and upstream mach number
         """
         absBeta = abs(beta) 
-        deflec = math.atan(2/math.tan(absBeta))*(M**2*math.sin(absBeta)**2 - 1)/(M**2*(gam + math.cos(2*absBeta)) + 2)
+        deflec = math.atan(2*((M**2*math.sin(absBeta)**2 - 1)/(M**2*(gam + math.cos(2*absBeta)) + 2))/math.tan(absBeta))
         return deflec
 
     def solve_weak_oblique_shock(self): 
@@ -114,3 +114,5 @@ class Oblique_Shock:
         p01_p1 = (1 + 0.5*(gam-1)*M1**2)**(gam/(gam-1))
         p02_p2 = (1 + 0.5*(gam-1)*self.M2**2)**(gam/(gam-1))
         self.p02_p01 = p02_p2*self.p2_p1/p01_p1 
+
+pass 

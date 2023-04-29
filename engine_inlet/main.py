@@ -108,26 +108,14 @@ class main:
 
         plt.style.use('dark_background') #!temporary location
         plotDict = json.load(open(plotFile, 'r'))
+        plotSettings = plotDict["default plot settings"]
         del plotDict["default plot settings"]
         
         for key in plotDict.keys():
             subDict = plotDict[key] 
-            figname = key #TODO do something with this?
             #hand off subDict to the post processing module
-            post_process.create_slice_plot(subDict, self)
-        
-        #!TEST CODE: 
-        """
-        fig = plt.figure(figsize=(16,8)) #create figure object
-        ax1 = fig.add_subplot(2,1,1) 
-        ax2 = fig.add_subplot(2,1,2)
-        ax1.set_xlim(0,4.3)
-        ax2.set_xlim(0,4.3)
-        ax1.set_xlabel('x'), ax1.set_ylabel('p/p_0'), ax1.grid(linewidth=0.3, color='grey'), ax1.set_title('cowl surface')
-        ax2.set_xlabel('x'), ax2.set_ylabel('p/p_0'), ax2.grid(linewidth=0.3, color='grey'), ax2.set_title('centerbody surface')
-        ax1.plot([pt.x for pt in self.mesh.wallPtsUpper],[pt.p/self.inputs.p0 for pt in self.mesh.wallPtsUpper], '-o', color='r')
-        ax2.plot([pt.x for pt in self.mesh.wallPtsLower],[pt.p/self.inputs.p0 for pt in self.mesh.wallPtsLower], '-o', color='r')
-        """
+            post_process.create_slice_plot(subDict, self, plotSettings)
+
         plt.show() 
 
     def print_details(self):
@@ -142,6 +130,6 @@ if __name__ == "__main__":
 
     import example_geometry as geom
     inlet = geom.Geom()
-    plotfile = "plot_profile_mesh_only.json"
-    #plotfile = "plot_profile_test.json"
+    #plotfile = "plot_profile_mesh_only.json"
+    plotfile = "plot_profile_test.json"
     sol = main(inputFile='user_inputs.json', geomObj=inlet, plotFile=plotfile) #run solution then plot results

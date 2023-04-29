@@ -1,8 +1,8 @@
 {   "default plot settings":{
         "style":                "dark_background",
         "figure size":          [16,9],
-        "xlim":                 [0,4],
-        "ylim":                 [0,2],
+        "xlim":                 [0,5],
+        "ylim":                 [0.45, 1.25],
         "xlabel":               "x",
         "ylabel":               "y"
     },
@@ -11,7 +11,8 @@
         "0":{"type":            "geom"},
         "1":{"type":            "mesh",
             "annotate":         false,
-            "show mass flow":   false}
+            "show mass flow":   false,
+            "wall flow scalar": "p/p0"}
     },
 
     "fig1":{

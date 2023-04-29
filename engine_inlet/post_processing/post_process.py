@@ -8,17 +8,25 @@ module responsible for generating plots and figures
 """
 class create_slice_plot:
     
-    def __init__(self, plotDict, mainObj):
+    def __init__(self, plotDict, mainObj, plotSettings):
         
-        fig,ax = self.initialize_figure()
-        pos = [0.05, 1] #placeholder 
-        self.display_sol_params(ax, pos, mainObj)
+        xlims, ylims = None, None 
+        if "xlim" in plotSettings.keys():
+            if plotSettings["xlim"] not in ["none", "None", "NONE"]: xlims = plotSettings["xlim"]
+        if "ylim" in plotSettings.keys():
+            if plotSettings["ylim"] not in ["none", "None", "NONE"]: ylims = plotSettings["ylim"]
+
+        figsize = plotSettings["figure size"]
+        fig, ax = self.initialize_figure(figsize, xlims=xlims, ylims=ylims)
+        #pos = [0.05, 1] #placeholder 
+        #self.display_sol_params(ax, pos, mainObj)
         self.plot_from_plotDict(plotDict, ax, mainObj) #
 
-    def initialize_figure(self): 
-        fig = plt.figure(figsize=(16,7)) #create figure object
+    def initialize_figure(self, figsize, xlims=None, ylims=None): 
+        fig = plt.figure(figsize=figsize) #create figure object
         ax = fig.add_subplot(1,1,1) 
-        ax.set_ylim(0,1.25)
+        if xlims is not None: ax.set_xlim(xlims[0], xlims[-1])
+        if ylims is not None: ax.set_ylim(ylims[0], ylims[-1])
         ax.set_xlabel('x'), ax.set_ylabel('y', rotation='horizontal'), ax.grid(linewidth=0.3, color='grey')
         return fig, ax 
 
@@ -38,18 +46,24 @@ class create_slice_plot:
                 self.plot_inletGeom(axes, mainObj.inputs.geom)
 
             elif typ == "mesh":
-                anno, mFlow = False, False
+
+                anno, mFlow, wall_flow = False, False, None
                 if plotDict[key]["annotate"] == True: anno=True
-                if plotDict[key]["show mass flow"] == True: mFlow=True
+                if plotDict[key]["show mass flow"] == True: mFlow=True 
+                if "wall flow scalar" in plotDict[key].keys(): 
+                    if plotDict[key]["wall flow scalar"] not in ["None", "none", "NONE"]:
+                        wall_flow = plotDict[key]["wall flow scalar"]
+
                 self.plot_coneSol(axes, mainObj.coneSol, mainObj.inputs.geom)
-                self.plot_mesh(axes, mainObj.mesh, annotate=anno, mass_flow_plot=mFlow)
+                self.plot_mesh(axes, mainObj.mesh, annotate=anno, mass_flow_plot=mFlow, wall_flow_plot=wall_flow)
                 self.plot_idl(axes, mainObj.idlObj)
+
 
             elif typ == "scalar":
                 self.plot_coneSol(axes, mainObj.coneSol, mainObj.inputs.geom)
                 scalar = plotDict[key]["scalar"]
                 lims = plotDict[key]["limits"]
-                zs = [getattr(pt, scalar) for pt in mainObj.mesh.meshPts]
+                #zs = [getattr(pt, scalar) for pt in mainObj.mesh.meshPts]
                 #self.plot_scalar_contours(axes, scalar, lims, idl=mainObj.idlObj, mesh=mainObj.mesh, coneSol=mainObj.coneSol, freeStream = mainObj.freestream)
                 self.plot_scalar_contours(axes, scalar, lims, idl=mainObj.idlObj, mesh=mainObj.mesh) #dumbed down to not include freestream 
 
@@ -90,9 +104,11 @@ class create_slice_plot:
                 xy = (x,idl.y[i])
                 axes.annotate(text, xy)
 
-    def plot_mesh(self, axes, mesh, annotate=False, mass_flow_plot=False):
+    def plot_mesh(self, axes, mesh, annotate=False, mass_flow_plot=False, wall_flow_plot=None):
+        
         
         axes.scatter([pt.x for pt in mesh.meshPts],[pt.y for pt in mesh.meshPts], color='aquamarine', s=2)
+
         if annotate: 
             [axes.annotate(f"{pt.i}", (pt.x,pt.y)) for pt in mesh.meshPts]
                 
@@ -119,6 +135,26 @@ class create_slice_plot:
             ax2.set_xlabel("characteristic line no."), ax2.set_ylabel("mass flow rate (kg/sec)")
             ax2.grid(linewidth=0.3, color='grey')
             ax2.set_xlim(0, max(mesh.char_mass_flow[0]))
+
+        if wall_flow_plot is not None: 
+
+            self.plot_surface_properties(mesh, wall_flow_plot)
+
+    def plot_surface_properties(self, mesh, scalar):
+        """
+        plots scalar properties on the wall. Currently works for pressure only
+        """        
+        fig = plt.figure(figsize=(16,8)) #create figure object
+        ax1 = fig.add_subplot(1,1,1) 
+        ax1.set_xlim(0,4.3)
+        
+        if scalar == "p/p0":
+            ax1.plot([pt.x for pt in mesh.wallPtsUpper],[pt.p/mesh.gasProps.p0 for pt in mesh.wallPtsUpper], color='r', label="cowl")
+            ax1.plot([pt.x for pt in mesh.wallPtsLower],[pt.p/mesh.gasProps.p0 for pt in mesh.wallPtsLower], color='b', label="centerbody")
+            ax1.set_xlabel('x'), ax1.set_ylabel('p/p_0'), ax1.grid(linewidth=0.3, color='grey')
+            ax1.legend()
+            ax1.set_ylim(0, 0.8)
+        else: raise ValueError(f"unknown wall scalar: {scalar}")
 
     def plot_scalar_contours(self, axes, scalar, lims, idl=None, coneSol=None, mesh=None, freeStream=None, barLabel=None,):
         """
