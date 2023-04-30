@@ -7,7 +7,7 @@ import numpy as np
 import method_of_characteristics.oblique_shock as obs
 
 """
-Currently, this tests out the wall shock point calculation as described in B.H. Anderson Paper. Makes use of IRROTATIONAL unit processes
+Contains shock point operators as described in B.H. Anderson Paper. Makes use of IRROTATIONAL unit processes
 """
 
 class point:
@@ -63,13 +63,13 @@ def wall_shock_point(pt_w_ups, y_x, dydx, pt1, pcTOL, delta, gasProps, shockDir)
     
     a_w_ups = f.a(a0, gam, u_w_ups, v_w_ups)
     M_w_ups = math.sqrt(u_w_ups**2 + v_w_ups**2)/a_w_ups
-    shockObj = obs.Oblique_Shock(M_w_ups, gam, deflec=def_w)
-    beta_wall = shockObj.beta + thet_w_i #shock wave angle at the wall
+    shockObj_w = obs.Oblique_Shock(M_w_ups, gam, deflec=def_w)
+    beta_wall = shockObj_w.beta + thet_w_i #shock wave angle at the wall
     print(f"\tshock wave angle at the wall: {math.degrees(beta_wall)} deg\n")
 
-    T0w_Tw = 1 + 0.5*(gam - 1)*shockObj.M2**2 
+    T0w_Tw = 1 + 0.5*(gam - 1)*shockObj_w.M2**2 
     T_w = T0/T0w_Tw
-    V_w = shockObj.M2*math.sqrt(gam*R*T_w)
+    V_w = shockObj_w.M2*math.sqrt(gam*R*T_w)
     u_w = V_w*math.cos(wallFlowAng)
     v_w = V_w*math.sin(wallFlowAng)
     x_w, y_w = x_w_ups, y_w_ups
@@ -129,12 +129,11 @@ def wall_shock_point(pt_w_ups, y_x, dydx, pt1, pcTOL, delta, gasProps, shockDir)
             pt2 = pt3p
 
         #check if reference point is upstream of shock wave 
-        #!Delete this section if warning never comes up
         a_ref = f.a(a0, gam, pt_r.u, pt_r.v)
         M_ref = math.sqrt(pt_r.u**2 + pt_r.v**2)/a_ref
         mu_ref = math.asin(1/M_ref) + math.atan(pt_r.v/pt_r.u)
         if abs(mu_ref) <= abs(beta_wall - def_w): 
-            print("WARNING: reference point upstream of shock wave")
+            raise ValueError("reference point upstream of shock wave")
 
         #compute new shock point 
         [x4, y4, u4, v4] = up.interior_point(pt1, pt2, gasProps, delta, pcTOL, f)
@@ -147,7 +146,7 @@ def wall_shock_point(pt_w_ups, y_x, dydx, pt1, pcTOL, delta, gasProps, shockDir)
         if ret == "sol":
             pt4_dwn = point(x=x4, y=y4, u=u4, v=v4)
             pt4_ups = point(x=x4, y=y4, u=u4_ups, v=v4_ups)
-            return [pt4_dwn, pt4_ups, def_4_upd, beta4, ptw_dwn, pt3p]
+            return [pt4_dwn, pt4_ups, def_4_upd, beta4, ptw_dwn, pt3p, shockObj, shockObj_w]
 
     try: 
         #try to get a solution using iterative method 
@@ -234,6 +233,7 @@ def interior_shock_point(pt_s_ups, pt_s_dwn, beta_s, def_s, pt1, pt_a, pcTOL, de
         M4_ups = math.sqrt(u4_ups**2 + v4_ups**2)/a4_ups
         shockObj = obs.Oblique_Shock(M4_ups, gam, deflec=def_4)
         M4_dwn = shockObj.M2
+        p02_p01_4 = shockObj.p02_p01
         beta4 = shockObj.beta + thet4_ups
         T04_T4 = 1 + 0.5*(gam - 1)*M4_dwn**2 #isentropic stagnation temperature ratio 
         T4_dwn = T0/T04_T4
@@ -282,7 +282,7 @@ def interior_shock_point(pt_s_ups, pt_s_dwn, beta_s, def_s, pt1, pt_a, pcTOL, de
         if ret == "sol":
             pt4_dwn = point(x=x4_dwn, y=y4_dwn, u=u4_dwn, v=v4_dwn)
             pt4_ups = point(x=x4_dwn, y=y4_dwn, u=u4_ups, v=v4_ups)
-            return [pt4_dwn, pt4_ups, def4_upd, beta4, pt3p]
+            return [pt4_dwn, pt4_ups, def4_upd, beta4, pt3p, shockObj]
     
     
     #iterative solution approach (seems to diverge occasionally)
@@ -355,6 +355,7 @@ def to_wall_shock_point(pt_s_ups, pt_s_dwn, beta_s, def_s, pt1, pt_a, y_x, dydx,
         #get downstream properties at shock point 4
         M4_ups = math.sqrt(u4_ups**2 + v4_ups**2)/a4_ups
         shockObj = obs.Oblique_Shock(M4_ups, gam, deflec=def_4)
+        p02_p01_4 = shockObj.p02_p01
         M4_dwn = shockObj.M2
         beta4 = shockObj.beta + thet4_ups
         T04_T4 = 1 + 0.5*(gam - 1)*M4_dwn**2 #isentropic stagnation temperature ratio 
@@ -413,7 +414,7 @@ def to_wall_shock_point(pt_s_ups, pt_s_dwn, beta_s, def_s, pt1, pt_a, y_x, dydx,
             elif delta_thet_w == 0:
                 reflec = None
 
-            return [pt4_dwn, pt4_ups, def4_upd, beta4, reflec, pt3p]
+            return [pt4_dwn, pt4_ups, def4_upd, beta4, reflec, pt3p, shockObj]
 
     def_4 = def_s #initial guess deflection 
     defPercChange = pcTOL
@@ -434,7 +435,10 @@ def linear_interpolate(x, z1, z3, x1, x3):
 
 
 if __name__ == "__main__":
-
+    """
+    Test case run for a 2D uniform flow through a simple converging duct with a single compression turn
+    Results should be same as uniform 2D oblique shock 
+    """
     class Point: 
         def __init__(self, x=None, y=None, u=None, v=None, T=None):
             if x is not None: self.x = x

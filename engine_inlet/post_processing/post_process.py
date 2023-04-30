@@ -16,6 +16,7 @@ class create_slice_plot:
         if "ylim" in plotSettings.keys():
             if plotSettings["ylim"] not in ["none", "None", "NONE"]: ylims = plotSettings["ylim"]
 
+        self.M_inf = mainObj.freestream.mach
         figsize = plotSettings["figure size"]
         fig, ax = self.initialize_figure(figsize, xlims=xlims, ylims=ylims)
         #pos = [0.05, 1] #placeholder 
@@ -148,12 +149,14 @@ class create_slice_plot:
         ax1 = fig.add_subplot(1,1,1) 
         ax1.set_xlim(0,4.3)
         
-        if scalar == "p/p0":
-            ax1.plot([pt.x for pt in mesh.wallPtsUpper],[pt.p/mesh.gasProps.p0 for pt in mesh.wallPtsUpper], color='r', label="cowl")
-            ax1.plot([pt.x for pt in mesh.wallPtsLower],[pt.p/mesh.gasProps.p0 for pt in mesh.wallPtsLower], color='b', label="centerbody")
-            ax1.set_xlabel('x'), ax1.set_ylabel('p/p_0'), ax1.grid(linewidth=0.3, color='grey')
+        if scalar == "p/p_inf":
+
+            p_inf = mesh.gasProps.p0/((1 +  0.5*(mesh.gasProps.gam-1)*self.M_inf**2)**(mesh.gasProps.gam/(mesh.gasProps.gam-1)))
+            ax1.plot([pt.x for pt in mesh.wallPtsUpper],[pt.p/p_inf for pt in mesh.wallPtsUpper], color='r', label="cowl")
+            ax1.plot([pt.x for pt in mesh.wallPtsLower],[pt.p/p_inf for pt in mesh.wallPtsLower], color='b', label="centerbody")
+            ax1.set_xlabel('x'), ax1.set_ylabel('p/p_inf'), ax1.grid(linewidth=0.3, color='grey')
             ax1.legend()
-            ax1.set_ylim(0, 0.8)
+            ax1.set_ylim(0, 10)
         else: raise ValueError(f"unknown wall scalar: {scalar}")
 
     def plot_scalar_contours(self, axes, scalar, lims, idl=None, coneSol=None, mesh=None, freeStream=None, barLabel=None,):

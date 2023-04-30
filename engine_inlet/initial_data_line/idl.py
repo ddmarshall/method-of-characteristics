@@ -28,6 +28,7 @@ class generate_tmc_initial_data_line:
 
             self.generate_2_point_idl(geom, tmc_res, nPts, endPoints)
         
+        self.p02_p01_inc_shock = tmc_res.p02_p01 #total pressure change across incident shock
         self.get_properties_on_idl(gasProps)
 
     def check_idl(self, tmc_res):
@@ -111,12 +112,13 @@ class generate_tmc_initial_data_line:
 
     def get_properties_on_idl(self, gasProps):
         #unpacking
-        gam, a0, T0, p0 = gasProps.gam, gasProps.a0, gasProps.T0, gasProps.p0
-        
+        gam, a0, T0 = gasProps.gam, gasProps.a0, gasProps.T0
+
+        self.p0 = gasProps.p0*self.p02_p01_inc_shock
         self.T, self.p, self.mach = [],[],[]
         for i,_ in enumerate(self.x):
             V = math.sqrt(self.u[i]**2 + self.v[i]**2)
             a = math.sqrt(a0**2 - 0.5*(gam-1)*V**2)
             self.mach.append(V/a)
             self.T.append(T0/(1+0.5*(gam-1)*(V/a)**2))
-            self.p.append(p0*(T0/self.T[i])**(gam/(gam-1)))
+            self.p.append(self.p0*(T0/self.T[i])**(gam/(gam-1)))

@@ -28,6 +28,7 @@ class Mesh:
         self.working_region = 0 #iterator to denote multiple flowfield regions (bounded by shocks and walls)
 
         self.idl = []
+        self.idl_p0 = idl.p0
         for i,x in enumerate(idl.x):
             self.idl.append(Mesh_Point(x, idl.y[i], idl.u[i], idl.v[i], self.working_region, isIdl=True))
             #TODO add check for endpoints on the wall and set booleans to true
@@ -40,6 +41,7 @@ class Mesh:
             #adding first shock point
             shockPt_init = self.idl[0]
             shockPt_init.isShock = True
+            self.shock_object_list = [[]]
             #!HARD CODED (FORCING TOP POINT IN IDL TO BE SHOCK ORIGIN)
             self.shockPts_frontside.append(shockPt_init)
             self.shock_upst_segments_obj.append(shockPt_init)
@@ -49,7 +51,7 @@ class Mesh:
             self.generate_mesh()
         
         self.compile_mesh_points()
-        [pt.get_point_properties(self.gasProps) for pt in self.meshPts]
+        [pt.get_point_properties(self) for pt in self.meshPts]
         self.compile_wall_points(self.geom.y_cowl, self.geom.y_centerbody) 
         #self.compute_local_mass_flow(self.C_pos)
 
@@ -538,11 +540,12 @@ class Mesh:
         [ii,jj] = self.find_mesh_point(pt, C_off)
         pt1 = C_off[ii][jj-1]
 
-        [pt4_dwn, pt4_ups, def4, beta4, ptw_dwn, pt3p] = shock.wall_shock_point(pt_w_ups, y_x_i, dydx_i, pt1, self.pcTOL, self.delta, self.gasProps, shockDir)        
+        [pt4_dwn, pt4_ups, def4, beta4, ptw_dwn, pt3p, shockObj_wall, shockObj] = shock.wall_shock_point(pt_w_ups, y_x_i, dydx_i, pt1, self.pcTOL, self.delta, self.gasProps, shockDir)        
         pt4_dwn = Mesh_Point(pt4_dwn.x, pt4_dwn.y, pt4_dwn.u, pt4_dwn.v, self.working_region+1, isShock=True)
         pt4_ups = Mesh_Point(pt4_ups.x, pt4_ups.y, pt4_ups.u, pt4_ups.v, self.working_region, isShock=True)
         ptw_dwn = Mesh_Point(ptw_dwn.x, ptw_dwn.y, ptw_dwn.u, ptw_dwn.v, self.working_region+1, isShock=True, isWall=True)
         pt3p = Mesh_Point(pt3p.x, pt3p.y, pt3p.u, pt3p.v, self.working_region+1, isWall=True)
+        self.shock_object_list[-1].append(shockObj_wall), self.shock_object_list[-1].append(shockObj)
         
         self.shock_upst_segments_obj.append(pt4_ups) #add shock pt4_ups to segment list 
         [self.shockPts_backside.append(pt) for pt in [ptw_dwn, pt4_dwn]]
@@ -590,23 +593,24 @@ class Mesh:
 
             pt_a = pt3p
             beta4_old, def4_old = beta4, def4
-            [pt4_dwn, pt4_ups, def4, beta4, pt3p] = shock.interior_shock_point(pt_s_ups, pt_s_dwn, beta4, def4, pt1, pt_a, self.pcTOL, self.delta, self.gasProps, shockDir)
+            [pt4_dwn, pt4_ups, def4, beta4, pt3p, shockObj] = shock.interior_shock_point(pt_s_ups, pt_s_dwn, beta4, def4, pt1, pt_a, self.pcTOL, self.delta, self.gasProps, shockDir)
             
             #check for and handle intersection of shock wave with downstream (same-family) characteristic
             
             while self.check_for_shock_char_intersect(pt3p, pt_a, pt_s_ups, shockPt2=pt4_ups):
                 print("\tInterior shock segment and same-family mach line intersection detected! Applying fix...") 
                 if pt_a.isWall: 
-                    [pt4_dwn, pt4_ups, def4, beta4, pt3p, pt_a, intersecPt, C_on, C_off] = self.handle_from_wall_shock_char_intersect(pt_s_ups, pt_s_dwn, beta4_old, def4_old, pt_a, pt1, pt3p, C_on, C_off, shockDir) 
+                    [pt4_dwn, pt4_ups, def4, beta4, pt3p, pt_a, shockObj, C_on, C_off] = self.handle_from_wall_shock_char_intersect(pt_s_ups, pt_s_dwn, beta4_old, def4_old, pt_a, pt1, pt3p, C_on, C_off, shockDir) 
                     ii += 1 #update ii due to new characteristic being inserted between s and 4
                     #TODO write for multiple intersections between characteristics (recursive)
                 else:  
-                    [pt4_dwn, pt4_ups, def4, beta4, pt3p, pt_a, C_on, C_off] = self.handle_interior_shock_char_intersect(pt_s_ups, pt_s_dwn, beta4_old, def4_old, pt1, pt_a, C_on, C_off, shockDir)
+                    [pt4_dwn, pt4_ups, def4, beta4, pt3p, pt_a, shockObj, C_on, C_off] = self.handle_interior_shock_char_intersect(pt_s_ups, pt_s_dwn, beta4_old, def4_old, pt1, pt_a, C_on, C_off, shockDir)
 
             print(f"\tshock wave angle {math.degrees(beta4)} deg")
             pt4_dwn = Mesh_Point(pt4_dwn.x, pt4_dwn.y, pt4_dwn.u, pt4_dwn.v, self.working_region+1, isShock=True)
             pt4_ups = Mesh_Point(pt4_ups.x, pt4_ups.y, pt4_ups.u, pt4_ups.v, self.working_region, isShock=True)
             pt3p = Mesh_Point(pt3p.x, pt3p.y, pt3p.u, pt3p.v, self.working_region+1)
+            self.shock_object_list[-1].append(shockObj)
             
             self.shock_upst_segments_obj.append(pt4_ups)
             self.shockPts_backside.append(pt4_dwn)
@@ -649,15 +653,16 @@ class Mesh:
         pt_a = pt3p        
         pt_s_ups, pt_s_dwn = pt4_ups, pt4_dwn
         beta4_old, def4_old = beta4, def4
-        [pt4_dwn, pt4_ups, def4, beta4, reflec, pt3p] = shock.to_wall_shock_point(pt_s_ups, pt_s_dwn, beta4, def4, pt1, pt_a, y_x_f, dydx_f, self.pcTOL, self.delta, self.gasProps, shockDir)
+        [pt4_dwn, pt4_ups, def4, beta4, reflec, pt3p, shockObj] = shock.to_wall_shock_point(pt_s_ups, pt_s_dwn, beta4, def4, pt1, pt_a, y_x_f, dydx_f, self.pcTOL, self.delta, self.gasProps, shockDir)
         #TODO check if new wall point causes shock to intersect characteristic 
         if self.check_for_shock_char_intersect(pt3p, pt_a, pt_s_ups, shockPt2=pt4_ups):
                 print("\tWall shock segment and same-family mach line intersection detected! Applying fix...")
-                [pt4_dwn, pt4_ups, def4, beta4, reflec, pt3p, pt_a, C_on, C_off] = self.handle_wall_shock_char_intersect(pt_s_ups, pt_s_dwn, beta4_old, def4_old, pt1, pt_a, C_on, C_off, y_x_f, dydx_f, shockDir)
+                [pt4_dwn, pt4_ups, def4, beta4, reflec, pt3p, pt_a, shockObj, C_on, C_off] = self.handle_wall_shock_char_intersect(pt_s_ups, pt_s_dwn, beta4_old, def4_old, pt1, pt_a, C_on, C_off, y_x_f, dydx_f, shockDir)
                 
         pt4_dwn = Mesh_Point(pt4_dwn.x, pt4_dwn.y, pt4_dwn.u, pt4_dwn.v, self.working_region+1, isShock=True, isWall=True)
         pt4_ups = Mesh_Point(pt4_ups.x, pt4_ups.y, pt4_ups.u, pt4_ups.v, self.working_region, isShock=True, isWall=True)
         pt3p = Mesh_Point(pt3p.x, pt3p.y, pt3p.u, pt3p.v, self.working_region+1)
+        self.shock_object_list[-1].append(shockObj)
 
         self.shock_upst_segments_obj.append(pt4_ups)
         self.shockPts_backside.append(pt4_dwn)
@@ -681,6 +686,7 @@ class Mesh:
         if shockDir == "neg": self.C_neg, self.C_pos = C_on, C_off
         elif shockDir == "pos": self.C_pos, self.C_neg = C_on, C_off
 
+        self.shock_object_list.append([]) #add new container for next shock
         self.working_region += 1 #onto new region:
 
     def get_upstream_point_for_shock(self, charPts, pt_s, beta):
@@ -764,7 +770,7 @@ class Mesh:
         newPt = Mesh_Point(x_w,y_w,u_w,v_w,self.working_region,isWall=True)
 
         pt_a_upd = newPt
-        [pt4_dwn, pt4_ups, def4, beta4, pt3p] = shock.interior_shock_point(pt_s_ups, pt_s_dwn, beta_s, def_s, pt1, pt_a_upd, self.pcTOL, self.delta, self.gasProps, shockDir)
+        [pt4_dwn, pt4_ups, def4, beta4, pt3p, shockObj] = shock.interior_shock_point(pt_s_ups, pt_s_dwn, beta_s, def_s, pt1, pt_a_upd, self.pcTOL, self.delta, self.gasProps, shockDir)
         
         i,_ = self.find_mesh_point(pt_a, C_on)
         ii,_ = self.find_mesh_point(pt_a, C_off)
@@ -775,7 +781,7 @@ class Mesh:
         C_off[ii+1].append(newPt)
         self.triangle_obj.append([intersecPt, pt_a, newPt])
 
-        return [pt4_dwn, pt4_ups, def4, beta4, pt3p, pt_a_upd, intersecPt, C_on, C_off]
+        return [pt4_dwn, pt4_ups, def4, beta4, pt3p, pt_a_upd,shockObj, C_on, C_off]
     
     def handle_interior_shock_char_intersect(self, pt_s_ups, pt_s_dwn, beta_s, def_s, pt1, pt_a, C_on, C_off, shockDir):
         """
@@ -803,9 +809,9 @@ class Mesh:
             C_on, C_off = self.compute_next_pos_char(init_point, pointList, onChars=C_on, offChars=C_off, continueChar=True, terminate_wall=False, check_for_intersect=False)
         
         pt_a_upd = C_on[-1][-1]
-        [pt4_dwn, pt4_ups, def_4, beta4, pt3p] = shock.interior_shock_point(pt_s_ups, pt_s_dwn, beta_s, def_s, pt1, pt_a_upd, self.pcTOL, self.delta, self.gasProps, shockDir)
+        [pt4_dwn, pt4_ups, def_4, beta4, pt3p, shockObj] = shock.interior_shock_point(pt_s_ups, pt_s_dwn, beta_s, def_s, pt1, pt_a_upd, self.pcTOL, self.delta, self.gasProps, shockDir)
 
-        return [pt4_dwn, pt4_ups, def_4, beta4, pt3p, pt_a_upd, C_on, C_off]
+        return [pt4_dwn, pt4_ups, def_4, beta4, pt3p, pt_a_upd, shockObj, C_on, C_off]
 
     def handle_wall_shock_char_intersect(self, pt_s_ups, pt_s_dwn, beta_s, def_s, pt1, pt_a, C_on, C_off, y_x, dydx, shockDir):
         """
@@ -832,9 +838,9 @@ class Mesh:
             C_on, C_off = self.compute_next_pos_char(init_point, pointList, onChars=C_on, offChars=C_off, continueChar=True, terminate_wall=False, check_for_intersect=False)
 
         pt_a_upd = C_on[-1][-1]
-        [pt4_dwn, pt4_ups, def4, beta4, delta_thet_w, pt3p] = shock.to_wall_shock_point(pt_s_ups, pt_s_dwn, beta_s, def_s, pt1, pt_a_upd, y_x, dydx, self.pcTOL, self.delta, self.gasProps, shockDir)
+        [pt4_dwn, pt4_ups, def4, beta4, delta_thet_w, pt3p, shockObj] = shock.to_wall_shock_point(pt_s_ups, pt_s_dwn, beta_s, def_s, pt1, pt_a_upd, y_x, dydx, self.pcTOL, self.delta, self.gasProps, shockDir)
         
-        return [pt4_dwn, pt4_ups, def4, beta4, delta_thet_w, pt3p, pt_a_upd, C_on, C_off]
+        return [pt4_dwn, pt4_ups, def4, beta4, delta_thet_w, pt3p, pt_a_upd, shockObj, C_on, C_off]
 
     def compile_mesh_points(self):
         """
@@ -857,8 +863,18 @@ class Mesh:
             self.triangle.append([pt.i if pt is not None else None for pt in tri])
 
         if self.shockMesh: 
+            
             self.shock_segs = []
             [self.shock_segs.append(pt.i) for pt in self.shock_upst_segments_obj if pt.i is not None]
+            
+            #compute total pressure of each shock region
+            self.tot_press_by_region = [self.idl_p0]
+            for shock in self.shock_object_list:
+                if len(shock) == 0: continue
+                tot_press_loss = [s.p02_p01 for s in shock]
+                avg_tot_press_loss = sum(tot_press_loss)/len(shock)
+                upd_tot_press = avg_tot_press_loss*self.tot_press_by_region[-1]
+                self.tot_press_by_region.append(upd_tot_press)
             
     def find_mesh_point(self, pt, C_posneg):
         """
@@ -982,6 +998,7 @@ class Mesh:
                 self.char_mass_flow[1].append(self.calculate_mass_flow(char))
                 self.char_mass_flow[0].append(i)
 
+
 class Mesh_Point: 
     """
     generates and manipulates individual mesh point objects
@@ -1000,19 +1017,21 @@ class Mesh_Point:
         self.isIdl = isIdl #is the point on the initial data line? 
         self.isShock = isShock #is the point on a shock? 
 
-    def get_point_properties(self, gasProps): 
+    def get_point_properties(self, mesh): 
         """
         Gets flow properties at an individual mesh point. Calculates temperature, pressure, density, mach number, etc. 
         """
         #unpacking
-        gam, a0, T0, p0 = gasProps.gam, gasProps.a0, gasProps.T0, gasProps.p0
+        gam, a0, T0 = mesh.gasProps.gam, mesh.gasProps.a0, mesh.gasProps.T0
+        p0 = mesh.tot_press_by_region[self.reg]
         V = math.sqrt(self.u**2 + self.v**2)
         a = math.sqrt(a0**2 - 0.5*(gam-1)*V**2)
         self.mach = V/a #mach number 
         self.T = T0/(1+0.5*(gam-1)*(V/a)**2) #static temperature
         self.p = p0/((1 + 0.5*(gam-1)*(V/a)**2)**(gam/(gam-1))) #static pressure 
 
-        self.rho = self.p/(gasProps.R*self.T) #ideal gas law
+        self.rho = self.p/(mesh.gasProps.R*self.T) #ideal gas law
+
 
 def linear_interpolate(x, z1, z3, x1, x3):
     """
