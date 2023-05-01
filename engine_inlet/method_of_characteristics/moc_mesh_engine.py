@@ -53,7 +53,7 @@ class Mesh:
         self.compile_mesh_points()
         [pt.get_point_properties(self) for pt in self.meshPts]
         self.compile_wall_points(self.geom.y_cowl, self.geom.y_centerbody) 
-        #self.compute_local_mass_flow(self.C_pos)
+        self.compute_local_mass_flow()
 
     def generate_mesh(self):
         """
@@ -862,13 +862,13 @@ class Mesh:
         for tri in self.triangle_obj: #!TEMPORAY IMPROVE LATER
             self.triangle.append([pt.i if pt is not None else None for pt in tri])
 
+        self.tot_press_by_region = [self.idl_p0]
         if self.shockMesh: 
             
             self.shock_segs = []
             [self.shock_segs.append(pt.i) for pt in self.shock_upst_segments_obj if pt.i is not None]
             
             #compute total pressure of each shock region
-            self.tot_press_by_region = [self.idl_p0]
             for shock in self.shock_object_list:
                 if len(shock) == 0: continue
                 tot_press_loss = [s.p02_p01 for s in shock]
@@ -945,31 +945,6 @@ class Mesh:
         emptyLists = [i for i,char in enumerate(self.C_neg) if len(char) == 0]
         self.C_neg = [char for i,char in enumerate(self.C_neg) if i not in emptyLists]
 
-    def calculate_mass_flow(self, dl):
-        """
-        calculates the total mass flow rate across a data line
-        dl: list of mesh points dl[0] and dl[-1] should be wall points for this calculation to be meaningful 
-        TODO: need static density at each point
-        """
-        mdot = 0 
-        for i,pt2 in enumerate(dl):
-            if i == 0: continue 
-            pt1 = dl[i-1]
-
-            V = np.array([0.5*(pt2.u + pt1.u), 0.5*(pt2.v + pt1.v)]) #average velocity 
-            rho_avg = 0.5*(pt1.rho + pt2.rho)
-            nHat = np.array([pt2.y - pt1.y, -1*(pt2.x - pt1.x)])
-            nHat = np.divide(nHat, np.linalg.norm(nHat, ord=2))
-
-            if self.delta == 1:
-                A = math.pi*(pt1.y + pt2.y)*math.sqrt((pt1.x - pt2.x)**2 + (pt1.y - pt2.y)**2)
-
-            elif self.delta == 0: 
-                A = math.sqrt((pt1.x - pt2.x)**2 + (pt1.y - pt2.y)**2)
-            
-            mdot += np.dot(np.multiply(rho_avg, V), np.multiply(nHat, A))
-        
-        return mdot
 
     def compile_wall_points(self, y_upper, y_lower): 
         """
@@ -987,17 +962,66 @@ class Mesh:
                         self.wallPtsLower.append(pt)  
                 except: continue
 
-    def compute_local_mass_flow(self, C_posneg):
-        """
-        calculates the mass flow rate across characteristic lines through the mesh. Useful for assessing grid fineness 
-        """
-        self.char_mass_flow = [[],[]]
+    def compute_local_mass_flow(self):
+        
+        def calculate_mass_flow(dl):
+            """
+            calculates the total mass flow rate across a data line
+            dl: list of mesh points dl[0] and dl[-1] should be wall points for this calculation to be meaningful 
+            TODO: need static density at each point
+            """
+            #first, delete sequences of points which have same coordinate (i.e. pairs of shock points)
+            dl_corrected = []
+            for i,pt2 in enumerate(dl):
+                if i == 0: 
+                    dl_corrected.append(pt2)
+                    continue
+                
+                pt1 = dl[i-1] 
+                if np.linalg.norm(np.array([pt2.y - pt1.y, -1*(pt2.x - pt1.x)]), ord=2) != 0:
+                    dl_corrected.append(pt2) 
+            #iterate through corrected data line, and summate mass flow rate
+            mdot = 0
+            for i,pt2 in enumerate(dl_corrected):
+                if i == 0: continue 
+                pt1 = dl_corrected[i-1]
 
-        for i, char in enumerate(C_posneg):
-            if char[0].isWall and char[-1].isWall:  
-                self.char_mass_flow[1].append(self.calculate_mass_flow(char))
-                self.char_mass_flow[0].append(i)
+                V = np.array([0.5*(pt2.u + pt1.u), 0.5*(pt2.v + pt1.v)]) #average velocity 
+                rho_avg = 0.5*(pt1.rho + pt2.rho)
+                nHat = np.array([pt2.y - pt1.y, -1*(pt2.x - pt1.x)])
+                nHat = np.divide(nHat, np.linalg.norm(nHat, ord=2))
 
+                if self.delta == 1:
+                    A = math.pi*(pt1.y + pt2.y)*math.sqrt((pt1.x - pt2.x)**2 + (pt1.y - pt2.y)**2)
+
+                elif self.delta == 0: 
+                    A = math.sqrt((pt1.x - pt2.x)**2 + (pt1.y - pt2.y)**2)
+
+                mdot += abs(np.dot(np.multiply(rho_avg, V), np.multiply(nHat, A)))
+
+            return mdot
+        
+        if self.idl[0].isWall == False or self.idl[-1].isWall == False: 
+            raise ValueError("Initial Data Line Must Span Wall-to-Wall!")
+        
+        idl_mass_flow = calculate_mass_flow(self.idl)
+
+        self.mesh_mass_flow = [[[],[]],[[],[]]] #[[[x's],[m's]],[[x's],[m's]]]
+
+        for i,char in enumerate(self.C_pos):
+            if len(char) <= 2: continue
+            if char[0].isWall and char[-1].isWall:
+                mflow = calculate_mass_flow(char)
+                self.mesh_mass_flow[0][1].append(mflow/idl_mass_flow)
+                self.mesh_mass_flow[0][0].append(i)
+
+        for i,char in enumerate(self.C_neg):
+            if len(char) < 2: continue
+            if char[0].isWall and char[-1].isWall:
+                mflow = calculate_mass_flow(char)
+                self.mesh_mass_flow[1][1].append(mflow/idl_mass_flow)     
+                self.mesh_mass_flow[1][0].append(i)       
+            
 
 class Mesh_Point: 
     """

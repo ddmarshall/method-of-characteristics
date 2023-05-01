@@ -83,22 +83,31 @@ class create_slice_plot:
 
     def plot_inletGeom(self, axes, inletGeom):
         #plot inlet geometry: 
+
+        #line_color = "white"
+        line_color = "black"
+        face_color="black"
+        face_color = "gainsboro"
+
         x_cowl = np.linspace(inletGeom.cowl_bounds[0], inletGeom.cowl_bounds[1], 100)
-        axes.plot(x_cowl, [inletGeom.y_cowl(x) for x in x_cowl], '-w', linewidth=2)
+        axes.plot(x_cowl, [inletGeom.y_cowl(x) for x in x_cowl], color=line_color, linewidth=2)
         x_cb = np.linspace(inletGeom.centerbody_bounds[0], inletGeom.centerbody_bounds[1], 100)
         #axes.plot(x_cb, [inletGeom.y_centerbody(x) for x in x_cb], '-w', linewidth=2)
-        axes.axhline(0, color='w', linestyle='dashed', linewidth=1) 
+        axes.axhline(0, color=line_color, linestyle='dashed', linewidth=1) 
 
         fill_x = np.array([max(x_cb)])
         fill_x = np.append(fill_x, x_cb)
         fill_y = np.array([0])
         fill_y = np.append(fill_y, [inletGeom.y_centerbody(x) for x in x_cb])
-        axes.fill(fill_x, fill_y, facecolor="black", edgecolor="white", zorder=15, hatch="\\\\", linewidth=2) 
+        axes.fill(fill_x, fill_y, facecolor=face_color, edgecolor=line_color, zorder=15, hatch="\\\\", linewidth=2) 
          
     def plot_idl(self, axes, idl, annotate=None): 
-        axes.plot(idl.x, idl.y, '-o', linewidth=0.5, markersize=2, color='aquamarine')
+
+        line_color = "dimgrey"
+
+        axes.plot(idl.x, idl.y, '-o', linewidth=1, markersize=2, color=line_color)
         for i,x in enumerate(idl.x): 
-            axes.plot([0,x],[0,idl.y[i]],linewidth=0.5,color='aquamarine')
+            axes.plot([0,x],[0,idl.y[i]],linewidth=1,color=line_color)
         if annotate: 
             for i,x in enumerate(idl.x):
                 text = f"V={round(idl.u[i],1)}, {round(idl.v[i],1)}"
@@ -107,9 +116,10 @@ class create_slice_plot:
 
     def plot_mesh(self, axes, mesh, annotate=False, mass_flow_plot=False, wall_flow_plot=None):
         
+        #mesh_color = "aquamarine"
+        mesh_color = "dimgrey"
+        axes.scatter([pt.x for pt in mesh.meshPts],[pt.y for pt in mesh.meshPts], color=mesh_color, s=2)
         
-        axes.scatter([pt.x for pt in mesh.meshPts],[pt.y for pt in mesh.meshPts], color='aquamarine', s=2)
-
         if annotate: 
             [axes.annotate(f"{pt.i}", (pt.x,pt.y)) for pt in mesh.meshPts]
                 
@@ -118,9 +128,9 @@ class create_slice_plot:
             if a is None: 
                 continue
             if b is not None: 
-                plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[1]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[1]].y], color='aquamarine', linewidth=0.5)
+                plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[1]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[1]].y], color=mesh_color, linewidth=1)
             if c is not None:
-                plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[2]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[2]].y], color='aquamarine', linewidth=0.5)
+                plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[2]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[2]].y], color=mesh_color, linewidth=1)
 
         if hasattr(mesh, "shock_segs"):
             for i,ind in enumerate(mesh.shock_segs):
@@ -129,13 +139,22 @@ class create_slice_plot:
                     pt = mesh.meshPts[ind]
                     plt.plot([pt.x, prevPt.x],[pt.y, prevPt.y], color='crimson', linewidth=2, linestyle='dashdot')
 
-        if mass_flow_plot and hasattr(mesh, 'char_mass_flow'): 
-            fig2 = plt.figure()
+        if mass_flow_plot and hasattr(mesh, "mesh_mass_flow"): 
+            fig2 = plt.figure(figsize=(5,4))
             ax2 = fig2.add_subplot(1,1,1)
-            ax2.plot(mesh.char_mass_flow[0], mesh.char_mass_flow[1], 'o-')
-            ax2.set_xlabel("characteristic line no."), ax2.set_ylabel("mass flow rate (kg/sec)")
+            ax2.plot(mesh.mesh_mass_flow[0][0], mesh.mesh_mass_flow[0][1], "o-", label="+ Characteristics", markerfacecolor="none")
+            ax2.plot(mesh.mesh_mass_flow[1][0], mesh.mesh_mass_flow[1][1], "o-", label="- Characteristics", markerfacecolor="none")
+            mflows_max = max([max(mesh.mesh_mass_flow[0][1]), max(mesh.mesh_mass_flow[1][1])])
+            mflows_min = min([min(mesh.mesh_mass_flow[0][1]), min(mesh.mesh_mass_flow[1][1])])
+            mflows_range = mflows_max - mflows_min
+
+            ax2.set_ylim(0.96, 1.02)
+            ax2.axhline(mflows_max, linestyle="--", color="k"), ax2.axhline(mflows_min, linestyle="--", color="k")
+            ax2.set_xlabel("mach line #"), ax2.set_ylabel("local mass flow ratio")
+            ax2.set_title(f"range = {round(mflows_range,5)}")
             ax2.grid(linewidth=0.3, color='grey')
-            ax2.set_xlim(0, max(mesh.char_mass_flow[0]))
+            ax2.legend()
+            
 
         if wall_flow_plot is not None: 
 

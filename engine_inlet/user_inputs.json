@@ -2,7 +2,7 @@
     "Gas Properties":{
         "Freestream Stag Temp (K)":     288.15,
         "Freestream Stag Pres (Pa)":    101325,
-        "Spec Heat Ratio":              1.4, 
+        "Spec Heat Ratio":              1.396, 
         "Ideal Gas Constant (J/kgK)":   287.05
     },
     "Flow Properties":{
@@ -15,6 +15,6 @@
     },
     "Initial Data Line":{
         "endpoints":                    [[2,"cowl"], [2,"centerbody"]],
-        "num points":                   24
+        "num points":                   36
     }
 }

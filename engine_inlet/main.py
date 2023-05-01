@@ -106,7 +106,7 @@ class main:
         import post_processing.post_process as post_process 
         import json 
 
-        plt.style.use('dark_background') #!temporary location
+        #plt.style.use('dark_background') #!temporary location
         plotDict = json.load(open(plotFile, 'r'))
         plotSettings = plotDict["default plot settings"]
         del plotDict["default plot settings"]
