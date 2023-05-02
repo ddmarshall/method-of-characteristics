@@ -108,14 +108,13 @@ class Mesh:
         generates characteristic mesh using oblique shock points
         """
         charDir = "neg"
-        self.generate_initial_mesh_from_idl(charDir)
-        
+        self.generate_initial_mesh_from_idl(charDir) 
         if charDir == "neg": charList = self.C_neg
         elif charDir == "pos": charList = self.C_pos
         if self.check_for_passed_shock_point(charList) == False:
             print("Shock Point Not Within Mesh")
             return  
-        self.compute_wall_to_wall_shock(charDir, self.shockPts_frontside[-1]) 
+        self.compute_wall_to_wall_shock(charDir, self.shockPts_frontside[-1])  
         if self.impending_shock_reflec:
             
             while True: 
@@ -154,7 +153,7 @@ class Mesh:
                 self.compute_next_pos_char(pt, self.C_pos[i-1])
                 if self.f_kill[0](self) == True:
                         self.f_kill[1] = True
-                        return 
+                        return
 
     def generate_mesh_from_line(self, dl, charDir):
         """
@@ -235,21 +234,24 @@ class Mesh:
             y_x, dydx = self.geom.y_centerbody, self.geom.dydx_centerbody
 
         pointList = C_on[-1]
-        
+        count = 0
         while len(pointList) > 2:
+
             pt = pointList[1]
             ii,_ = self.find_mesh_point(pt, C_off)
             [x3, y3, u3, v3] = moc_op.direct_wall(pt, y_x, dydx, self.gasProps, self.delta, self.pcTOL, self.funcs, charDir)
             init_point = Mesh_Point(x3, y3, u3, v3, self.working_region, isWall=True)
             C_on.append([init_point]), C_off[ii].append(init_point), self.triangle_obj.append([init_point, pt, None])
             dataLine = pointList[2:]
+
+
             if charDir=="pos": 
                 C_on, C_off = self.compute_next_neg_char(init_point, dataLine, onChars=C_on, offChars=C_off, continueChar=True, terminate_wall=False, check_for_intersect=False)
             elif charDir=="neg":   
                 C_on, C_off = self.compute_next_pos_char(init_point, dataLine, onChars=C_on, offChars=C_off, continueChar=True, terminate_wall=False, check_for_intersect=False)
 
-
             pointList = C_on[-1]
+            count += 1
         
         pt = pointList[1]
         ii,_ = self.find_mesh_point(pt, C_off)
@@ -567,9 +569,9 @@ class Mesh:
         pt_s_ups, pt_s_dwn = pt4_ups, pt4_dwn 
         
         #INTERIOR POINT LOOP
-        count = 0
+        count = 0 
         while True: 
-            
+
             #if count == 4 and self.working_region==2: 
             #    if shockDir == "neg": self.C_neg, self.C_pos = C_on, C_off
             #    elif shockDir == "pos": self.C_pos, self.C_neg = C_on, C_off

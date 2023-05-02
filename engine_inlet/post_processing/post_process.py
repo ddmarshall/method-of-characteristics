@@ -55,7 +55,7 @@ class create_slice_plot:
                     if plotDict[key]["wall flow scalar"] not in ["None", "none", "NONE"]:
                         wall_flow = plotDict[key]["wall flow scalar"]
 
-                self.plot_coneSol(axes, mainObj.coneSol, mainObj.inputs.geom)
+                self.plot_coneSol(axes, mainObj.coneSol, mainObj.inputs.geom)  
                 self.plot_mesh(axes, mainObj.mesh, annotate=anno, mass_flow_plot=mFlow, wall_flow_plot=wall_flow)
                 self.plot_idl(axes, mainObj.idlObj)
 
@@ -92,9 +92,8 @@ class create_slice_plot:
         x_cowl = np.linspace(inletGeom.cowl_bounds[0], inletGeom.cowl_bounds[1], 100)
         axes.plot(x_cowl, [inletGeom.y_cowl(x) for x in x_cowl], color=line_color, linewidth=2)
         x_cb = np.linspace(inletGeom.centerbody_bounds[0], inletGeom.centerbody_bounds[1], 100)
-        #axes.plot(x_cb, [inletGeom.y_centerbody(x) for x in x_cb], '-w', linewidth=2)
+        axes.plot(x_cb, [inletGeom.y_centerbody(x) for x in x_cb], color=line_color, linewidth=2)
         axes.axhline(0, color=line_color, linestyle='dashed', linewidth=1) 
-
         fill_x = np.array([max(x_cb)])
         fill_x = np.append(fill_x, x_cb)
         fill_y = np.array([0])
