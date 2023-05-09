@@ -2,7 +2,7 @@
 ***MAIN RUN FILE***
 Author: Shay Takei 
 """
-class main:
+class Main:
     
     def __init__(self, inputFile=None, geomObj=None, saveFile=None, plotFile=None):
         ans = None
@@ -46,11 +46,7 @@ class main:
     def run_solution(self):
         print("\nrunning solution...\n")
         import method_of_characteristics.moc_mesh_engine as moc
-        import taylor_maccoll_cone.taylor_maccoll as tmc
-        import initial_data_line.idl as idl
-        import post_processing.post_process as post_process
         import math
-        import numpy as np
 
         inp = self.inputs
         
@@ -59,22 +55,33 @@ class main:
                 self.gam, self.R, self.T0, self.p0 = gam, R, T0, p0
                 self.a0 = math.sqrt(gam*R*T0)
         gas = gasProps(inp.gam, inp.R, inp.T0, inp.p0) #create gas properties object 
+        
+        if inp.init_method == "IDL":
+            import initial_data_line.idl as idl
+            if inp.delta == 1: #axisymmetric case 
+                #run taylor maccoll
+                import taylor_maccoll_cone.taylor_maccoll as tmc
+                self.coneSol = tmc.TaylorMaccoll_Cone(math.radians(inp.geom.cone_ang_deg), inp.M_inf, gas) 
+                #generate IDL
+                self.idlObj = idl.Generate_TMC_Initial_Data_Line(inp.geom, self.coneSol, gas, inp.nIdlPts, inp.idlEndPts)
 
-        #run taylor maccoll
-        if self.inputs.delta == 1: #axisymmetric
-            self.coneSol = tmc.TaylorMaccoll_Cone(math.radians(inp.geom.cone_ang_deg), inp.M_inf, gas) 
+            elif self.inputs.delta == 0: #2D case
+                #run 2D ramp shock
+                import method_of_characteristics.oblique_shock as shock 
+                deflec = math.radians(inp.geom.cone_ang_deg)
+                self.rampSol = shock.Oblique_Shock(inp.M_inf, gas.gam, gas.R, deflec=deflec)
+                #generate IDL
+                self.idlObj = idl.Generate_2D_Initial_Data_Line(inp, self.rampSol, gas, inp.nIdlPts, inp.idlEndPts)
+        
+        elif inp.init_method == "shock":
+            self.idlObj = None 
 
-        #generate IDL
-        self.idlObj = idl.generate_tmc_initial_data_line(self.inputs.geom, self.coneSol, gas, self.inputs.nIdlPts, self.inputs.idlEndPts)
+        else: 
+            raise ValueError(f"Invalid Mesh Initialization Method Specified: {inp.init_method}")
 
         #generate mesh
-        #mesh = moc.mesh(self.idlObj, inp.geom, gas, inp.delta, inp.pcTOL) #create mesh object
-        #mesh.generate_mesh(eval(inp.kill)) #generate mesh
-
-        mesh = moc.Mesh(self.idlObj, inp.geom, gas, inp.delta, inp.pcTOL, eval(inp.kill), explicit_shocks=True) #shocked mesh 
-        #mesh = moc.Mesh(self.idlObj, inp.geom, gas, inp.delta, inp.pcTOL, eval(inp.kill)) #shockless mesh 
-
-        self.mesh = mesh 
+        self.mesh = moc.Mesh(inp.geom, gas, inp.delta, inp.pcTOL, eval(inp.kill), idl=self.idlObj, explicit_shocks=True) #shocked mesh 
+        #self.mesh = moc.Mesh(inp.geom, gas, inp.delta, inp.pcTOL, eval(inp.kill), idl=self.idlObj) #shockless mesh 
 
     def store_solution(self, saveFile):
         #calling this function will overwrite existing files
@@ -106,7 +113,7 @@ class main:
         import post_processing.post_process as post_process 
         import json 
 
-        #plt.style.use('dark_background') #!temporary location
+        plt.style.use('dark_background') #!temporary location
         plotDict = json.load(open(plotFile, 'r'))
         plotSettings = plotDict["default plot settings"]
         del plotDict["default plot settings"]
@@ -130,6 +137,6 @@ if __name__ == "__main__":
 
     import example_geometry as geom
     inlet = geom.Geom()
-    plotfile = "plot_profile_mesh_only.json"
-    #plotfile = "plot_profile_test.json"
-    sol = main(inputFile='user_inputs.json', geomObj=inlet, plotFile=plotfile) #run solution then plot results
+    #plotfile = "plot_profile_mesh_only.json"
+    plotfile = "plot_profile_test.json"
+    sol = Main(inputFile='user_inputs.json', geomObj=inlet, plotFile=plotfile) #run solution then plot results

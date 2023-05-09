@@ -32,6 +32,7 @@ class inputObj:
             "Freestream Mach":              "M_inf",
             #MOC Settings
             "Delta":                        "delta",
+            "initiation":                   "init_method",
             "Unit Process Converge TOL":    "pcTOL",
             "kill function":                "kill",
             #Initial Data Line

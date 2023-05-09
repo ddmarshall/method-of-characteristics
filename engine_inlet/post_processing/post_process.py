@@ -54,8 +54,12 @@ class create_slice_plot:
                 if "wall flow scalar" in plotDict[key].keys(): 
                     if plotDict[key]["wall flow scalar"] not in ["None", "none", "NONE"]:
                         wall_flow = plotDict[key]["wall flow scalar"]
+                if hasattr(mainObj, "coneSol"): 
+                    self.plot_coneSol(axes, mainObj.coneSol, mainObj.inputs.geom)  
+                    
+                elif hasattr(mainObj, "rampSol"):
+                    self.plot_rampSol()
 
-                self.plot_coneSol(axes, mainObj.coneSol, mainObj.inputs.geom)  
                 self.plot_mesh(axes, mainObj.mesh, annotate=anno, mass_flow_plot=mFlow, wall_flow_plot=wall_flow)
                 self.plot_idl(axes, mainObj.idlObj)
 
@@ -77,7 +81,7 @@ class create_slice_plot:
             #plot interval only which conforms to inlet geometry 
             xint = np.array([min(inletGeom.centerbody_bounds), max(inletGeom.centerbody_bounds)])
         else: 
-            axes.plot(xint, [x*math.tan(cone.cone_ang) for x in xint], label=f'cone = {round(math.degrees(cone.cone_ang),2)}', color='w', linewidth=1.3) #plot straight cone surface
+            axes.plot(xint, [x*math.tan(cone.cone_ang) for x in xint], label=f'cone = {round(math.degrees(cone.cone_ang),2)}', color='k', linewidth=1.3) #plot straight cone surface
 
         axes.plot(xint, [x*math.tan(cone.shock_ang) for x in xint], label=f'shock = {round(math.degrees(cone.shock_ang),2)} deg', color='crimson', linewidth=2, linestyle='dashdot') 
 
@@ -85,9 +89,8 @@ class create_slice_plot:
         #plot inlet geometry: 
 
         #line_color = "white"
-        line_color = "black"
+        line_color = "white"
         face_color="black"
-        face_color = "gainsboro"
 
         x_cowl = np.linspace(inletGeom.cowl_bounds[0], inletGeom.cowl_bounds[1], 100)
         axes.plot(x_cowl, [inletGeom.y_cowl(x) for x in x_cowl], color=line_color, linewidth=2)
@@ -102,11 +105,11 @@ class create_slice_plot:
          
     def plot_idl(self, axes, idl, annotate=None): 
 
-        line_color = "dimgrey"
+        line_color = "aquamarine"
 
-        axes.plot(idl.x, idl.y, '-o', linewidth=1, markersize=2, color=line_color)
+        axes.plot(idl.x, idl.y, '-o', linewidth=0.5, markersize=2, color=line_color)
         for i,x in enumerate(idl.x): 
-            axes.plot([0,x],[0,idl.y[i]],linewidth=1,color=line_color)
+            axes.plot([0,x],[0,idl.y[i]],linewidth=0.5,color=line_color)
         if annotate: 
             for i,x in enumerate(idl.x):
                 text = f"V={round(idl.u[i],1)}, {round(idl.v[i],1)}"
@@ -115,8 +118,8 @@ class create_slice_plot:
 
     def plot_mesh(self, axes, mesh, annotate=False, mass_flow_plot=False, wall_flow_plot=None):
         
-        #mesh_color = "aquamarine"
-        mesh_color = "dimgrey"
+        mesh_color = "aquamarine"
+        #mesh_color = "dimgrey"
         axes.scatter([pt.x for pt in mesh.meshPts],[pt.y for pt in mesh.meshPts], color=mesh_color, s=2)
         
         if annotate: 
@@ -127,9 +130,9 @@ class create_slice_plot:
             if a is None: 
                 continue
             if b is not None: 
-                plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[1]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[1]].y], color=mesh_color, linewidth=1)
+                plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[1]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[1]].y], color=mesh_color, linewidth=0.5)
             if c is not None:
-                plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[2]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[2]].y], color=mesh_color, linewidth=1)
+                plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[2]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[2]].y], color=mesh_color, linewidth=0.5)
 
         if hasattr(mesh, "shock_segs"):
             for i,ind in enumerate(mesh.shock_segs):

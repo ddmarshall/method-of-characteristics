@@ -9,7 +9,7 @@ TODO: for shock mesh, make function to perform inverse wall operations in compre
 
 class Mesh:
 
-    def __init__(self, idl, Geom, gasProps, delta, pcTOL, kill_func, explicit_shocks=False):
+    def __init__(self, Geom, gasProps, delta, pcTOL, kill_func, idl=None, explicit_shocks=False):
         self.C_pos, self.C_neg = [],[] #containers for characteristics lines
         self.triangle_obj = [] #container for point line segments
         self.shock_upst_segments_obj = [] #container for shock line segments
@@ -27,41 +27,51 @@ class Mesh:
         self.shockMesh = explicit_shocks
         self.working_region = 0 #iterator to denote multiple flowfield regions (bounded by shocks and walls)
 
-        self.idl = []
-        self.idl_p0 = idl.p0
-        for i,x in enumerate(idl.x):
-            self.idl.append(Mesh_Point(x, idl.y[i], idl.u[i], idl.v[i], self.working_region, isIdl=True))
-            #TODO add check for endpoints on the wall and set booleans to true
-        if hasattr(idl, 'cowlPoint'):
-            self.idl[0].isWall = True 
-        if hasattr(idl, 'cbPoint'):
-            self.idl[-1].isWall = True
+        if idl is not None: #if an idl is supplied, generate mesh from it 
+            self.idl_p0 = idl.p0
+            self.idl = [Mesh_Point(x, idl.y[i], idl.u[i], idl.v[i], self.working_region, isIdl=True) for i,x in enumerate(idl.x)]
+
+            if hasattr(idl, 'cowlPoint'):
+                self.idl[0].isWall = True 
+            if hasattr(idl, 'cbPoint'):
+                self.idl[-1].isWall = True  
+
+            charDir = "neg" #!hardcoded 
+            self.generate_initial_mesh_from_idl(charDir) #generate initial mesh from idl
+
+        else: #if no idl is supplied, generate mesh from incident shock at cbody 
+            self.generate_initial_mesh_from_incident_shock()
 
         if explicit_shocks: 
             #adding first shock point
-            shockPt_init = self.idl[0]
+            shockPt_init = self.idl[-1]
             shockPt_init.isShock = True
             self.shock_object_list = [[]]
             #!HARD CODED (FORCING TOP POINT IN IDL TO BE SHOCK ORIGIN)
             self.shockPts_frontside.append(shockPt_init)
             self.shock_upst_segments_obj.append(shockPt_init)
-            self.generate_mesh_with_shocks() #generate mesh with shocks
+            self.generate_mesh_with_shocks_from_cowl() #generate mesh with shocks
 
         else: 
-            self.generate_mesh()
+            self.generate_mesh_from_cowl()
         
         self.compile_mesh_points()
         [pt.get_point_properties(self) for pt in self.meshPts]
         self.compile_wall_points(self.geom.y_cowl, self.geom.y_centerbody) 
         self.compute_local_mass_flow()
 
-    def generate_mesh(self):
+    def generate_initial_mesh_from_incident_shock(self):
+        """
+        Generates the characteristic mesh from the incident attached shock at the
+        centerbody tip. Uses uniform flow properties upstream
+        """
+
+    def generate_mesh_from_cowl(self):
         """
         generates shock-less characteristic mesh until the kill function is triggered 
         Handles shock waves implicitly i.e. trims mesh after same-family intersection and does NOT include oblique shock calculations
         """
         charDir = "neg" #!hard coded for now... starting direction
-        self.generate_initial_mesh_from_idl(charDir) #generate mesh from initial data line
         self.compile_mesh_points()
         while self.f_kill[1] == False: 
             #!following sections were written for initiating with neg lines. Untested for starting with positive
@@ -103,12 +113,11 @@ class Mesh:
                     charDir = "pos" 
                 break  
 
-    def generate_mesh_with_shocks(self):
+    def generate_mesh_with_shocks_from_cowl(self):
         """
         generates characteristic mesh using oblique shock points
         """
         charDir = "neg"
-        self.generate_initial_mesh_from_idl(charDir) 
         if charDir == "neg": charList = self.C_neg
         elif charDir == "pos": charList = self.C_pos
         if self.check_for_passed_shock_point(charList) == False:
@@ -946,7 +955,6 @@ class Mesh:
         self.C_pos = [char for i,char in enumerate(self.C_pos) if i not in emptyLists]
         emptyLists = [i for i,char in enumerate(self.C_neg) if len(char) == 0]
         self.C_neg = [char for i,char in enumerate(self.C_neg) if i not in emptyLists]
-
 
     def compile_wall_points(self, y_upper, y_lower): 
         """

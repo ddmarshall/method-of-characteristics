@@ -1,13 +1,18 @@
 import math 
 import scipy.optimize as scp_opt
 import scipy.interpolate as scp_int
+import method_of_characteristics.oblique_shock as shock
 import numpy as np 
 """
 class for generating initial data line object using flow solution from taylor maccoll module
 """
-class generate_tmc_initial_data_line: 
-    
-    def __init__(self, geom, tmc_res, gasProps, nPts, endPoints=None, curve=None):
+class Generate_TMC_Initial_Data_Line: 
+    """
+    generates an initial data line using taylor-maccoll equation solution. Only 
+    use if centerbody is a straight cone from tip to idl. IDL not valid for 
+    non-straight geometry upstream of cowl idl. 
+    """
+    def __init__(self, geom, tmc_res, gasProps, nPts, endPoints):
         """
         tmc_res: results object from taylor maccoll function computation
         curve: object containing attributes: 
@@ -20,23 +25,10 @@ class generate_tmc_initial_data_line:
 
         ultimately return initial data line as object which can be handed off to moc sequence 
         """
-        if curve is not None: 
-            self.curveParams = curve
-            self.check_idl(tmc_res)
-            self.generate_idl_from_curve(tmc_res)
-        else: 
-
-            self.generate_2_point_idl(geom, tmc_res, nPts, endPoints)
-        
+       
+        self.generate_2_point_idl(geom, tmc_res, nPts, endPoints)
         self.p02_p01_inc_shock = tmc_res.p02_p01 #total pressure change across incident shock
         self.get_properties_on_idl(gasProps)
-
-    def check_idl(self, tmc_res):
-        """
-        TODO: check for an invalid initial data line curve
-        """
-
-        return
 
     def generate_idl_from_curve(self, tmc_res):
         """
@@ -109,6 +101,64 @@ class generate_tmc_initial_data_line:
             U,V = tmc_res.f_veloc_uv(math.atan(self.y[i]/X))
             self.u.append(U)
             self.v.append(V)
+
+    def get_properties_on_idl(self, gasProps):
+        #unpacking
+        gam, a0, T0 = gasProps.gam, gasProps.a0, gasProps.T0
+
+        self.p0 = gasProps.p0*self.p02_p01_inc_shock
+        self.T, self.p, self.mach = [],[],[]
+        for i,_ in enumerate(self.x):
+            V = math.sqrt(self.u[i]**2 + self.v[i]**2)
+            a = math.sqrt(a0**2 - 0.5*(gam-1)*V**2)
+            self.mach.append(V/a)
+            self.T.append(T0/(1+0.5*(gam-1)*(V/a)**2))
+            self.p.append(self.p0*(T0/self.T[i])**(gam/(gam-1)))
+
+class Generate_2D_Initial_Data_Line: 
+    """
+    generates an initial data line using 2D oblique shock relations. Only 
+    use if centerbody is a straight ramp from tip to idl. IDL not valid for 
+    non-straight geometry upstream of cowl idl
+    """
+    def __init__(self, inputs, shockObj, gasProps, nPts, endPoints): 
+
+        T1 = inputs.T0/(1 + 0.5*(gasProps.gam-1)*inputs.M_inf**2)
+        shockObj.T2 = shockObj.T2_T1*T1
+        self.generate_straight_cowl_lip_idl(inputs.geom, nPts, shockObj, endPoints, gasProps)
+        self.p02_p01_inc_shock = shockObj.p02_p01
+        self.get_properties_on_idl(gasProps) 
+
+    def generate_straight_cowl_lip_idl(self, geom, nPts, shockObj, endPoints, gasProps): 
+        """
+        generates straight initial data line which originates at the cowl lip
+        with equidistant points along it 
+        """
+        V2 = shockObj.M2*math.sqrt(gasProps.gam*gasProps.R*shockObj.T2)
+        u2, v2 = V2*math.cos(shockObj.deflec), V2*math.sin(shockObj.deflec)
+        shockObj.V2 = V2
+
+        if endPoints[0][1] == "cowl":
+            endPoints[0][1] = geom.y_cowl(endPoints[0][0])
+            self.cowlPoint = True
+
+        if endPoints[1][1] == "centerbody":
+            endPoints[1][1] =  geom.y_centerbody(endPoints[1][0])
+            self.cbPoint = True 
+            
+        a = np.array(endPoints[0])
+        b = np.array(endPoints[1])
+        spacing = np.linspace(0,1,nPts)
+        pts = [np.multiply(spac, b-a) + a for spac in spacing]
+
+        self.x = [pt[0] for pt in pts]
+        self.y = [pt[1] for pt in pts]
+        
+        self.u = []
+        self.v = []
+        for _ in self.x:
+            self.u.append(u2)
+            self.v.append(v2) 
 
     def get_properties_on_idl(self, gasProps):
         #unpacking
