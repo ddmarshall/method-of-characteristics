@@ -9,13 +9,13 @@
         "Freestream Mach":              2.5
     },
     "MOC Settings":{
-        "Delta":                        0,
+        "Delta":                        1,
         "initiation":                   "IDL", 
         "Unit Process Converge TOL":    0.00001,
         "kill function":                "lambda mesh: mesh.numPointsGen >= 200000"
     },
-    "Initial Data Line":{
+    "Initial Data":{
         "endpoints":                    [[2,"cowl"], [2,"centerbody"]],
-        "num points":                   12
+        "num points":                   24
     }
 }

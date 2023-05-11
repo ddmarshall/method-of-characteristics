@@ -9,22 +9,23 @@ TODO: for shock mesh, make function to perform inverse wall operations in compre
 
 class Mesh:
 
-    def __init__(self, Geom, gasProps, delta, pcTOL, kill_func, idl=None, explicit_shocks=False):
+    def __init__(self, inputObj, kill_func, idl=None, explicit_shocks=False):
         self.C_pos, self.C_neg = [],[] #containers for characteristics lines
         self.triangle_obj = [] #container for point line segments
         self.shock_upst_segments_obj = [] #container for shock line segments
         self.shockPts_frontside = [] 
         self.shockPts_backside = []
         self.funcs = moc_op.operator_funcs() #operator functions
-        self.gasProps = gasProps
-        self.delta = delta
-        self.pcTOL = pcTOL
-        self.geom = Geom
+        self.gasProps = inputObj.gasProps
+        self.delta = inputObj.delta
+        self.pcTOL = inputObj.pcTOL
+        self.geom = inputObj.geom
         self.f_kill = [kill_func, False]
         self.alternateChar = False
         self.numPointsGen = 0
         self.hasIntersected = False
         self.shockMesh = explicit_shocks
+        self.init_method = inputObj.init_method
         self.working_region = 0 #iterator to denote multiple flowfield regions (bounded by shocks and walls)
 
         if idl is not None: #if an idl is supplied, generate mesh from it 
@@ -40,32 +41,165 @@ class Mesh:
             self.generate_initial_mesh_from_idl(charDir) #generate initial mesh from idl
 
         else: #if no idl is supplied, generate mesh from incident shock at cbody 
-            self.generate_initial_mesh_from_incident_shock()
-
+            self.shock_object_list = [[]] 
+            self.freeStream_p0 = inputObj.gasProps.p0
+            self.generate_initial_mesh_from_incident_shock(inputObj)
+           
         if explicit_shocks: 
-            #adding first shock point
-            shockPt_init = self.idl[-1]
-            shockPt_init.isShock = True
-            self.shock_object_list = [[]]
-            #!HARD CODED (FORCING TOP POINT IN IDL TO BE SHOCK ORIGIN)
-            self.shockPts_frontside.append(shockPt_init)
-            self.shock_upst_segments_obj.append(shockPt_init)
-            self.generate_mesh_with_shocks_from_cowl() #generate mesh with shocks
-
+            if idl is not None: #if generating using an idl 
+                shockPt_init = self.idl[-1]
+                shockPt_init.isShock = True
+                self.shock_object_list = [[]]
+                self.shockPts_frontside.append(shockPt_init)
+                self.shock_upst_segments_obj.append(shockPt_init)
+                self.generate_mesh_with_shocks_from_cowl() #generate mesh with shocks
+                    
         else: 
             self.generate_mesh_from_cowl()
         
         self.compile_mesh_points()
         [pt.get_point_properties(self) for pt in self.meshPts]
         self.compile_wall_points(self.geom.y_cowl, self.geom.y_centerbody) 
-        self.compute_local_mass_flow()
+        #self.compute_local_mass_flow()
 
-    def generate_initial_mesh_from_incident_shock(self):
+    def generate_initial_mesh_from_idl(self, charDir):
         """
-        Generates the characteristic mesh from the incident attached shock at the
-        centerbody tip. Uses uniform flow properties upstream
+        computes the initial mesh from the idl. For a vertical IDL this should form a triangle with either a leading + or - characterstic spanning wall to wall 
         """
+        idl = self.idl
+        if charDir == "pos": 
+            self.C_pos.append([idl[0]])
+            [self.C_neg.append([pt]) for pt in idl]
+            self.C_neg.reverse() #first neg line at bottom 
+        elif charDir == "neg":
+            self.C_neg.append([idl[-1]])
+            [self.C_pos.append([pt]) for pt in idl] #first pos line at the top
+            idl.reverse() #reverse idl to start at bottom                
+        #generating intial mesh: 
+        for i,pt in enumerate(idl):
+            if i == 0: continue #first point has no - char passing through it 
+            if charDir == "neg":
+                self.compute_next_neg_char(pt, self.C_neg[i-1])
+                if self.f_kill[0](self) == True:
+                        self.f_kill[1] = True
+                        return 
+            elif charDir == "pos":
+                self.compute_next_pos_char(pt, self.C_pos[i-1])
+                if self.f_kill[0](self) == True:
+                        self.f_kill[1] = True
+                        return
+    
+    def generate_initial_mesh_from_incident_shock(self, inputObj):
+        
+        #Generates the characteristic mesh from the incident attached shock at the
+        #centerbody tip/lip. Uses uniform flow properties upstream
+        
+        ##GENERATING SHOCK POINTS: 
+        #generate first shock point
+        u_free, v_free = inputObj.freeStream.u, inputObj.freeStream.v
+        shock_inc = inputObj.shock_inc
 
+        ptw_ups = Mesh_Point(0, 0, u_free, v_free, -1, isWall=True, isShock=True)
+        self.shock_upst_segments_obj.append(ptw_ups)
+        self.shockPts_frontside.append(ptw_ups)
+        self.C_neg.append([ptw_ups])
+        self.C_pos.append([ptw_ups])
+
+        [pt4_dwn, pt4_ups, def4, beta4, ptw_dwn, pt3p, shockObj, shockObj_w] = \
+            shock.wall_incident_shock_point(ptw_ups, shock_inc, \
+                                            self.geom.y_centerbody, \
+                                                self.geom.dydx_centerbody, \
+                                                    self.pcTOL, self.delta, \
+                                                        self.gasProps, "pos")
+        
+        pt4_dwn = Mesh_Point(pt4_dwn.x, pt4_dwn.y, pt4_dwn.u, pt4_dwn.v, 0, isShock=True) 
+        pt4_ups = Mesh_Point(pt4_ups.x, pt4_ups.y, pt4_ups.u, pt4_ups.v, -1, isShock=True)
+        ptw_dwn = Mesh_Point(ptw_dwn.x, ptw_dwn.y, ptw_dwn.u, ptw_dwn.y, 0, isWall=True, isShock=True)
+        pt3p = Mesh_Point(pt3p.x, pt3p.y, pt3p.u, pt3p.v, 0, isWall=True)
+
+        self.C_neg[0].append(ptw_dwn),  self.C_pos.append([ptw_dwn])
+        self.C_neg.append([pt4_ups]),   self.C_pos[0].append(pt4_ups)
+        self.C_neg[-1].append(pt4_dwn), self.C_pos[1].append(pt4_dwn)
+        self.C_neg[-1].append(pt3p),    self.C_pos.append([pt3p])
+
+        self.triangle_obj.append([pt4_ups, ptw_ups, None])
+        self.triangle_obj.append([pt4_dwn, ptw_dwn, pt3p])
+        self.shock_object_list[-1].append(shockObj_w), self.shock_object_list[-1].append(shockObj)
+        self.shock_upst_segments_obj.append(pt4_ups)
+        self.shockPts_backside.append(pt4_dwn)
+        self.shockPts_backside.append(ptw_dwn)
+        self.shockPts_frontside.append(pt4_ups)
+
+        count = 0 
+        while True: 
+            #generate subsequent shock points 
+            pt_s_ups, pt_s_dwn, pt_a = pt4_ups, pt4_dwn, pt3p
+            [pt4_dwn, pt4_ups, def4, beta4, pt3p, shockObj] = \
+                shock.interior_incident_shock_point(pt_s_ups, pt_s_dwn, beta4, \
+                                                    def4, shock_inc, pt_a, \
+                                                        self.pcTOL, self.delta,\
+                                                            self.gasProps,"pos")
+            pt4_dwn = Mesh_Point(pt4_dwn.x, pt4_dwn.y, pt4_dwn.u, pt4_dwn.v, 0, isShock=True) 
+            pt4_ups = Mesh_Point(pt4_ups.x, pt4_ups.y, pt4_ups.u, pt4_ups.v, -1, isShock=True)
+            pt3p = Mesh_Point(pt3p.x, pt3p.y, pt3p.u, pt3p.v, 0)
+
+            self.C_neg.append([pt4_ups])
+            self.C_neg[-1].append(pt4_dwn)
+            self.C_neg[-1].append(pt3p)
+
+            self.C_pos[0].append(pt4_ups)
+            self.C_pos[1].append(pt4_dwn)
+            self.C_pos[2].append(pt3p)
+
+            self.triangle_obj.append([pt4_ups, pt_s_ups, None])
+            self.triangle_obj.append([pt4_dwn, pt_s_dwn, None])
+            self.triangle_obj.append([pt3p, pt4_dwn, pt_a])
+
+            self.shock_upst_segments_obj.append(pt4_ups)
+            self.shockPts_backside.append(pt4_dwn)
+            self.shockPts_frontside.append(pt4_ups)
+
+            if count == 40: break
+            count += 1 
+            #check if cowl lip has been passed or intersected
+            """
+            hasIntersected = False 
+            hasPassed = False
+            m = (pt4_dwn.y-pt3p.y)/(pt4_dwn.x - pt3p.x)
+            for x in range(min(pt4_dwn.x, pt3p.x), max(pt4_dwn.x, pt3p.x)):
+                y = pt4_dwn.y + m*(x - pt4_dwn.x)
+                if self.geom.y_cowl(x) == y: 
+                    hasIntersected = True
+                    break 
+            
+            if hasIntersected == False: 
+                #if no intersect detected, check instead for pass
+                x_clip = self.geom.x_cowl_lip
+                y_clip = self.geom.y_cowl(x_clip)
+                y = m*(x_clip - pt4_dwn.x) + \
+                    pt4_dwn.y
+                if y > y_clip: #if passed  
+                    hasPassed = True
+                    break 
+            """
+
+        return 
+        ##GENERATING MESH:
+        #continue next characteristic 
+        while hasIntersected == False:
+            #wall point  
+
+            for pt in self.C_pos[-1][1:]:
+                #interior points 
+                pass 
+                #check for intersect
+
+        ##HANDLING INTERSECTION:
+        #apply inverse wall point 
+
+
+        ##GENERATING REMAINDER OF MESH
+    
     def generate_mesh_from_cowl(self):
         """
         generates shock-less characteristic mesh until the kill function is triggered 
@@ -136,37 +270,10 @@ class Mesh:
                 
                 try:self.compute_wall_to_wall_shock(charDir, self.shockPts_backside[-1])
                 except: return 
-                     
-    def generate_initial_mesh_from_idl(self, charDir):
-        """
-        computes the initial mesh from the idl. For a vertical IDL this should form a triangle with either a leading + or - characterstic spanning wall to wall 
-        """
-        idl = self.idl
-        if charDir == "pos": 
-            self.C_pos.append([idl[0]])
-            [self.C_neg.append([pt]) for pt in idl]
-            self.C_neg.reverse() #first neg line at bottom 
-        elif charDir == "neg":
-            self.C_neg.append([idl[-1]])
-            [self.C_pos.append([pt]) for pt in idl] #first pos line at the top
-            idl.reverse() #reverse idl to start at bottom                
-        #generating intial mesh: 
-        for i,pt in enumerate(idl):
-            if i == 0: continue #first point has no - char passing through it 
-            if charDir == "neg":
-                self.compute_next_neg_char(pt, self.C_neg[i-1])
-                if self.f_kill[0](self) == True:
-                        self.f_kill[1] = True
-                        return 
-            elif charDir == "pos":
-                self.compute_next_pos_char(pt, self.C_pos[i-1])
-                if self.f_kill[0](self) == True:
-                        self.f_kill[1] = True
-                        return
 
     def generate_mesh_from_line(self, dl, charDir):
         """
-        Generates the characteristic mesh from an existic characteristic (either pos or neg) terminates when all opposite characteristics originating 
+        Generates the characteristic mesh from an existing characteristic (either pos or neg) terminates when all opposite characteristics originating 
         from dl have been generated
         dl = list of mesh points from positive/negative characteristic spanning wall to wall 
         """
@@ -203,7 +310,7 @@ class Mesh:
             
             if ind >= 2:
                 self.hasIntersected = False  
-                if charDir == "neg": 
+                if charDir == "neg":
                     i,j = self.find_mesh_point(initPt, self.C_pos) 
                     pt0 = self.C_pos[i][j-1]
                     i,j = self.find_mesh_point(pt0, self.C_neg)
@@ -218,7 +325,7 @@ class Mesh:
                         return 
  
                 elif charDir == "pos":
-                    i,j = self.find_mesh_point(initPt, self.C_neg) 
+                    i,j = self.find_mesh_point(initPt, self.C_neg)
                     pt0 = self.C_neg[i][j-1]
                     i,j = self.find_mesh_point(pt0, self.C_pos)
                     prev_p_char = self.C_pos[i][j+1:]
@@ -378,7 +485,7 @@ class Mesh:
                     return
 
             if continueChar:
-                i,j = self.find_mesh_point(pt1, C_on) 
+                i,j = self.find_mesh_point(pt1, C_on)
                 C_on[i].append(pt3)
             else: 
                 C_on[-1].append(pt3)
@@ -609,7 +716,7 @@ class Mesh:
             #check for and handle intersection of shock wave with downstream (same-family) characteristic
             
             while self.check_for_shock_char_intersect(pt3p, pt_a, pt_s_ups, shockPt2=pt4_ups):
-                print("\tInterior shock segment and same-family mach line intersection detected! Applying fix...") 
+                #print("\tInterior shock segment and same-family mach line intersection detected! Applying fix...") 
                 if pt_a.isWall: 
                     [pt4_dwn, pt4_ups, def4, beta4, pt3p, pt_a, shockObj, C_on, C_off] = self.handle_from_wall_shock_char_intersect(pt_s_ups, pt_s_dwn, beta4_old, def4_old, pt_a, pt1, pt3p, C_on, C_off, shockDir) 
                     ii += 1 #update ii due to new characteristic being inserted between s and 4
@@ -617,7 +724,7 @@ class Mesh:
                 else:  
                     [pt4_dwn, pt4_ups, def4, beta4, pt3p, pt_a, shockObj, C_on, C_off] = self.handle_interior_shock_char_intersect(pt_s_ups, pt_s_dwn, beta4_old, def4_old, pt1, pt_a, C_on, C_off, shockDir)
 
-            print(f"\tshock wave angle {math.degrees(beta4)} deg")
+            #print(f"\tshock wave angle {math.degrees(beta4)} deg")
             pt4_dwn = Mesh_Point(pt4_dwn.x, pt4_dwn.y, pt4_dwn.u, pt4_dwn.v, self.working_region+1, isShock=True)
             pt4_ups = Mesh_Point(pt4_ups.x, pt4_ups.y, pt4_ups.u, pt4_ups.v, self.working_region, isShock=True)
             pt3p = Mesh_Point(pt3p.x, pt3p.y, pt3p.u, pt3p.v, self.working_region+1)
@@ -667,7 +774,7 @@ class Mesh:
         [pt4_dwn, pt4_ups, def4, beta4, reflec, pt3p, shockObj] = shock.to_wall_shock_point(pt_s_ups, pt_s_dwn, beta4, def4, pt1, pt_a, y_x_f, dydx_f, self.pcTOL, self.delta, self.gasProps, shockDir)
         #TODO check if new wall point causes shock to intersect characteristic 
         if self.check_for_shock_char_intersect(pt3p, pt_a, pt_s_ups, shockPt2=pt4_ups):
-                print("\tWall shock segment and same-family mach line intersection detected! Applying fix...")
+                #print("\tWall shock segment and same-family mach line intersection detected! Applying fix...")
                 [pt4_dwn, pt4_ups, def4, beta4, reflec, pt3p, pt_a, shockObj, C_on, C_off] = self.handle_wall_shock_char_intersect(pt_s_ups, pt_s_dwn, beta4_old, def4_old, pt1, pt_a, C_on, C_off, y_x_f, dydx_f, shockDir)
                 
         pt4_dwn = Mesh_Point(pt4_dwn.x, pt4_dwn.y, pt4_dwn.u, pt4_dwn.v, self.working_region+1, isShock=True, isWall=True)
@@ -873,19 +980,24 @@ class Mesh:
         for tri in self.triangle_obj: #!TEMPORAY IMPROVE LATER
             self.triangle.append([pt.i if pt is not None else None for pt in tri])
 
-        self.tot_press_by_region = [self.idl_p0]
+        if self.init_method == "IDL":
+            self.tot_press_by_region = [self.idl_p0]
+        if self.init_method == "SHOCK":
+            self.tot_press_by_region = [self.freeStream_p0]
+
         if self.shockMesh: 
             
             self.shock_segs = []
             [self.shock_segs.append(pt.i) for pt in self.shock_upst_segments_obj if pt.i is not None]
             
             #compute total pressure of each shock region
-            for shock in self.shock_object_list:
-                if len(shock) == 0: continue
-                tot_press_loss = [s.p02_p01 for s in shock]
-                avg_tot_press_loss = sum(tot_press_loss)/len(shock)
-                upd_tot_press = avg_tot_press_loss*self.tot_press_by_region[-1]
-                self.tot_press_by_region.append(upd_tot_press)
+            if len(self.shock_object_list) > 0: #if at least one shock 
+                for shock in self.shock_object_list:
+                    if len(shock) == 0: continue
+                    tot_press_loss = [s.p02_p01 for s in shock]
+                    avg_tot_press_loss = sum(tot_press_loss)/len(shock)
+                    upd_tot_press = avg_tot_press_loss*self.tot_press_by_region[-1]
+                    self.tot_press_by_region.append(upd_tot_press)
             
     def find_mesh_point(self, pt, C_posneg):
         """
@@ -899,6 +1011,50 @@ class Mesh:
                 if p == pt: return [i,j]
 
         return [None, None]
+
+    def get_max_indices(self, C_posneg):
+        return len(C_posneg), len(C_posneg[-1])
+
+    def find_point_index(self, pt, C_posneg, init=None):
+        """
+        Search through a 2D list of points and return the indices of a given point.
+        Works for non-rectangular lists with i_init,j_init being any location. 
+
+        Args:
+            pt (object): The point object to be found.
+            C_posneg (list): The 2D list of points to search through.
+            init (list): [i_init, j_init]
+                i_init (int): The starting index for the first dimension of the search range.
+                j_init (int): The starting index for the second dimension of the search range.
+
+        Returns:
+            tuple: The indices of the given point in the list. Returns None if the point is not found.
+        """
+
+        if init==None: 
+            i_init, j_init = len(C_posneg)-1, len(C_posneg[-1])-1
+        else: 
+            i_init, j_init = init[0], init[1]
+
+        search_range = [(i_init, j_init)]
+    
+        while search_range:
+            i, j = search_range.pop(0)
+    
+            if C_posneg[i][j] == pt:
+                return i, j
+    
+            # Expand search range
+            for new_i in range(i-1, i+2):
+                for new_j in range(j-1, j+2):
+                    if (0 <= new_i < len(C_posneg)
+                        and 0 <= new_j < len(C_posneg[0])
+                        and C_posneg[new_i][new_j] is not None
+                        and (new_i, new_j) not in search_range):
+                        search_range.append((new_i, new_j))
+    
+        # Point not found
+        return None        
 
     def trim_mesh_after_intersect(self, pt2, pt1, charDir):
         """

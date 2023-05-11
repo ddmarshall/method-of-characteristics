@@ -1,0 +1,20 @@
+{
+    "Gas Properties":{
+        "Freestream Stag Temp (K)":     288.15,
+        "Freestream Stag Pres (Pa)":    101325,
+        "Spec Heat Ratio":              1.405, 
+        "Ideal Gas Constant (J/kgK)":   287.05
+    },
+    "Flow Properties":{
+        "Freestream Mach":              2.3
+    },
+    "MOC Settings":{
+        "Delta":                        1,
+        "initiation":                   "SHOCK", 
+        "Unit Process Converge TOL":    0.00001,
+        "kill function":                "lambda mesh: mesh.numPointsGen >= 200000"
+    },
+    "Initial Data":{
+        "shock increment":              0.05
+    }                       
+}

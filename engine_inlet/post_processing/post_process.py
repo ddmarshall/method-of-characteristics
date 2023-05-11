@@ -16,7 +16,7 @@ class create_slice_plot:
         if "ylim" in plotSettings.keys():
             if plotSettings["ylim"] not in ["none", "None", "NONE"]: ylims = plotSettings["ylim"]
 
-        self.M_inf = mainObj.freestream.mach
+        self.M_inf = mainObj.inputs.freeStream.mach
         figsize = plotSettings["figure size"]
         fig, ax = self.initialize_figure(figsize, xlims=xlims, ylims=ylims)
         #pos = [0.05, 1] #placeholder 
@@ -54,18 +54,21 @@ class create_slice_plot:
                 if "wall flow scalar" in plotDict[key].keys(): 
                     if plotDict[key]["wall flow scalar"] not in ["None", "none", "NONE"]:
                         wall_flow = plotDict[key]["wall flow scalar"]
+                
                 if hasattr(mainObj, "coneSol"): 
                     self.plot_coneSol(axes, mainObj.coneSol, mainObj.inputs.geom)  
                     
                 elif hasattr(mainObj, "rampSol"):
-                    self.plot_rampSol()
+                    self.plot_rampSol(axes, mainObj.rampSol, mainObj.inputs.geom)
 
                 self.plot_mesh(axes, mainObj.mesh, annotate=anno, mass_flow_plot=mFlow, wall_flow_plot=wall_flow)
-                self.plot_idl(axes, mainObj.idlObj)
+                if mainObj.inputs.init_method == "IDL":
+                    self.plot_idl(axes, mainObj.idlObj, mainObj.inputs.delta)
 
 
             elif typ == "scalar":
-                self.plot_coneSol(axes, mainObj.coneSol, mainObj.inputs.geom)
+                if hasattr(mainObj, "coneSol"): self.plot_coneSol(axes, mainObj.coneSol, mainObj.inputs.geom)
+                elif hasattr(mainObj, "rampSol"): self.plot_rampSol(axes, mainObj.rampSol, mainObj.inputs.geom)
                 scalar = plotDict[key]["scalar"]
                 lims = plotDict[key]["limits"]
                 #zs = [getattr(pt, scalar) for pt in mainObj.mesh.meshPts]
@@ -75,15 +78,32 @@ class create_slice_plot:
             else: 
                 raise ValueError(f"invalid displayer type: {typ}")
 
-    def plot_coneSol(self, axes, cone, inletGeom):
+    def plot_coneSol(self, axes, cone_flow, inletGeom):
         xint = np.array([0, 1])
         if inletGeom is not None:
             #plot interval only which conforms to inlet geometry 
             xint = np.array([min(inletGeom.centerbody_bounds), max(inletGeom.centerbody_bounds)])
         else: 
-            axes.plot(xint, [x*math.tan(cone.cone_ang) for x in xint], label=f'cone = {round(math.degrees(cone.cone_ang),2)}', color='k', linewidth=1.3) #plot straight cone surface
+            axes.plot(xint, [x*math.tan(cone_flow.cone_ang) for x in xint],\
+                label=f'cone = {round(math.degrees(cone_flow.cone_ang),2)}',\
+                    color='k', linewidth=1.3) #plot straight cone surface
 
-        axes.plot(xint, [x*math.tan(cone.shock_ang) for x in xint], label=f'shock = {round(math.degrees(cone.shock_ang),2)} deg', color='crimson', linewidth=2, linestyle='dashdot') 
+        axes.plot(xint, [x*math.tan(cone_flow.shock_ang) for x in xint],\
+                label=f'shock = {round(math.degrees(cone_flow.shock_ang),2)} \
+                    deg', color='crimson', linewidth=2, linestyle='dashdot') 
+
+    def plot_rampSol(self, axes, ramp_flow, inletGeom):
+        xint = np.array([0,1])
+        if inletGeom is not None: 
+            xint = np.array([min(inletGeom.centerbody_bounds), max(inletGeom.centerbody_bounds)])
+        else: 
+            axes.plot(xint, [x*math.tan(ramp_flow.deflec) for x in xint],\
+                label=f'cone = {round(math.degrees(ramp_flow.deflec),2)}',\
+                    color='k', linewidth=1.3) #plot straight cone surface
+
+        axes.plot(xint, [x*math.tan(ramp_flow.beta) for x in xint],\
+                label=f'shock = {round(math.degrees(ramp_flow.beta),2)} \
+                    deg', color='crimson', linewidth=2, linestyle='dashdot')
 
     def plot_inletGeom(self, axes, inletGeom):
         #plot inlet geometry: 
@@ -103,13 +123,16 @@ class create_slice_plot:
         fill_y = np.append(fill_y, [inletGeom.y_centerbody(x) for x in x_cb])
         axes.fill(fill_x, fill_y, facecolor=face_color, edgecolor=line_color, zorder=15, hatch="\\\\", linewidth=2) 
          
-    def plot_idl(self, axes, idl, annotate=None): 
+    def plot_idl(self, axes, idl, delta, annotate=None): 
 
         line_color = "aquamarine"
 
         axes.plot(idl.x, idl.y, '-o', linewidth=0.5, markersize=2, color=line_color)
-        for i,x in enumerate(idl.x): 
-            axes.plot([0,x],[0,idl.y[i]],linewidth=0.5,color=line_color)
+
+        if delta == 1: 
+            for i,x in enumerate(idl.x): 
+                axes.plot([0,x],[0,idl.y[i]],linewidth=0.5,color=line_color)
+
         if annotate: 
             for i,x in enumerate(idl.x):
                 text = f"V={round(idl.u[i],1)}, {round(idl.v[i],1)}"

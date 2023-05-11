@@ -1,8 +1,8 @@
 {   "default plot settings":{
         "style":                "dark_background",
-        "figure size":          [16,8],
-        "xlim":                 [1.9,4],
-        "ylim":                 [0.45, 1.02],
+        "figure size":          [16, 8],
+        "xlim":                 [0, 4],
+        "ylim":                 [0, 1.1],
         "xlabel":               "x",
         "ylabel":               "y"
     },
