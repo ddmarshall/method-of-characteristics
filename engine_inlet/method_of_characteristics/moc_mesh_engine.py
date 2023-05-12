@@ -9,7 +9,7 @@ TODO: for shock mesh, make function to perform inverse wall operations in compre
 
 class Mesh:
 
-    def __init__(self, inputObj, kill_func, idl=None, explicit_shocks=False):
+    def __init__(self, inputObj, kill_func, idl, taylor_maccoll_solution=None, explicit_shocks=False):
         self.C_pos, self.C_neg = [],[] #containers for characteristics lines
         self.triangle_obj = [] #container for point line segments
         self.shock_upst_segments_obj = [] #container for shock line segments
@@ -28,31 +28,31 @@ class Mesh:
         self.init_method = inputObj.init_method
         self.working_region = 0 #iterator to denote multiple flowfield regions (bounded by shocks and walls)
 
-        if idl is not None: #if an idl is supplied, generate mesh from it 
-            self.idl_p0 = idl.p0
-            self.idl = [Mesh_Point(x, idl.y[i], idl.u[i], idl.v[i], self.working_region, isIdl=True) for i,x in enumerate(idl.x)]
+        self.idl_p0 = idl.p0
+        self.idl = [Mesh_Point(x, idl.y[i], idl.u[i], idl.v[i], self.working_region, isIdl=True) for i,x in enumerate(idl.x)]
 
-            if hasattr(idl, 'cowlPoint'):
-                self.idl[0].isWall = True 
-            if hasattr(idl, 'cbPoint'):
-                self.idl[-1].isWall = True  
+        #if hasattr(idl, 'cowlPoint'):
+        self.idl[0].isWall = True 
+        #if hasattr(idl, 'cbPoint'):
+        self.idl[-1].isWall = True  
 
-            charDir = "neg" #!hardcoded 
-            self.generate_initial_mesh_from_idl(charDir) #generate initial mesh from idl
+        charDir = "neg" #!hardcoded 
+        if self.init_method == "STRAIGHT IDL":
+            self.generate_initial_mesh_from_straight_idl(charDir) #generate initial mesh from idl
+        elif self.init_method == "MACH LINE":
+            self.generate_initial_mesh_from_mach_line_idl(charDir) #generate intial mesh from idl 
+            
 
-        else: #if no idl is supplied, generate mesh from incident shock at cbody 
-            self.shock_object_list = [[]] 
-            self.freeStream_p0 = inputObj.gasProps.p0
-            self.generate_initial_mesh_from_incident_shock(inputObj)
-           
+            #check if characteristic intersection with centerbody is acceptable 
+            #if not: use backup function
+          
         if explicit_shocks: 
-            if idl is not None: #if generating using an idl 
-                shockPt_init = self.idl[-1]
-                shockPt_init.isShock = True
-                self.shock_object_list = [[]]
-                self.shockPts_frontside.append(shockPt_init)
-                self.shock_upst_segments_obj.append(shockPt_init)
-                self.generate_mesh_with_shocks_from_cowl() #generate mesh with shocks
+            shockPt_init = self.idl[-1]
+            shockPt_init.isShock = True
+            self.shock_object_list = [[]]
+            self.shockPts_frontside.append(shockPt_init)
+            self.shock_upst_segments_obj.append(shockPt_init)
+            #self.generate_mesh_with_shocks_from_cowl() #generate mesh with shocks
                     
         else: 
             self.generate_mesh_from_cowl()
@@ -60,9 +60,9 @@ class Mesh:
         self.compile_mesh_points()
         [pt.get_point_properties(self) for pt in self.meshPts]
         self.compile_wall_points(self.geom.y_cowl, self.geom.y_centerbody) 
-        #self.compute_local_mass_flow()
+        self.compute_local_mass_flow()
 
-    def generate_initial_mesh_from_idl(self, charDir):
+    def generate_initial_mesh_from_straight_idl(self, charDir):
         """
         computes the initial mesh from the idl. For a vertical IDL this should form a triangle with either a leading + or - characterstic spanning wall to wall 
         """
@@ -89,6 +89,24 @@ class Mesh:
                         self.f_kill[1] = True
                         return
     
+    def generate_initial_mesh_from_mach_line_idl(self, charDir):
+        """
+        creates initial portion of the mesh from an initial data line defined 
+        by a mach line extending from the cowl lip to the centerbody
+        """
+        idl = self.idl
+        idl.reverse()
+        if charDir == "pos":
+            pass 
+        elif charDir == "neg":
+            self.C_pos.append([pt for pt in idl])
+            [self.C_neg.append([pt]) for pt in idl]
+
+        #generating initial mesh
+        for i,pt in enumerate(idl):
+            if i==0: continue
+            self.compute_next_neg_char(pt, self.C_neg[i-1]) 
+    """
     def generate_initial_mesh_from_incident_shock(self, inputObj):
         
         #Generates the characteristic mesh from the incident attached shock at the
@@ -105,16 +123,23 @@ class Mesh:
         self.C_neg.append([ptw_ups])
         self.C_pos.append([ptw_ups])
 
-        [pt4_dwn, pt4_ups, def4, beta4, ptw_dwn, pt3p, shockObj, shockObj_w] = \
-            shock.wall_incident_shock_point(ptw_ups, shock_inc, \
-                                            self.geom.y_centerbody, \
-                                                self.geom.dydx_centerbody, \
-                                                    self.pcTOL, self.delta, \
-                                                        self.gasProps, "pos")
+        if self.delta == 1: 
+            [pt4_dwn, pt4_ups, def4, beta4, ptw_dwn, pt3p, shockObj, tmc_cone] = \
+                shock.wall_incident_shock_point_conical(ptw_ups, shock_inc, \
+                                                self.geom.y_centerbody, \
+                                                    self.geom.dydx_centerbody, \
+                                                        self.pcTOL, self.delta, \
+                                                            self.gasProps, "pos") 
         
+        elif self.delta == 0: 
+            #use 2D wall shock point 
+            pass 
+        
+        print(f"\tshock angle (wall): {math.degrees(tmc_cone.shock_ang)} deg")
+        print(f"\tshock angle: {math.degrees(beta4)} deg")
         pt4_dwn = Mesh_Point(pt4_dwn.x, pt4_dwn.y, pt4_dwn.u, pt4_dwn.v, 0, isShock=True) 
         pt4_ups = Mesh_Point(pt4_ups.x, pt4_ups.y, pt4_ups.u, pt4_ups.v, -1, isShock=True)
-        ptw_dwn = Mesh_Point(ptw_dwn.x, ptw_dwn.y, ptw_dwn.u, ptw_dwn.y, 0, isWall=True, isShock=True)
+        ptw_dwn = Mesh_Point(ptw_dwn.x, ptw_dwn.y, ptw_dwn.u, ptw_dwn.v, 0, isWall=True, isShock=True)
         pt3p = Mesh_Point(pt3p.x, pt3p.y, pt3p.u, pt3p.v, 0, isWall=True)
 
         self.C_neg[0].append(ptw_dwn),  self.C_pos.append([ptw_dwn])
@@ -124,7 +149,7 @@ class Mesh:
 
         self.triangle_obj.append([pt4_ups, ptw_ups, None])
         self.triangle_obj.append([pt4_dwn, ptw_dwn, pt3p])
-        self.shock_object_list[-1].append(shockObj_w), self.shock_object_list[-1].append(shockObj)
+        self.shock_object_list[-1].append(tmc_cone), self.shock_object_list[-1].append(shockObj)
         self.shock_upst_segments_obj.append(pt4_ups)
         self.shockPts_backside.append(pt4_dwn)
         self.shockPts_backside.append(ptw_dwn)
@@ -139,6 +164,7 @@ class Mesh:
                                                     def4, shock_inc, pt_a, \
                                                         self.pcTOL, self.delta,\
                                                             self.gasProps,"pos")
+            print(f"shock angle: {math.degrees(beta4)} deg")
             pt4_dwn = Mesh_Point(pt4_dwn.x, pt4_dwn.y, pt4_dwn.u, pt4_dwn.v, 0, isShock=True) 
             pt4_ups = Mesh_Point(pt4_ups.x, pt4_ups.y, pt4_ups.u, pt4_ups.v, -1, isShock=True)
             pt3p = Mesh_Point(pt3p.x, pt3p.y, pt3p.u, pt3p.v, 0)
@@ -158,11 +184,11 @@ class Mesh:
             self.shock_upst_segments_obj.append(pt4_ups)
             self.shockPts_backside.append(pt4_dwn)
             self.shockPts_frontside.append(pt4_ups)
-
-            if count == 40: break
+            
+            if count == 43: break
             count += 1 
             #check if cowl lip has been passed or intersected
-            """
+            
             hasIntersected = False 
             hasPassed = False
             m = (pt4_dwn.y-pt3p.y)/(pt4_dwn.x - pt3p.x)
@@ -181,7 +207,7 @@ class Mesh:
                 if y > y_clip: #if passed  
                     hasPassed = True
                     break 
-            """
+            
 
         return 
         ##GENERATING MESH:
@@ -199,7 +225,17 @@ class Mesh:
 
 
         ##GENERATING REMAINDER OF MESH
-    
+    """
+
+    def generate_initial_char_from_cb_point(self):
+
+        """
+        generates an initial positive characteristic from the centerbody. Uses 
+        inverse wall to connect mesh to cowl point. Use this when 
+        generate_initial_char_from_cowl_lip fails to capture non-straight 
+        geometry. 
+        """
+
     def generate_mesh_from_cowl(self):
         """
         generates shock-less characteristic mesh until the kill function is triggered 
@@ -980,10 +1016,8 @@ class Mesh:
         for tri in self.triangle_obj: #!TEMPORAY IMPROVE LATER
             self.triangle.append([pt.i if pt is not None else None for pt in tri])
 
-        if self.init_method == "IDL":
+        if self.init_method in ["STRAIGHT IDL", "MACH LINE"]:
             self.tot_press_by_region = [self.idl_p0]
-        if self.init_method == "SHOCK":
-            self.tot_press_by_region = [self.freeStream_p0]
 
         if self.shockMesh: 
             

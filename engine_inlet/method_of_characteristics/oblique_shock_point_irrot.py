@@ -5,6 +5,7 @@ import method_of_characteristics.unit_processes as up #irrotational moc
 import numpy as np
 #import oblique_shock as obs
 import method_of_characteristics.oblique_shock as obs
+import taylor_maccoll_cone.taylor_maccoll as tmc
 
 """
 Contains shock point operators as described in B.H. Anderson Paper. Makes use of IRROTATIONAL unit processes
@@ -173,7 +174,8 @@ def wall_shock_point(pt_w_ups, y_x, dydx, pt1, pcTOL, delta, gasProps, shockDir)
 
 def wall_incident_shock_point(pt_w_ups, shock_inc, y_x, dydx, pcTOL, delta, gasProps, shockDir):
     """
-    Generates a shock wave point on the incident shock (upstream is uniform)
+    Generates a shock wave point on the incident shock (upstream is uniform) for 
+    a 2D geometry
     Inputs: 
         pt_w_ups: (point object) upstream shock point on solid boundary
         shock_inc: length of shock segment (fraction of cowl lip radius) 
@@ -222,7 +224,7 @@ def wall_incident_shock_point(pt_w_ups, shock_inc, y_x, dydx, pcTOL, delta, gasP
     def solve_shock(def_4, ret="def"):
 
         #locate point 4:
-        x4 = shock_inc/math.sqrt(math.tan(beta_wall)**2 + 1) + x_w
+        x4 = math.sqrt(shock_inc**2/(math.tan(beta_wall)**2 + 1)) + x_w
         y4 = math.tan(beta_wall)*(x4 - x_w) + y_w
         #print(f"initial shock point x,y = {round(x4,4), round(y4,4)}")
 
@@ -446,7 +448,7 @@ def interior_incident_shock_point(pt_s_ups, pt_s_dwn, beta_s, def_s, shock_inc, 
     def solve_shock(def_4, ret="def"):
 
         #locate point 4 using characteristic between 1 and 3. Gives upstream properties of point 4 
-        x4 = shock_inc/math.sqrt(math.tan(beta_s)**2 + 1) + x_s
+        x4 = math.sqrt(shock_inc**2/(math.tan(beta_s)**2 + 1)) + x_s
         y4 = math.tan(beta_s)*(x4 - x_s) + y_s
         u4_ups = u_ups
         v4_ups = v_ups

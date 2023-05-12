@@ -10,7 +10,7 @@
     },
     "MOC Settings":{
         "Delta":                        1,
-        "initiation":                   "IDL", 
+        "initiation":                   "STRAIGHT IDL", 
         "Unit Process Converge TOL":    0.00001,
         "kill function":                "lambda mesh: mesh.numPointsGen >= 200000"
     },

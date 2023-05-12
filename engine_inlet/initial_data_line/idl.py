@@ -1,6 +1,4 @@
 import math 
-import scipy.optimize as scp_opt
-import scipy.interpolate as scp_int
 import method_of_characteristics.oblique_shock as shock
 import numpy as np 
 """
@@ -12,70 +10,26 @@ class Generate_TMC_Initial_Data_Line:
     use if centerbody is a straight cone from tip to idl. IDL not valid for 
     non-straight geometry upstream of cowl idl. 
     """
-    def __init__(self, geom, tmc_res, gasProps, nPts, endPoints):
+    def __init__(self, geom, tmc_res, gasProps, nPts, endPoints=None):
         """
+        geom: geometry object
         tmc_res: results object from taylor maccoll function computation
-        curve: object containing attributes: 
-            curve.y_x - y(x) curve of initial data line
-                or 
-            curve.coords - form ((x's),(y's)) - discrete form 
-
-            curve.dist - array-like from 0 to 1 denoting distribution of data points along line starting from x_a
-            curve.endpoints - (x_a,x_b) endpoints of data line (only needed if curve.y_x is specified)
-
-        ultimately return initial data line as object which can be handed off to moc sequence 
+        gasProps: gas properties object
+        nPts: number of points spaced along initial data line
+        endpoints: (for straight IDL) x coordinates of centerbody and cowl
+            points denoting ends of data line 
+        
+        ultimately returns initial data line as object which can be handed off to moc sequence 
         """
-       
-        self.generate_2_point_idl(geom, tmc_res, nPts, endPoints)
+
+        if endPoints is not None: 
+            self.generate_2_point_idl(geom, tmc_res, nPts, endPoints)
+
+        if endPoints is None: 
+            self.generate_initial_char_from_cowl_lip(geom, tmc_res, gasProps, nPts)
+
         self.p02_p01_inc_shock = tmc_res.p02_p01 #total pressure change across incident shock
         self.get_properties_on_idl(gasProps)
-
-    def generate_idl_from_curve(self, tmc_res):
-        """
-        TODO: docstring
-        """
-        if hasattr(self.curveParams, 'y_x'):
-            y_x = self.curveParams.y_x
-        elif hasattr(self.curveParams, 'coords'):
-            y_x = scp_int.interpolate.interp1d(self.curveParams.coords[0], self.curveParams.coords[1], kind='linear')
-        else: 
-            raise ValueError("Missing Curve")
-
-        #compute length of curve from endpoint to endpoint
-        n = 1000 #!Placeholder
-        x_pts = list(np.linspace(self.curveParams.endpoints[0], self.curveParams.endpoints[1], n))
-        y_pts = [y_x(x) for x in x_pts]
-        
-        l = 0 
-        dist = lambda x1, x2, y1, y2: math.sqrt((x2-x1)**2 + (y2-y1)**2)
-        for i in range(1, len(x_pts)): 
-            dl = dist(x_pts[i], x_pts[i-1], y_pts[i], y_pts[i-1]) #length of segment
-            l += dl
-        
-        spacing = [l*x for x in self.curveParams.dist]
-
-        #iterating through curve
-        x_alpha = self.curveParams.endpoints[0]
-        y_alpha = y_x(x_alpha)
-
-        xlist, ylist, ulist, vlist = [], [], [], []
-        for i in range(1,len(spacing)): 
-            #calculate and store x,y,u,v at point
-            xlist.append(x_alpha), ylist.append(y_alpha)
-            u,v = tmc_res.f_veloc_uv(math.atan(y_alpha/x_alpha))
-            ulist.append(u), vlist.append(v)
-            
-            #get next point along curve 
-            dl = spacing[i]- spacing[i-1]
-            func = lambda x_beta: (x_beta - x_alpha)**2 + (y_x(x_beta) - y_alpha)**2 - dl**2
-            x_beta = float(scp_opt.fsolve(func, 1.05*x_alpha))
-            
-            #update position
-            x_alpha = x_beta
-            y_alpha = self.curveParams.y_x(x_alpha)
-        
-        #x&y and u&v discrete points on data line
-        self.x, self.y, self.u, self.v = xlist, ylist, ulist, vlist
 
     def generate_2_point_idl(self, geom, tmc_res, nPts, endPoints):
        
@@ -95,6 +49,67 @@ class Generate_TMC_Initial_Data_Line:
         self.x = [pt[0] for pt in pts]
         self.y = [pt[1] for pt in pts]
         
+        self.u = []
+        self.v = []
+        for i,X in enumerate(self.x):
+            U,V = tmc_res.f_veloc_uv(math.atan(self.y[i]/X))
+            self.u.append(U)
+            self.v.append(V)
+
+    def generate_initial_char_from_cowl_lip(self, geom, tmc_res, gasProps, nPts):
+        """
+        generates an initial positive characteristic from the cowl lip to the 
+        centerbody. Use for non-straight centerbody geometry. Only works if 
+        point on centerbody is upstream of any non-straight geometry. 
+        """
+        import scipy.integrate as scp_int
+        import scipy.interpolate as scp_interp
+
+        a0, gam = gasProps.a0, gasProps.gam
+        x_i, y_i = geom.x_cowl_lip, geom.y_cowl(geom.x_cowl_lip)
+        thet_i = math.atan(y_i/x_i)
+        thet_f = tmc_res.cone_ang
+        y0 = [x_i, y_i]
+        
+        def lambda_char(thet,y):
+            #gives slope of + & - mach lines through point x,y in the flow 
+            u,v = tmc_res.f_veloc_uv(thet)
+            a =  math.sqrt(a0**2 - 0.5*(gam-1)*(u**2 + v**2))
+            dydx = (u*v + a*math.sqrt(u**2 + v**2 - a**2))/(u**2 - a**2)
+            return [1, dydx]
+
+        #numerically integrate until mach line meets the centerbody
+        sol = scp_int.solve_ivp(lambda_char, t_span=(thet_i, thet_f), y0=y0, dense_output=True)
+
+        #convert to x and y coordinates 
+        thet_interp = np.linspace(thet_i, thet_f, 5000)
+        y_interp = sol.sol(thet_interp)
+        x = y_interp[0]
+        y = y_interp[1]
+
+        #find total length of curve
+        L = 0
+        for i,xval in enumerate(x):
+            if i == 0: continue
+            dl = math.sqrt((xval - x[i-1])**2 + (y[i] - y[i-1])**2)
+            L += dl
+
+        #generate evenly-spaced intial data line points
+        distances = np.zeros(len(x))
+        for i in range(1, len(x)):
+            distances[i] = distances[i-1] + np.sqrt((x[i] - x[i-1])**2 + (y[i] - y[i-1])**2)
+    
+        # Interpolate the curve using distances as the independent variable
+        fx = scp_interp.interp1d(distances, x, kind='linear')
+        fy = scp_interp.interp1d(distances, y, kind='linear')
+    
+        # Create an array of evenly spaced distances
+        new_distances = np.linspace(0, L, nPts)
+    
+        # Evaluate the interpolated curve at the new distances
+        self.x = fx(new_distances)
+        self.y = fy(new_distances)
+
         self.u = []
         self.v = []
         for i,X in enumerate(self.x):

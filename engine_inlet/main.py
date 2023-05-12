@@ -50,51 +50,43 @@ class Main:
     def run_solution(self):
         print("\nrunning solution...\n")
         import method_of_characteristics.moc_mesh_engine as moc
+        import initial_data_line.idl as idl
         import math
-        import time
 
         inp = self.inputs
-        time0 = time.perf_counter()
         class gasProps:
             def __init__(self, gam, R, T0, p0): 
                 self.gam, self.R, self.T0, self.p0 = gam, R, T0, p0
                 self.a0 = math.sqrt(gam*R*T0)
         inp.gasProps = gasProps(inp.gam, inp.R, inp.T0, inp.p0) #create gas properties object 
 
-        
-        if inp.init_method == "IDL":
-            import initial_data_line.idl as idl
+        #RUNNING TAYLOR-MACCOLL or 2D RAMP SOLUTION: 
+        if inp.delta==1:
+            import taylor_maccoll_cone.taylor_maccoll as tmc 
+            self.coneSol = tmc.TaylorMaccoll_Cone(math.radians(inp.geom.cone_ang_deg), inp.M_inf, inp.gasProps)
+        elif inp.delta==0:
+            import method_of_characteristics.oblique_shock as shock 
+            deflec = math.radians(inp.geom.cone_ang_deg)
+            self.rampSol = shock.Oblique_Shock(inp.M_inf, inp.gasProps.gam, inp.gasProps.R, deflec=deflec)
+
+        #GENERATING INITIAL DATA LINE
+        if inp.init_method == "STRAIGHT IDL":
             if inp.delta == 1: #axisymmetric case 
-                #run taylor maccoll
-                import taylor_maccoll_cone.taylor_maccoll as tmc
-                self.coneSol = tmc.TaylorMaccoll_Cone(math.radians(inp.geom.cone_ang_deg), inp.M_inf, inp.gasProps) 
-                #generate IDL
                 self.idlObj = idl.Generate_TMC_Initial_Data_Line(inp.geom, self.coneSol, inp.gasProps, inp.nIdlPts, inp.idlEndPts)
-                time_init = time.perf_counter()
-                print(f"Taylor Maccoll Initialization. Time taken: {round(time_init-time0,3)} secs")
-
-            elif self.inputs.delta == 0: #2D case
-                #run 2D ramp shock
-                import method_of_characteristics.oblique_shock as shock 
-                deflec = math.radians(inp.geom.cone_ang_deg)
-                self.rampSol = shock.Oblique_Shock(inp.M_inf, inp.gasProps.gam, inp.gasProps.R, deflec=deflec)
-                #generate IDL
+            elif inp.delta == 0: #2D case
                 self.idlObj = idl.Generate_2D_Initial_Data_Line(inp, self.rampSol, inp.gasProps, inp.nIdlPts, inp.idlEndPts)
-                time_init = time.perf_counter()
-                print(f"2D Ramp Solution Initialization. Time taken: {round(time_init-time0, 3)} secs")
-        
-        elif inp.init_method == "SHOCK":
-            self.idlObj = None
-            time_init = time.perf_counter() 
 
+        elif inp.init_method == "MACH LINE":
+            if inp.delta==1: #axisymmetric
+                self.idlObj = idl.Generate_TMC_Initial_Data_Line(inp.geom, self.coneSol, inp.gasProps, inp.nIdlPts)
+            elif inp.delta==0: #2D case 
+                self.idlObj = idl.Generate_2D_Initial_Data_Line(inp.geom, self.coneSol, inp.gasProps, inp.nIdlPts)
+        
         else: 
             raise ValueError(f"Invalid Mesh Initialization Method Specified: {inp.init_method}")
-
-        #generate mesh
         
+        #GENERATING MESH        
         self.mesh = moc.Mesh(inp, eval(inp.kill), idl=self.idlObj, explicit_shocks=True) #shocked mesh 
-        time_mesh = time.perf_counter()
-        print(f"MOC Mesh Completed. Time taken: {round(time_mesh-time_init, 3)} secs")
         #self.mesh = moc.Mesh(inp, eval(inp.kill), idl=self.idlObj) #shockless mesh 
 
     def store_solution(self, saveFile):
@@ -154,5 +146,5 @@ if __name__ == "__main__":
     plotfile = "plot_profile_mesh_only.json"
     #plotfile = "plot_profile_test.json"
     #inputFile = 'test_idl_straight_inputs.json'
-    inputFile = 'test_shock_straight_inputs.json'
+    inputFile = 'test_mach_line_idl_straight_inputs.json'
     sol = Main(inputFile=inputFile, geomObj=inlet, plotFile=plotfile) #run solution then plot results
