@@ -32,17 +32,18 @@ class inputObj:
             "Freestream Mach":              "M_inf",
             #MOC Settings
             "Delta":                        "delta",
-            "initiation":                   "init_method",
-            "Unit Process Converge TOL":    "pcTOL",
-            "kill function":                "kill",
-            #Initial Data Line
-            #"function":                     "idlFuncStr",
-            #"distribution":                 "idlDist",
-            "endpoints":                    "idlEndPts",
-            "num points":                   "nIdlPts",
+            "Initiation":                   "init_method",
+            "Compute Shocks":               "compute_shocks",
+            "Convergence Tolerance":        "pcTOL",
+            "Kill Function":                "kill",
+            #Initial Data
+            "Endpoints":                    "idlEndPts",
+            "Num Points":                   "nIdlPts",
         }
         #Set attributes according to translator. Good luck comprehending this comprehension:      
-        [setattr(self, json_translator[key_j], json_data[key_i][key_j]) for key_i in list(json_data.keys()) for key_j in json_data[key_i].keys() if key_j in json_translator.keys()]
+        [setattr(self, json_translator[key_j], json_data[key_i][key_j]) for \
+         key_i in list(json_data.keys()) for key_j in json_data[key_i].keys()\
+              if key_j in json_translator.keys()]
         
     def import_toml(self, file):
         #TODO write this part if using .toml files for inputs

@@ -10,11 +10,12 @@
     },
     "MOC Settings":{
         "Delta":                        1,
-        "initiation":                   "MACH LINE", 
-        "Unit Process Converge TOL":    0.00001,
-        "kill function":                "lambda mesh: mesh.numPointsGen >= 200000"
+        "Initiation":                   "MACH LINE", 
+        "Compute Shocks":               true, 
+        "Convergence Tolerance":        0.00001,
+        "Kill Function":                "lambda mesh: mesh.numPointsGen >= 200000"
     },
-    "Initial Data Line":{
-        "num points":                   24
+    "Initial Data":{
+        "Num Points":                   40
     }                       
 }

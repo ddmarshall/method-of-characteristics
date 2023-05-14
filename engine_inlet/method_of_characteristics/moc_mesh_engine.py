@@ -52,7 +52,7 @@ class Mesh:
             self.shock_object_list = [[]]
             self.shockPts_frontside.append(shockPt_init)
             self.shock_upst_segments_obj.append(shockPt_init)
-            #self.generate_mesh_with_shocks_from_cowl() #generate mesh with shocks
+            self.generate_mesh_with_shocks_from_cowl() #generate mesh with shocks
                     
         else: 
             self.generate_mesh_from_cowl()
@@ -105,7 +105,18 @@ class Mesh:
         #generating initial mesh
         for i,pt in enumerate(idl):
             if i==0: continue
-            self.compute_next_neg_char(pt, self.C_neg[i-1]) 
+            if i==1:
+                [x3,y3,u3,v3] = moc_op.direct_wall(pt, self.geom.y_centerbody,\
+                                self.geom.dydx_centerbody, self.gasProps, \
+                                    self.delta, self.pcTOL, self.funcs, "neg")
+                pt3 = Mesh_Point(x3,y3,u3,v3, self.working_region, isWall=True)
+                self.triangle_obj.append([pt3, None, pt])
+                i,_ = self.find_mesh_point(pt, self.C_neg)
+                self.C_neg[i].append(pt3)
+                self.C_pos.append([pt3])
+            else: 
+                self.compute_next_neg_char(pt, self.C_neg[i-1][1:], continueChar=True) 
+    
     """
     def generate_initial_mesh_from_incident_shock(self, inputObj):
         
@@ -1155,12 +1166,12 @@ class Mesh:
 
         for pt in self.meshPts:
             if pt.isWall:
-                try:  
+                if y_upper(pt.x) is not None:
                     if abs(y_upper(pt.x) - pt.y) < 1e-8:
                         self.wallPtsUpper.append(pt)
-                    elif abs(y_lower(pt.x) - pt.y) < 1e-8:
+                if y_lower(pt.x) is not None: 
+                    if abs(y_lower(pt.x) - pt.y) < 1e-8:
                         self.wallPtsLower.append(pt)  
-                except: continue
 
     def compute_local_mass_flow(self):
         

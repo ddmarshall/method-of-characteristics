@@ -25,7 +25,7 @@ class Generate_TMC_Initial_Data_Line:
         if endPoints is not None: 
             self.generate_2_point_idl(geom, tmc_res, nPts, endPoints)
 
-        if endPoints is None: 
+        else: 
             self.generate_initial_char_from_cowl_lip(geom, tmc_res, gasProps, nPts)
 
         self.p02_p01_inc_shock = tmc_res.p02_p01 #total pressure change across incident shock
@@ -62,30 +62,42 @@ class Generate_TMC_Initial_Data_Line:
         centerbody. Use for non-straight centerbody geometry. Only works if 
         point on centerbody is upstream of any non-straight geometry. 
         """
-        import scipy.integrate as scp_int
         import scipy.interpolate as scp_interp
 
         a0, gam = gasProps.a0, gasProps.gam
         x_i, y_i = geom.x_cowl_lip, geom.y_cowl(geom.x_cowl_lip)
         thet_i = math.atan(y_i/x_i)
         thet_f = tmc_res.cone_ang
-        y0 = [x_i, y_i]
         
-        def lambda_char(thet,y):
+        def lambda_char(thet):
             #gives slope of + & - mach lines through point x,y in the flow 
             u,v = tmc_res.f_veloc_uv(thet)
             a =  math.sqrt(a0**2 - 0.5*(gam-1)*(u**2 + v**2))
             dydx = (u*v + a*math.sqrt(u**2 + v**2 - a**2))/(u**2 - a**2)
-            return [1, dydx]
+            return dydx
+
+        #solving using Euler integration
+        #! get this working with a more efficient solver (Euler is quick and dirty fix)
+        x, y = [x_i],[y_i]
+        thet = thet_i
+        delta_x = 1e-4
+        while thet >= thet_f:
+            x_i, y_i = x[-1], y[-1]
+            dydx = lambda_char(thet)
+            x_n = x_i - delta_x
+            y_n = y_i + dydx*(-delta_x)
+            x.append(x_n), y.append(y_n)
+            thet = math.atan(y_n/x_n)
+        
 
         #numerically integrate until mach line meets the centerbody
-        sol = scp_int.solve_ivp(lambda_char, t_span=(thet_i, thet_f), y0=y0, dense_output=True)
+        #sol = scp_int.solve_ivp(lambda_char, t_span=(thet_i, thet_f), y0=y0, dense_output=True)
 
         #convert to x and y coordinates 
-        thet_interp = np.linspace(thet_i, thet_f, 5000)
-        y_interp = sol.sol(thet_interp)
-        x = y_interp[0]
-        y = y_interp[1]
+        #thet_interp = np.linspace(thet_i, thet_f, 5000)
+        #y_interp = sol.sol(thet_interp)
+        #x = y_interp[0]
+        #y = y_interp[1]
 
         #find total length of curve
         L = 0
@@ -107,8 +119,8 @@ class Generate_TMC_Initial_Data_Line:
         new_distances = np.linspace(0, L, nPts)
     
         # Evaluate the interpolated curve at the new distances
-        self.x = fx(new_distances)
-        self.y = fy(new_distances)
+        self.x = list(fx(new_distances))
+        self.y = list(fy(new_distances))
 
         self.u = []
         self.v = []
@@ -116,7 +128,7 @@ class Generate_TMC_Initial_Data_Line:
             U,V = tmc_res.f_veloc_uv(math.atan(self.y[i]/X))
             self.u.append(U)
             self.v.append(V)
-
+         
     def get_properties_on_idl(self, gasProps):
         #unpacking
         gam, a0, T0 = gasProps.gam, gasProps.a0, gasProps.T0
@@ -136,11 +148,15 @@ class Generate_2D_Initial_Data_Line:
     use if centerbody is a straight ramp from tip to idl. IDL not valid for 
     non-straight geometry upstream of cowl idl
     """
-    def __init__(self, inputs, shockObj, gasProps, nPts, endPoints): 
+    def __init__(self, inputs, shockObj, gasProps, nPts, endPoints=None): 
 
         T1 = inputs.T0/(1 + 0.5*(gasProps.gam-1)*inputs.M_inf**2)
         shockObj.T2 = shockObj.T2_T1*T1
-        self.generate_straight_cowl_lip_idl(inputs.geom, nPts, shockObj, endPoints, gasProps)
+        if endPoints is not None: 
+            self.generate_straight_cowl_lip_idl(inputs.geom, nPts, shockObj, endPoints, gasProps)
+        else: 
+            self.generate_initial_char_from_cowl_lip(inputs.geom, shockObj, gasProps, nPts)
+        
         self.p02_p01_inc_shock = shockObj.p02_p01
         self.get_properties_on_idl(gasProps) 
 
@@ -174,6 +190,28 @@ class Generate_2D_Initial_Data_Line:
         for _ in self.x:
             self.u.append(u2)
             self.v.append(v2) 
+    
+    def generate_initial_char_from_cowl_lip(self, geom, shockObj, gasProps, nPts): 
+        """
+        generates an initial positive characteristic from the cowl lip to the 
+        centerbody. Use for non-straight centerbody geometry. Only works if 
+        point on centerbody is upstream of any non-straight geometry. 
+        """        
+        
+        x_i, y_i = geom.x_cowl_lip, geom.y_cowl(geom.x_cowl_lip)
+        thet_f = shockObj.deflec
+
+        a = math.sqrt(gasProps.gam*gasProps.R*shockObj.T2)
+        V = shockObj.M2*a
+        u,v = V*math.cos(shockObj.deflec), V*math.sin(shockObj.deflec)
+        lam_pos = (u*v + a*math.sqrt(u**2 + v**2 - a**2))/(u**2 - a**2)
+        x = (lam_pos*x_i - y_i)/(lam_pos - math.tan(thet_f))
+        y = math.tan(thet_f)*x
+
+        self.x = list(np.linspace(x_i, x, nPts))
+        self.y = list(np.linspace(y_i, y, nPts))
+        self.u = list(np.multiply(u, np.ones(len(self.x))))
+        self.v = list(np.multiply(v, np.ones(len(self.y)))) 
 
     def get_properties_on_idl(self, gasProps):
         #unpacking

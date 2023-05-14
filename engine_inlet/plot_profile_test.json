@@ -11,7 +11,7 @@
         "0":{"type":            "geom"},
         "1":{"type":            "mesh",
             "annotate":         false,
-            "show mass flow":   false,
+            "show mass flow":   true,
             "wall flow scalar": "p/p_inf"}
     },
 
@@ -19,6 +19,6 @@
         "0":{"type":            "geom"},
         "1":{"type":            "scalar",
             "scalar":           "mach",
-            "limits":           [0.9, 2.5]}
+            "limits":           [1, 2.5]}
     }
 }

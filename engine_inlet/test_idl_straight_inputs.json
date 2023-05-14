@@ -10,12 +10,13 @@
     },
     "MOC Settings":{
         "Delta":                        1,
-        "initiation":                   "STRAIGHT IDL", 
-        "Unit Process Converge TOL":    0.00001,
-        "kill function":                "lambda mesh: mesh.numPointsGen >= 200000"
+        "Initiation":                   "STRAIGHT IDL",
+        "Compute Shocks":               true,
+        "Convergence Tolerance":        0.00001,
+        "Kill Function":                "lambda mesh: mesh.numPointsGen >= 200000"
     },
     "Initial Data":{
-        "endpoints":                    [[2,"cowl"], [2,"centerbody"]],
-        "num points":                   24
+        "Endpoints":                    [[2,"cowl"], [2,"centerbody"]],
+        "Num Points":                   24
     }
 }

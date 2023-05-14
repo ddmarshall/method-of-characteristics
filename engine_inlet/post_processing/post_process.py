@@ -62,7 +62,7 @@ class create_slice_plot:
                     self.plot_rampSol(axes, mainObj.rampSol, mainObj.inputs.geom)
 
                 self.plot_mesh(axes, mainObj.mesh, annotate=anno, mass_flow_plot=mFlow, wall_flow_plot=wall_flow)
-                if mainObj.inputs.init_method == "IDL":
+                if mainObj.inputs.init_method in ["STRAIGHT IDL", "MACH LINE"]:
                     self.plot_idl(axes, mainObj.idlObj, mainObj.inputs.delta)
 
 

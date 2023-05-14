@@ -17,6 +17,7 @@ class Main:
                     if ans in ["n,N"]: return
 
             self.run_solution() #run solution 
+            self.print_details() #prints important details to the console
 
             if saveFile is not None: 
                 self.store_solution(saveFile) #save file
@@ -60,15 +61,24 @@ class Main:
                 self.a0 = math.sqrt(gam*R*T0)
         inp.gasProps = gasProps(inp.gam, inp.R, inp.T0, inp.p0) #create gas properties object 
 
-        #RUNNING TAYLOR-MACCOLL or 2D RAMP SOLUTION: 
-        if inp.delta==1:
+        #RUNNING TAYLOR-MACCOLL or 2D WEDGE SOLUTION: 
+        if inp.delta==1: #cone
             import taylor_maccoll_cone.taylor_maccoll as tmc 
             self.coneSol = tmc.TaylorMaccoll_Cone(math.radians(inp.geom.cone_ang_deg), inp.M_inf, inp.gasProps)
-        elif inp.delta==0:
+            #check if incident shock crosses centerbody geometry:
+            if inp.geom.y_cowl(inp.geom.x_cowl_lip) > math.tan(self.coneSol.shock_ang)*inp.geom.x_cowl_lip:
+                #!assumes straight incident shock up to cowl lip  
+                raise ValueError("Incident Shock Crosses Cowl Geometry. Solution Cannot Proceed.")
+
+        elif inp.delta==0: #wedge
             import method_of_characteristics.oblique_shock as shock 
             deflec = math.radians(inp.geom.cone_ang_deg)
             self.rampSol = shock.Oblique_Shock(inp.M_inf, inp.gasProps.gam, inp.gasProps.R, deflec=deflec)
-
+            #check if incident shock crosses centerbody geometry:
+            if inp.geom.y_cowl(inp.geom.x_cowl_lip) > math.tan(self.rampSol.beta)*inp.geom.x_cowl_lip:
+                #!assumes straight incident shock up to cowl lip  
+                raise ValueError("Incident Shock Crosses Cowl Geometry. Solution Cannot Proceed.")
+            
         #GENERATING INITIAL DATA LINE
         if inp.init_method == "STRAIGHT IDL":
             if inp.delta == 1: #axisymmetric case 
@@ -80,14 +90,16 @@ class Main:
             if inp.delta==1: #axisymmetric
                 self.idlObj = idl.Generate_TMC_Initial_Data_Line(inp.geom, self.coneSol, inp.gasProps, inp.nIdlPts)
             elif inp.delta==0: #2D case 
-                self.idlObj = idl.Generate_2D_Initial_Data_Line(inp.geom, self.coneSol, inp.gasProps, inp.nIdlPts)
+                self.idlObj = idl.Generate_2D_Initial_Data_Line(inp, self.rampSol, inp.gasProps, inp.nIdlPts)
         
         else: 
             raise ValueError(f"Invalid Mesh Initialization Method Specified: {inp.init_method}")
         
-        #GENERATING MESH        
-        self.mesh = moc.Mesh(inp, eval(inp.kill), idl=self.idlObj, explicit_shocks=True) #shocked mesh 
-        #self.mesh = moc.Mesh(inp, eval(inp.kill), idl=self.idlObj) #shockless mesh 
+        #GENERATING MESH 
+        if inp.compute_shocks:        
+            self.mesh = moc.Mesh(inp, eval(inp.kill), idl=self.idlObj, explicit_shocks=True) #shocked mesh
+        else:  
+            self.mesh = moc.Mesh(inp, eval(inp.kill), idl=self.idlObj) #shockless mesh 
 
     def store_solution(self, saveFile):
         #calling this function will overwrite existing files
@@ -133,7 +145,12 @@ class Main:
 
     def print_details(self):
         """
-        prints all relevant solution information to console
+        prints relevant solution information to console
+        to be called after run_solution() is called 
+        run time
+        total pressure loss
+        number of mesh points
+        taylor maccoll solution
         TODO
         """
         pass 
@@ -143,8 +160,8 @@ if __name__ == "__main__":
 
     import example_geometry as geom
     inlet = geom.Geom()
-    plotfile = "plot_profile_mesh_only.json"
-    #plotfile = "plot_profile_test.json"
+    #plotfile = "plot_profile_mesh_only.json"
+    plotfile = "plot_profile_test.json"
     #inputFile = 'test_idl_straight_inputs.json'
     inputFile = 'test_mach_line_idl_straight_inputs.json'
     sol = Main(inputFile=inputFile, geomObj=inlet, plotFile=plotfile) #run solution then plot results
