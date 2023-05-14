@@ -149,25 +149,14 @@ def wall_shock_point(pt_w_ups, y_x, dydx, pt1, pcTOL, delta, gasProps, shockDir)
             pt4_ups = point(x=x4, y=y4, u=u4_ups, v=v4_ups)
             return [pt4_dwn, pt4_ups, def_4_upd, beta4, ptw_dwn, pt3p, shockObj, shockObj_w]
 
-    try: 
-        #try to get a solution using iterative method 
-        def_4 = def_w #initial guess deflection 
-        defPercChange = pcTOL
-
-        while abs(defPercChange) >= pcTOL:
-            def_4_old = def_4
-            def_4 = solve_shock(def_4)
-            defPercChange = (def_4 - def_4_old)/def_4_old
-
-    except:
-        #if error encountered with iterative method try root finder 
-        def errFunc(def_4):
-            try: 
-                def_4_upd = solve_shock(def_4)
-                return def_4_upd - def_4
-            except: return None
-
-        def_4 = scipy.optimize.fsolve(errFunc, x0=def_w)[0]
+     
+     #try to get a solution using iterative method 
+    def_4 = def_w #initial guess deflection 
+    defPercChange = pcTOL
+    while abs(defPercChange) >= pcTOL:
+        def_4_old = def_4
+        def_4 = solve_shock(def_4)
+        defPercChange = (def_4 - def_4_old)/def_4_old
 
     return solve_shock(def_4, ret="sol")
 

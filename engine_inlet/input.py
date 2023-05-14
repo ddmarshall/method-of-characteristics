@@ -8,7 +8,7 @@ class inputObj:
         #check file name extension for filetype
         fileName = inpFile.split("/")[-1]
         ext = fileName.split(".")[-1]
-
+        print(f"loading input file: {inpFile}")
         if ext == "json":
             self.import_json(inpFile) #if json is supplied
         elif ext == "toml":
@@ -17,6 +17,7 @@ class inputObj:
             raise NameError(f'Invalid Filetype: .{ext}')
 
         self.import_geom(geomObj) #store geometry object as attribute
+        self.print_inputs()
 
     def import_json(self,file):
 
@@ -55,3 +56,16 @@ class inputObj:
         TODO write this
         """
         self.geom = geomObj
+
+    def print_inputs(self):
+        """
+        prints important inputs to console
+        """
+        print("\nINPUTS:")
+        print(f"\tMach Number: {self.M_inf}")
+        print(f"\tSpecific Heat Ratio: {self.gam}")
+        if self.delta == 0: 
+            print("\tGeometry: 2-Dimensional")
+        elif self.delta == 1:
+            print("\tGeometry: Axisymmetric")
+        print(f"\tMesh Initiation: {self.init_method}")

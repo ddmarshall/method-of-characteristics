@@ -92,10 +92,8 @@ class TaylorMaccoll_Cone:
             #shock_ang_est = 1*(cone_ang + 0.5*alpha_inf) #initial guess shock angle 
             shock_ang_est = 1.1*alpha_inf
 
-            print("\nComputing Taylor Maccoll Cone Solution...")
             fsolve_output = scipy.optimize.fsolve(TMC_cone_guess, x0=shock_ang_est, args=(cone_ang, M_inf, gam, "error"), full_output=True)
             shock_ang = float(fsolve_output[0])    
-            print(f"\nfound cone shock angle: {math.degrees(shock_ang)} deg")      
             
             #run function with correct shock angle:
             solution = TMC_cone_guess(shock_ang, cone_ang, M_inf, gam, "solution")

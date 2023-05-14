@@ -5,6 +5,7 @@ Author: Shay Takei
 class Main:
     
     def __init__(self, inputFile=None, geomObj=None, saveFile=None, plotFile=None):
+        print("="*160)
         ans = None
        
         if inputFile is not None and geomObj is not None: 
@@ -29,7 +30,6 @@ class Main:
             self.plot_solution(plotFile)
 
     def load_inputs(self, inpFile, geomObj):
-        print(f"\nloading input file: {inpFile}")
         import input as inp
         import math 
         inpObj = inp.inputObj(inpFile, geomObj)
@@ -49,11 +49,13 @@ class Main:
         self.inputs.freeStream = freeStream(inpObj)
 
     def run_solution(self):
-        print("\nrunning solution...\n")
+        print("\nrunning solution...")
         import method_of_characteristics.moc_mesh_engine as moc
         import initial_data_line.idl as idl
         import math
+        import time
 
+        t0 = time.perf_counter()
         inp = self.inputs
         class gasProps:
             def __init__(self, gam, R, T0, p0): 
@@ -100,6 +102,9 @@ class Main:
             self.mesh = moc.Mesh(inp, eval(inp.kill), idl=self.idlObj, explicit_shocks=True) #shocked mesh
         else:  
             self.mesh = moc.Mesh(inp, eval(inp.kill), idl=self.idlObj) #shockless mesh 
+        
+        t_run = time.perf_counter()
+        self.solution_runtime = t_run - t0
 
     def store_solution(self, saveFile):
         #calling this function will overwrite existing files
@@ -111,7 +116,7 @@ class Main:
         file.close()
 
     def load_solution(self, saveFile):
-        print(f"\nloading solution file: {saveFile}")
+        print(f"loading solution file: {saveFile}")
         import pickle
         file = open(saveFile, 'rb')
         try: 
@@ -131,6 +136,7 @@ class Main:
         import post_processing.post_process as post_process 
         import json 
 
+        print("\ngenerating figures...\n")
         plt.style.use('dark_background') #!temporary location
         plotDict = json.load(open(plotFile, 'r'))
         plotSettings = plotDict["default plot settings"]
@@ -153,7 +159,11 @@ class Main:
         taylor maccoll solution
         TODO
         """
-        pass 
+        print("\nRESULTS:")
+        print(f"\tRun Time: {round(self.solution_runtime,3)} seconds")
+        print(f"\tNumber of Mesh Points: {len(self.mesh.meshPts)}")   
+        print(f"\tNumber of Regions: {len(self.mesh.tot_press_by_region)}") 
+        print(f"\tTotal Pressure Ratio By Region: {[round(p/self.inputs.p0, 4) for p in self.mesh.tot_press_by_region]}")  
 
 
 if __name__ == "__main__":
