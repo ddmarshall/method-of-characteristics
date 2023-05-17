@@ -1,10 +1,10 @@
+import json
 """
 This class generates a universal input object from a set of user input files
 """
 class inputObj: 
     
-    def __init__(self, inpFile, geomObj):
-        
+    def __init__(self, inpFile, geomFile):
         #check file name extension for filetype
         fileName = inpFile.split("/")[-1]
         ext = fileName.split(".")[-1]
@@ -16,12 +16,11 @@ class inputObj:
         else: 
             raise NameError(f'Invalid Filetype: .{ext}')
 
-        self.import_geom(geomObj) #store geometry object as attribute
+        self.import_geom(geomFile) #store geometry object as attribute
         self.print_inputs()
 
     def import_json(self,file):
 
-        import json
         json_data = json.load(open(file))
         json_translator = { #converts dictionary keys to object attributes 
             #Gas Properties
@@ -32,7 +31,7 @@ class inputObj:
             #Flow Properties
             "Freestream Mach":              "M_inf",
             #MOC Settings
-            "Delta":                        "delta",
+            #"Delta":                        "delta",
             "Initiation":                   "init_method",
             "Compute Shocks":               "compute_shocks",
             "Convergence Tolerance":        "pcTOL",
@@ -50,12 +49,20 @@ class inputObj:
         #TODO write this part if using .toml files for inputs
         import toml 
 
-    def import_geom(self, geomObj):
+    def import_geom(self, geomFile):
+        import geometry.geom_pre_processor as gproc
         """
         Accesses geometry file and stores in input object
         TODO write this
         """
+        geomDict = json.load(open(geomFile))
+        geomObj = gproc.Inlet_Geom(geomDict)
         self.geom = geomObj
+        self.geom.x_cowl_lip = geomObj.cowl_bounds[0]
+        if self.geom.geom_type in ["2D", "2d"]:
+            self.delta = 0
+        elif self.geom.geom_type in ["Axi", "AXI", "axi"]:
+            self.delta = 1
 
     def print_inputs(self):
         """

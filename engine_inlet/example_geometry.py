@@ -5,10 +5,10 @@ class Geom:
 
     def __init__(self): 
         self.type = "inlet"
-        self.cone_ang_deg = 12.5
+        self.init_turn_ang_deg = 12.5
         self.centerbody_bounds = (0, 5)
         self.cowl_bounds = (2, 5)
-        self.x_cowl_lip = 2
+        #self.x_cowl_lip = 2
         
         def y_centerbody(x):
             A,B,C,D = 0.12523609835933303, -0.18091239851849594, -0.012534962196626642, -0.10011920449716483

@@ -304,7 +304,8 @@ class Mesh:
         if self.check_for_passed_shock_point(charList) == False:
             print("Shock Point Not Within Mesh")
             return  
-        self.compute_wall_to_wall_shock(charDir, self.shockPts_frontside[-1])  
+        self.compute_wall_to_wall_shock(charDir, self.shockPts_frontside[-1])
+        return   
         if self.impending_shock_reflec:
             
             while True: 

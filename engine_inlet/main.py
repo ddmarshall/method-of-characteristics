@@ -3,13 +3,15 @@
 Author: Shay Takei 
 """
 class Main:
-    
-    def __init__(self, inputFile=None, geomObj=None, saveFile=None, plotFile=None):
+    """
+    This class controls all modules of AIMCAT.
+    """
+    def __init__(self, inputFile=None, geomFile=None, saveFile=None, plotFile=None):
         print("="*160)
         ans = None
        
-        if inputFile is not None and geomObj is not None: 
-            self.load_inputs(inputFile, geomObj) #generate input object 
+        if inputFile is not None and geomFile is not None: 
+            self.load_inputs(inputFile, geomFile) #generate input object 
 
             if saveFile is not None:#if save file provided
                 from os import path 
@@ -26,13 +28,13 @@ class Main:
         if saveFile is not None and inputFile is None: #if only a save file is provided, load it
             self.load_solution(saveFile)
 
-        if plotFile is not None: 
+        if plotFile is not None: #if plotfile is provided, run it 
             self.plot_solution(plotFile)
 
-    def load_inputs(self, inpFile, geomObj):
+    def load_inputs(self, inpFile, geomFile):
         import input as inp
         import math 
-        inpObj = inp.inputObj(inpFile, geomObj)
+        inpObj = inp.inputObj(inpFile, geomFile)
         self.inputs = inpObj
 
         #Kind of a dirty solution, but adds freestream object for plotting purposes
@@ -55,7 +57,7 @@ class Main:
         import math
         import time
 
-        t0 = time.perf_counter()
+        t0 = time.perf_counter() #intial time
         inp = self.inputs
         class gasProps:
             def __init__(self, gam, R, T0, p0): 
@@ -66,7 +68,7 @@ class Main:
         #RUNNING TAYLOR-MACCOLL or 2D WEDGE SOLUTION: 
         if inp.delta==1: #cone
             import taylor_maccoll_cone.taylor_maccoll as tmc 
-            self.coneSol = tmc.TaylorMaccoll_Cone(math.radians(inp.geom.cone_ang_deg), inp.M_inf, inp.gasProps)
+            self.coneSol = tmc.TaylorMaccoll_Cone(math.radians(inp.geom.init_turn_ang_deg), inp.M_inf, inp.gasProps)
             #check if incident shock crosses centerbody geometry:
             if inp.geom.y_cowl(inp.geom.x_cowl_lip) > math.tan(self.coneSol.shock_ang)*inp.geom.x_cowl_lip:
                 #!assumes straight incident shock up to cowl lip  
@@ -74,7 +76,7 @@ class Main:
 
         elif inp.delta==0: #wedge
             import method_of_characteristics.oblique_shock as shock 
-            deflec = math.radians(inp.geom.cone_ang_deg)
+            deflec = math.radians(inp.geom.init_turn_ang_deg)
             self.rampSol = shock.Oblique_Shock(inp.M_inf, inp.gasProps.gam, inp.gasProps.R, deflec=deflec)
             #check if incident shock crosses centerbody geometry:
             if inp.geom.y_cowl(inp.geom.x_cowl_lip) > math.tan(self.rampSol.beta)*inp.geom.x_cowl_lip:
@@ -103,8 +105,7 @@ class Main:
         else:  
             self.mesh = moc.Mesh(inp, eval(inp.kill), idl=self.idlObj) #shockless mesh 
         
-        t_run = time.perf_counter()
-        self.solution_runtime = t_run - t0
+        self.solution_runtime = time.perf_counter()-t0 #storing runtime
 
     def store_solution(self, saveFile):
         #calling this function will overwrite existing files
@@ -169,9 +170,10 @@ class Main:
 if __name__ == "__main__":
 
     import example_geometry as geom
-    inlet = geom.Geom()
+    #inletFile = "geometry/single_cone_12_5deg.json"
+    inletFile = "geometry/2D_isentropic_ramp_5deg.json"
     #plotfile = "plot_profile_mesh_only.json"
     plotfile = "plot_profile_test.json"
     #inputFile = 'test_idl_straight_inputs.json'
     inputFile = 'test_mach_line_idl_straight_inputs.json'
-    sol = Main(inputFile=inputFile, geomObj=inlet, plotFile=plotfile) #run solution then plot results
+    sol = Main(inputFile=inputFile, geomFile=inletFile, plotFile=plotfile, saveFile=None) #run solution then plot results
