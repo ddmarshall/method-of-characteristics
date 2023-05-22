@@ -131,18 +131,26 @@ class Generate_TMC_Initial_Data_Line:
          
     def get_properties_on_idl(self, gasProps):
         #unpacking
-        gam, a0, T0 = gasProps.gam, gasProps.a0, gasProps.T0
+        gam, a0, T0, R = gasProps.gam, gasProps.a0, gasProps.T0, gasProps.R
 
         self.p0 = gasProps.p0*self.p02_p01_inc_shock
-        self.T, self.p, self.mach = [],[],[]
+        self.mach = []
+        self.T, self.p, self.rho = [],[],[]
+        self.T_T0, self.p_p0, self.rho_rho0 = [],[],[]
         for i,_ in enumerate(self.x):
             V = math.sqrt(self.u[i]**2 + self.v[i]**2)
             a = math.sqrt(a0**2 - 0.5*(gam-1)*V**2)
-            self.mach.append(V/a)
+            mach = V/a
+            self.mach.append(mach)
             self.T.append(T0/(1+0.5*(gam-1)*(V/a)**2))
+            self.T_T0.append((1 + 0.5*(gam-1)*mach**2)**-1)
             self.p.append(self.p0*(T0/self.T[i])**(gam/(gam-1)))
+            self.p_p0.append(((1 + 0.5*(gam-1)*mach**2)**(gam/(gam-1)))**-1)
+            self.rho.append(self.p[-1]/(R*self.T[-1]))
+            self.rho_rho0.append(((1 + 0.5*(gam-1)*mach**2)**(1/(gam-1)))**-1)
+            
 
-class Generate_2D_Initial_Data_Line: 
+class Generate_2D_Initial_Data_Line(Generate_TMC_Initial_Data_Line): 
     """
     generates an initial data line using 2D oblique shock relations. Only 
     use if centerbody is a straight ramp from tip to idl. IDL not valid for 
@@ -213,15 +221,4 @@ class Generate_2D_Initial_Data_Line:
         self.u = list(np.multiply(u, np.ones(len(self.x))))
         self.v = list(np.multiply(v, np.ones(len(self.y)))) 
 
-    def get_properties_on_idl(self, gasProps):
-        #unpacking
-        gam, a0, T0 = gasProps.gam, gasProps.a0, gasProps.T0
-
-        self.p0 = gasProps.p0*self.p02_p01_inc_shock
-        self.T, self.p, self.mach = [],[],[]
-        for i,_ in enumerate(self.x):
-            V = math.sqrt(self.u[i]**2 + self.v[i]**2)
-            a = math.sqrt(a0**2 - 0.5*(gam-1)*V**2)
-            self.mach.append(V/a)
-            self.T.append(T0/(1+0.5*(gam-1)*(V/a)**2))
-            self.p.append(self.p0*(T0/self.T[i])**(gam/(gam-1)))
+            

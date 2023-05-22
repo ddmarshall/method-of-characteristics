@@ -1,0 +1,31 @@
+{
+    "global plot settings":{
+        "style": "dark_background",
+        "figure size": [14,9],
+        "xlim": [0, 4],
+        "ylim": [0, 1.1]
+    },
+    "CHARACTERISTIC MESH":{
+        "type": "mesh",
+        "annotate": false,
+        "show mass flow": true
+    },
+    "MACH NUMBER":{
+        "type": "scalar",
+        "parameter": "mach",
+        "show surface plots": true,
+        "colorbar limits": [1, 2.5],
+        "colorbar label": "MACH #"
+    },
+    "PRESSURE RATIO":{
+        "type": "scalar",
+        "parameter": "pressure ratio",
+        "show surface plots": true
+    },
+    "TEMPERATURE RATIO":{
+        "type": "scalar",
+        "parameter": "temperature ratio",
+        "show surface plots": false
+    }
+
+}

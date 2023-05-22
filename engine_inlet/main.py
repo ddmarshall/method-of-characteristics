@@ -43,7 +43,11 @@ class Main:
                 M, p0, T0, gam, R = inputObj.M_inf, inputObj.p0, inputObj.T0, inputObj.gam, inputObj.R
                 frst.mach = M
                 frst.p = p0*(1 + 0.5*(gam - 1)*M**2)**(-gam/(gam-1))
+                frst.p_p0 = frst.p/p0
                 frst.T = T0/(1 + 0.5*(gam - 1)*M**2)
+                frst.T_T0 = frst.T/T0
+                frst.rho = frst.p/(R*frst.T)
+                frst.rho_rho0 = frst.rho/(p0/(R*T0))
                 a = math.sqrt(gam*R*frst.T)
                 frst.u = M*a
                 frst.v = 0 #!change if want angled flow for 2d case  
@@ -138,17 +142,19 @@ class Main:
         import json 
 
         print("\ngenerating figures...\n")
-        plt.style.use('dark_background') #!temporary location
         plotDict = json.load(open(plotFile, 'r'))
-        plotSettings = plotDict["default plot settings"]
-        del plotDict["default plot settings"]
+        plotSettings = plotDict["global plot settings"]
+        del plotDict["global plot settings"]
         
         for key in plotDict.keys():
             subDict = plotDict[key] 
+            subDict["figure name"] = key
             #hand off subDict to the post processing module
-            post_process.create_slice_plot(subDict, self, plotSettings)
+            #post_process.create_slice_plot(subDict, self, plotSettings)
+            post_process.create_figure(subDict, self, plotSettings)
 
         plt.show() 
+
 
     def print_details(self):
         """
@@ -166,14 +172,13 @@ class Main:
         print(f"\tNumber of Regions: {len(self.mesh.tot_press_by_region)}") 
         print(f"\tTotal Pressure Ratio By Region: {[round(p/self.inputs.p0, 4) for p in self.mesh.tot_press_by_region]}")  
 
-
 if __name__ == "__main__":
 
-    import example_geometry as geom
-    #inletFile = "geometry/single_cone_12_5deg.json"
-    inletFile = "geometry/2D_isentropic_ramp_5deg.json"
+    inletFile = "geometry/single_cone_12_5deg.json"
+    #inletFile = "geometry/2D_isentropic_ramp_5deg.json"
     #plotfile = "plot_profile_mesh_only.json"
-    plotfile = "plot_profile_test.json"
+    #plotfile = "plot_profile_test.json"
+    plotfile = "plot_settings_test.json"
     #inputFile = 'test_idl_straight_inputs.json'
     inputFile = 'test_mach_line_idl_straight_inputs.json'
     sol = Main(inputFile=inputFile, geomFile=inletFile, plotFile=plotfile, saveFile=None) #run solution then plot results

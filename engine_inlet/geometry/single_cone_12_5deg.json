@@ -1,7 +1,7 @@
 {
     "name":                             "single_cone_12.5_degree_mixed_inlet",
     "initial deflection angle (deg)":   12.5,
-    "2D/Axi":                           "Axi",
+    "2D/Axi":                           "2D",
     "cowl functions":{
         "0":{
             "x bounds":         [2, 4.1],

@@ -9,7 +9,7 @@ TODO: for shock mesh, make function to perform inverse wall operations in compre
 
 class Mesh:
 
-    def __init__(self, inputObj, kill_func, idl, taylor_maccoll_solution=None, explicit_shocks=False):
+    def __init__(self, inputObj, kill_func, idl, explicit_shocks=False):
         self.C_pos, self.C_neg = [],[] #containers for characteristics lines
         self.triangle_obj = [] #container for point line segments
         self.shock_upst_segments_obj = [] #container for shock line segments
@@ -305,7 +305,6 @@ class Mesh:
             print("Shock Point Not Within Mesh")
             return  
         self.compute_wall_to_wall_shock(charDir, self.shockPts_frontside[-1])
-        return   
         if self.impending_shock_reflec:
             
             while True: 
@@ -686,8 +685,6 @@ class Mesh:
     def compute_wall_to_wall_shock(self, shockDir, init_shock_point):
         """
         computes a shock wave from one wall to another, deleting and appending mesh points at it moves along
-        !Following function only works for negative shock direction 
-        TODO need a way to handle shock intersecting same family characteristic (upstream of shock)
         """
         if shockDir == "neg":
             C_on, C_off = self.C_neg, self.C_pos
@@ -1264,10 +1261,11 @@ class Mesh_Point:
         a = math.sqrt(a0**2 - 0.5*(gam-1)*V**2)
         self.mach = V/a #mach number 
         self.T = T0/(1+0.5*(gam-1)*(V/a)**2) #static temperature
+        self.T_T0 = (1 + 0.5*(gam-1)*self.mach**2)**-1
         self.p = p0/((1 + 0.5*(gam-1)*(V/a)**2)**(gam/(gam-1))) #static pressure 
-
+        self.p_p0 = ((1 + 0.5*(gam-1)*self.mach**2)**(gam/(gam-1)))**-1
         self.rho = self.p/(mesh.gasProps.R*self.T) #ideal gas law
-
+        self.rho_rho0 = ((1 + 0.5*(gam-1)*self.mach**2)**(1/(gam-1)))**-1
 
 def linear_interpolate(x, z1, z3, x1, x3):
     """

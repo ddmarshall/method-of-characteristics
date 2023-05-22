@@ -278,6 +278,7 @@ class Inlet_Geom:
             self.dydx_centerbody = dydx_func_combined
             self.centerbody_bounds = [min(endpoints_flatten), max(endpoints_flatten)]
 
+"""
 if __name__ == "__main__":
     import json 
     #inputDict = json.load(open("geometry/2D_isentropic_ramp_5deg.json"))
@@ -296,3 +297,4 @@ if __name__ == "__main__":
     
     plt.xlim([0,4.4]), plt.ylim([0,1.2])
     plt.show() 
+"""

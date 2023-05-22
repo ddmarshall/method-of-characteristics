@@ -6,7 +6,7 @@
         "Ideal Gas Constant (J/kgK)":   287.05
     },
     "Flow Properties":{
-        "Freestream Mach":              2.7
+        "Freestream Mach":              2.5
     },
     "MOC Settings":{
         "Initiation":                   "MACH LINE", 
@@ -15,6 +15,6 @@
         "Kill Function":                "lambda mesh: mesh.numPointsGen >= 200000"
     },
     "Initial Data":{
-        "Num Points":                   40
+        "Num Points":                   10
     }                       
 }
