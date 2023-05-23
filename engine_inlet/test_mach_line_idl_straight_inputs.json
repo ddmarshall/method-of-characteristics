@@ -15,6 +15,6 @@
         "Kill Function":                "lambda mesh: mesh.numPointsGen >= 200000"
     },
     "Initial Data":{
-        "Num Points":                   10
+        "Num Points":                   30
     }                       
 }

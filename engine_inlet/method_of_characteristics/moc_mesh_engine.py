@@ -35,6 +35,7 @@ class Mesh:
         self.idl[0].isWall = True 
         #if hasattr(idl, 'cbPoint'):
         self.idl[-1].isWall = True  
+        self.cowl_point =  self.idl[0]
 
         charDir = "neg" #!hardcoded 
         if self.init_method == "STRAIGHT IDL":

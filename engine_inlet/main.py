@@ -6,27 +6,14 @@ class Main:
     """
     This class controls all modules of AIMCAT.
     """
-    def __init__(self, inputFile=None, geomFile=None, saveFile=None, plotFile=None):
+    def __init__(self, inputFile=None, geomFile=None, plotFile=None):
         print("="*160)
         ans = None
        
         if inputFile is not None and geomFile is not None: 
             self.load_inputs(inputFile, geomFile) #generate input object 
-
-            if saveFile is not None:#if save file provided
-                from os import path 
-                if path.exists(saveFile): #check if save file is going to overwritten and warn user 
-                    ans = input(f"\nWarning!: {saveFile} already exists. Proceed anyways? [y/n]: ")
-                    if ans in ["n,N"]: return
-
             self.run_solution() #run solution 
             self.print_details() #prints important details to the console
-
-            if saveFile is not None: 
-                self.store_solution(saveFile) #save file
-
-        if saveFile is not None and inputFile is None: #if only a save file is provided, load it
-            self.load_solution(saveFile)
 
         if plotFile is not None: #if plotfile is provided, run it 
             self.plot_solution(plotFile)
@@ -90,18 +77,23 @@ class Main:
         #GENERATING INITIAL DATA LINE
         if inp.init_method == "STRAIGHT IDL":
             if inp.delta == 1: #axisymmetric case 
-                self.idlObj = idl.Generate_TMC_Initial_Data_Line(inp.geom, self.coneSol, inp.gasProps, inp.nIdlPts, inp.idlEndPts)
+                self.idlObj = idl.Generate_TMC_Initial_Data_Line(inp.geom, self.coneSol, inp.gasProps, nPts=inp.nIdlPts, endpoints=inp.idlEndPts)
             elif inp.delta == 0: #2D case
-                self.idlObj = idl.Generate_2D_Initial_Data_Line(inp, self.rampSol, inp.gasProps, inp.nIdlPts, inp.idlEndPts)
+                self.idlObj = idl.Generate_2D_Initial_Data_Line(inp, self.rampSol, inp.gasProps, nPts=inp.nIdlPts, endpoints=inp.idlEndPts)
 
         elif inp.init_method == "MACH LINE":
             if inp.delta==1: #axisymmetric
-                self.idlObj = idl.Generate_TMC_Initial_Data_Line(inp.geom, self.coneSol, inp.gasProps, inp.nIdlPts)
+                self.idlObj = idl.Generate_TMC_Initial_Data_Line(inp.geom, self.coneSol, inp.gasProps, nPts=inp.nIdlPts)
             elif inp.delta==0: #2D case 
-                self.idlObj = idl.Generate_2D_Initial_Data_Line(inp, self.rampSol, inp.gasProps, inp.nIdlPts)
-        
+                self.idlObj = idl.Generate_2D_Initial_Data_Line(inp, self.rampSol, inp.gasProps, nPts=inp.nIdlPts)
         else: 
             raise ValueError(f"Invalid Mesh Initialization Method Specified: {inp.init_method}")
+        
+        #GENERATING POINTS UPSTREAM OF IDL + CHAR 
+        if inp.delta == 1:
+            self.upstream_data = idl.Generate_TMC_Initial_Data_Line(inp.geom, self.coneSol, inp.gasProps, upstream_idl=True)
+        elif inp.delta == 0: 
+            self.upstream_data = idl.Generate_2D_Initial_Data_Line(inp, self.rampSol, inp.gasProps,upstream_idl=True)
         
         #GENERATING MESH 
         if inp.compute_shocks:        
@@ -110,28 +102,6 @@ class Main:
             self.mesh = moc.Mesh(inp, eval(inp.kill), idl=self.idlObj) #shockless mesh 
         
         self.solution_runtime = time.perf_counter()-t0 #storing runtime
-
-    def store_solution(self, saveFile):
-        #calling this function will overwrite existing files
-        #! Currently broken (pickling doesn't work will stored functions I think...)
-        print(f"\npickling solution results to {saveFile}")
-        import pickle 
-        file = open(saveFile, 'ab')
-        pickle.dump(self.mesh, file)
-        file.close()
-
-    def load_solution(self, saveFile):
-        print(f"loading solution file: {saveFile}")
-        import pickle
-        file = open(saveFile, 'rb')
-        try: 
-            res = pickle.load(file)
-            self.mesh = res.mesh 
-            self.idlObj = res.idlObj
-            self.inputs = res.inputs
-            self.coneSol = res.coneSol
-        except: pass 
-        file.close()
 
     def plot_solution(self, plotFile):
         """
@@ -181,4 +151,4 @@ if __name__ == "__main__":
     plotfile = "plot_settings_test.json"
     #inputFile = 'test_idl_straight_inputs.json'
     inputFile = 'test_mach_line_idl_straight_inputs.json'
-    sol = Main(inputFile=inputFile, geomFile=inletFile, plotFile=plotfile, saveFile=None) #run solution then plot results
+    sol = Main(inputFile=inputFile, geomFile=inletFile, plotFile=plotfile) #run solution then plot results

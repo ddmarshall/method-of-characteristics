@@ -483,27 +483,45 @@ class create_figure:
         """
         
         """
-        xList, yList, scalarList = [], [], []
         if hasattr(self, "cbar_lims"):
             lims = self.cbar_lims
-        else: lims = [None,None]
+        else:
+            if self.scalar in ["p_p0", "T_T0", "rho_rho0"]:
+                lims = [0,1]
+            elif self.scalar == "mach":
+                lims = [1, mainObj.inputs.M_inf]
 
-        if hasattr(mainObj, "idlObj"): 
-            #plot tmc region upto idl 
-            idl = mainObj.idlObj
-            x_init,y_init = [],[]
-            r = 0.00001
-            for i,x in enumerate(idl.x):
-                thet = math.atan(idl.y[i]/x)
-                x_init.append(r*math.cos(thet))
-                y_init.append(r*math.sin(thet))
+        #plot region past incident shock but before idl region 
+        data_ups = mainObj.upstream_data
+        x_reg, y_reg, scal_reg = [],[],[]
+        r = 1e-5
+        for i,x in enumerate(data_ups.x):
+            thet = math.atan(data_ups.y[i]/x)
+            x_reg.append(r*math.cos(thet))
+            y_reg.append(r*math.sin(thet))
+            scal_reg.append(getattr(data_ups, self.scalar)[i])
+        x_reg += data_ups.x
+        y_reg += data_ups.y
+        scal_reg += getattr(data_ups, self.scalar)
+        tri_reg = matplotlib.tri.Triangulation(x_reg, y_reg)
+        ax.tricontourf(tri_reg, scal_reg, 100, cmap='jet', vmin=lims[0],vmax=lims[1])
 
-            xList += idl.x + x_init
-            yList += idl.y + y_init
-            scalarList = scalarList + getattr(idl, self.scalar) + getattr(idl, self.scalar) #! broken line
-
-
-        #sort mesh points by regions
+        #plot region from tip of cone to initial data line 
+        idl = mainObj.idlObj
+        x_reg, y_reg, scal_reg = [],[],[]
+        for i,x in enumerate(idl.x):
+            thet = math.atan(idl.y[i]/x)
+            x_reg.append(r*math.cos(thet))
+            y_reg.append(r*math.sin(thet))
+            scal_reg.append(getattr(idl, self.scalar)[i])
+        x_reg += idl.x 
+        y_reg += idl.y
+        scal_reg += getattr(idl, self.scalar)
+        tri_reg = matplotlib.tri.Triangulation(x_reg, y_reg)
+        ax.tricontourf(tri_reg, scal_reg, 100, cmap='jet', vmin=lims[0],vmax=lims[1])
+            
+        #plot characteristic mesh region
+        xList, yList, scalarList = [], [], []
         mesh_point_regions = [[]]
         for pt in mainObj.mesh.meshPts: 
             reg_ind = pt.reg
@@ -519,33 +537,39 @@ class create_figure:
                 scalarList = scalarList + [getattr(pt, self.scalar)]
 
             mocReg = matplotlib.tri.Triangulation(xList,yList) 
-            ax.tricontourf(mocReg, scalarList, 100, cmap='jet', vmin=lims[0], vmax=lims[1])
+            ax.tricontourf(mocReg, scalarList, 100, cmap='jet', vmin=lims[0], \
+                           vmax=lims[1])
             scalarList = [] 
             xList = []
             yList = []
 
-        
         #plot far field triangle
         xpts = [0, self.shock_endpoint[0], 0]
         ypts = [0, self.shock_endpoint[-1], self.shock_endpoint[-1]]
         z = getattr(mainObj.inputs.freeStream, self.scalar)
         scalarList = [z,z,z]
         freestrReg = matplotlib.tri.Triangulation(xpts, ypts)
-        ax.tricontourf(freestrReg, scalarList, 100, cmap='jet', vmin=lims[0], vmax=lims[1])
+        ax.tricontourf(freestrReg, scalarList, 100, cmap='jet', vmin=lims[0], \
+                       vmax=lims[1])
 
-        map_ = matplotlib.cm.ScalarMappable(norm=matplotlib.colors.Normalize(vmin=lims[0], vmax=lims[1]), cmap='jet')
+        map_ = matplotlib.cm.ScalarMappable(norm=matplotlib.colors.Normalize(\
+            vmin=lims[0], vmax=lims[1]), cmap='jet')
         
         if hasattr(self, "cbar_label"): barLabel = self.cbar_label
         else: barLabel = self.scalar
-        plt.colorbar(mappable=map_, orientation='horizontal', shrink=0.5, label=barLabel)
+        plt.colorbar(mappable=map_, orientation='horizontal', shrink=0.5, \
+                     label=barLabel)
 
     def plot_surface_properties(self, ax, mesh):
         """
         
         """
-        ax.plot([pt.x for pt in mesh.wallPtsUpper],[getattr(pt,self.scalar) for pt in mesh.wallPtsUpper], label="cowl")
-        ax.plot([pt.x for pt in mesh.wallPtsLower],[getattr(pt,self.scalar) for pt in mesh.wallPtsLower], label="centerbody")
-        ax.set_xlabel('x'), ax.set_ylabel(f'{self.scalar}'), ax.grid(linewidth=0.3, color='grey')
+        ax.plot([pt.x for pt in mesh.wallPtsUpper],[getattr(pt,self.scalar) \
+                                    for pt in mesh.wallPtsUpper], label="cowl")
+        ax.plot([pt.x for pt in mesh.wallPtsLower],[getattr(pt,self.scalar) \
+                                    for pt in mesh.wallPtsLower], label="centerbody")
+        ax.set_xlabel('x'), ax.set_ylabel(f'{self.scalar}'), \
+                                            ax.grid(linewidth=0.3, color='grey')
         ax.set_xlim(self.xlim[0], self.xlim[-1])
         ax.legend()
         

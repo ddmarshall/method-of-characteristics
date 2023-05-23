@@ -10,7 +10,7 @@ class Generate_TMC_Initial_Data_Line:
     use if centerbody is a straight cone from tip to idl. IDL not valid for 
     non-straight geometry upstream of cowl idl. 
     """
-    def __init__(self, geom, tmc_res, gasProps, nPts, endPoints=None):
+    def __init__(self, geom, tmc_res, gasProps, nPts=None, endPoints=None, upstream_idl=False):
         """
         geom: geometry object
         tmc_res: results object from taylor maccoll function computation
@@ -21,6 +21,12 @@ class Generate_TMC_Initial_Data_Line:
         
         ultimately returns initial data line as object which can be handed off to moc sequence 
         """
+        if upstream_idl: 
+            #if using class for region of flow upstream of cowl point and positive charcteristic
+            self.generate_char_from_cowl_lip_to_incident_shock(geom, tmc_res, gasProps)
+            self.p02_p01_inc_shock = tmc_res.p02_p01 #total pressure change across incident shock
+            self.get_properties_on_idl(gasProps)
+            return 
 
         if endPoints is not None: 
             self.generate_2_point_idl(geom, tmc_res, nPts, endPoints)
@@ -128,7 +134,41 @@ class Generate_TMC_Initial_Data_Line:
             U,V = tmc_res.f_veloc_uv(math.atan(self.y[i]/X))
             self.u.append(U)
             self.v.append(V)
-         
+    
+    def generate_char_from_cowl_lip_to_incident_shock(self, geom, tmc_res, gasProps):
+        """
+        docstring
+        """
+        a0, gam = gasProps.a0, gasProps.gam
+        x_i, y_i = geom.x_cowl_lip, geom.y_cowl(geom.x_cowl_lip)
+        thet_i = math.atan(y_i/x_i)
+        thet_f = tmc_res.shock_ang
+        
+        def lambda_char(thet):
+            #gives slope of + & - mach lines through point x,y in the flow 
+            u,v = tmc_res.f_veloc_uv(thet)
+            a =  math.sqrt(a0**2 - 0.5*(gam-1)*(u**2 + v**2))
+            dydx = (u*v + a*math.sqrt(u**2 + v**2 - a**2))/(u**2 - a**2)
+            return dydx
+
+        #solving using Euler integration
+        self.x,self.y = [x_i],[y_i]
+        thet = thet_i
+        delta_x = 1e-2
+        while thet <= thet_f:
+            x_i, y_i = self.x[-1], self.y[-1]
+            dydx = lambda_char(thet)
+            x_n = x_i + delta_x
+            y_n = y_i + dydx*(delta_x)
+            self.x.append(x_n), self.y.append(y_n)
+            thet = math.atan(y_n/x_n)
+        
+        self.u, self.v = [],[]
+        for i,X in enumerate(self.x):
+            U,V = tmc_res.f_veloc_uv(math.atan(self.y[i]/X))
+            self.u.append(U)
+            self.v.append(V)
+
     def get_properties_on_idl(self, gasProps):
         #unpacking
         gam, a0, T0, R = gasProps.gam, gasProps.a0, gasProps.T0, gasProps.R
@@ -147,7 +187,7 @@ class Generate_TMC_Initial_Data_Line:
             self.p.append(self.p0*(T0/self.T[i])**(gam/(gam-1)))
             self.p_p0.append(((1 + 0.5*(gam-1)*mach**2)**(gam/(gam-1)))**-1)
             self.rho.append(self.p[-1]/(R*self.T[-1]))
-            self.rho_rho0.append(((1 + 0.5*(gam-1)*mach**2)**(1/(gam-1)))**-1)
+            self.rho_rho0.append(((1 + 0.5*(gam-1)*mach**2)**(1/(gam-1)))**-1)            
             
 
 class Generate_2D_Initial_Data_Line(Generate_TMC_Initial_Data_Line): 
@@ -156,10 +196,18 @@ class Generate_2D_Initial_Data_Line(Generate_TMC_Initial_Data_Line):
     use if centerbody is a straight ramp from tip to idl. IDL not valid for 
     non-straight geometry upstream of cowl idl
     """
-    def __init__(self, inputs, shockObj, gasProps, nPts, endPoints=None): 
+    def __init__(self, inputs, shockObj, gasProps, nPts=None, endPoints=None, upstream_idl=False): 
 
         T1 = inputs.T0/(1 + 0.5*(gasProps.gam-1)*inputs.M_inf**2)
         shockObj.T2 = shockObj.T2_T1*T1
+
+        if upstream_idl: 
+            #if using class for region of flow upstream of cowl point and positive charcteristic
+            self.generate_char_from_cowl_lip_to_incident_shock(inputs.geom, shockObj, gasProps)
+            self.p02_p01_inc_shock = shockObj.p02_p01
+            self.get_properties_on_idl(gasProps)
+            return
+
         if endPoints is not None: 
             self.generate_straight_cowl_lip_idl(inputs.geom, nPts, shockObj, endPoints, gasProps)
         else: 
@@ -221,4 +269,22 @@ class Generate_2D_Initial_Data_Line(Generate_TMC_Initial_Data_Line):
         self.u = list(np.multiply(u, np.ones(len(self.x))))
         self.v = list(np.multiply(v, np.ones(len(self.y)))) 
 
-            
+    def generate_char_from_cowl_lip_to_incident_shock(self, geom, shockObj, gasProps, ):
+        """
+        creates a data points along a positive characteristic extending 
+        from the cowl lip, downstream to the incident shock wave
+        """
+        x_c, y_c = geom.x_cowl_lip, geom.y_cowl(geom.x_cowl_lip)
+        thet_f = shockObj.deflec
+
+        a = math.sqrt(gasProps.gam*gasProps.R*shockObj.T2)
+        V = shockObj.M2*a
+        u,v = V*math.cos(shockObj.deflec), V*math.sin(shockObj.deflec)
+        lam_pos = (u*v + a*math.sqrt(u**2 + v**2 - a**2))/(u**2 - a**2)
+        y = (y_c - lam_pos*x_c)/(1 - lam_pos/math.tan(shockObj.beta))
+        x = y/math.tan(shockObj.beta)
+
+        self.x = [x_c, x]
+        self.y = [y_c, y]
+        self.u = [u,u]
+        self.v = [v,v]
