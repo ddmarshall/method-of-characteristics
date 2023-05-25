@@ -125,7 +125,6 @@ class Main:
 
         plt.show() 
 
-
     def print_details(self):
         """
         prints relevant solution information to console
@@ -144,11 +143,14 @@ class Main:
 
 if __name__ == "__main__":
 
-    inletFile = "geometry/single_cone_12_5deg.json"
-    #inletFile = "geometry/2D_isentropic_ramp_5deg.json"
-    #plotfile = "plot_profile_mesh_only.json"
-    #plotfile = "plot_profile_test.json"
+    #inletFile = "geometry/single_cone_12_5deg.json"      
+    inletFile = "geometry/2D_isentropic_ramp_5deg.json"
+
     plotfile = "plot_settings_test.json"
+    #plotfile = "plot_mesh.json"
+
     #inputFile = 'test_idl_straight_inputs.json'
     inputFile = 'test_mach_line_idl_straight_inputs.json'
-    sol = Main(inputFile=inputFile, geomFile=inletFile, plotFile=plotfile) #run solution then plot results
+
+    #run solution then plot results
+    sol = Main(inputFile=inputFile, geomFile=inletFile, plotFile=plotfile) 

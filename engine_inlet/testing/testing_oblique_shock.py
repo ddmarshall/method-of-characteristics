@@ -2,12 +2,10 @@ import sys
 import os
 import unittest
 import math
-sys.path.append(os.getcwd()) #add path to taylor maccoll module
+sys.path.append(os.getcwd())
 import method_of_characteristics.oblique_shock as obs
 
 class Test_Oblique_Shock(unittest.TestCase):
-
-
 
     def test_solve_weak_shock(self):
 
@@ -25,9 +23,6 @@ class Test_Oblique_Shock(unittest.TestCase):
         self.assertAlmostEqual(shock.T2_T1, T2_T1_exp,          places=4)
         self.assertAlmostEqual(shock.p02_p01, p02_p01_exp,      places=4)
 
-
-
-    """
     def test_get_flow_deflection(self):
 
         beta = math.radians(37.2101360)
@@ -37,9 +32,7 @@ class Test_Oblique_Shock(unittest.TestCase):
         thet_exp = math.radians(8)
 
         self.assertAlmostEqual(thet, thet_exp, places=1)
-    """
-
-
-
+    
+    
 if __name__ == "__main__":
     unittest.main()

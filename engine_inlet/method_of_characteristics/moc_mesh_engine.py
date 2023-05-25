@@ -43,7 +43,6 @@ class Mesh:
         elif self.init_method == "MACH LINE":
             self.generate_initial_mesh_from_mach_line_idl(charDir) #generate intial mesh from idl 
             
-
             #check if characteristic intersection with centerbody is acceptable 
             #if not: use backup function
           
@@ -118,127 +117,6 @@ class Mesh:
             else: 
                 self.compute_next_neg_char(pt, self.C_neg[i-1][1:], continueChar=True) 
     
-    """
-    def generate_initial_mesh_from_incident_shock(self, inputObj):
-        
-        #Generates the characteristic mesh from the incident attached shock at the
-        #centerbody tip/lip. Uses uniform flow properties upstream
-        
-        ##GENERATING SHOCK POINTS: 
-        #generate first shock point
-        u_free, v_free = inputObj.freeStream.u, inputObj.freeStream.v
-        shock_inc = inputObj.shock_inc
-
-        ptw_ups = Mesh_Point(0, 0, u_free, v_free, -1, isWall=True, isShock=True)
-        self.shock_upst_segments_obj.append(ptw_ups)
-        self.shockPts_frontside.append(ptw_ups)
-        self.C_neg.append([ptw_ups])
-        self.C_pos.append([ptw_ups])
-
-        if self.delta == 1: 
-            [pt4_dwn, pt4_ups, def4, beta4, ptw_dwn, pt3p, shockObj, tmc_cone] = \
-                shock.wall_incident_shock_point_conical(ptw_ups, shock_inc, \
-                                                self.geom.y_centerbody, \
-                                                    self.geom.dydx_centerbody, \
-                                                        self.pcTOL, self.delta, \
-                                                            self.gasProps, "pos") 
-        
-        elif self.delta == 0: 
-            #use 2D wall shock point 
-            pass 
-        
-        print(f"\tshock angle (wall): {math.degrees(tmc_cone.shock_ang)} deg")
-        print(f"\tshock angle: {math.degrees(beta4)} deg")
-        pt4_dwn = Mesh_Point(pt4_dwn.x, pt4_dwn.y, pt4_dwn.u, pt4_dwn.v, 0, isShock=True) 
-        pt4_ups = Mesh_Point(pt4_ups.x, pt4_ups.y, pt4_ups.u, pt4_ups.v, -1, isShock=True)
-        ptw_dwn = Mesh_Point(ptw_dwn.x, ptw_dwn.y, ptw_dwn.u, ptw_dwn.v, 0, isWall=True, isShock=True)
-        pt3p = Mesh_Point(pt3p.x, pt3p.y, pt3p.u, pt3p.v, 0, isWall=True)
-
-        self.C_neg[0].append(ptw_dwn),  self.C_pos.append([ptw_dwn])
-        self.C_neg.append([pt4_ups]),   self.C_pos[0].append(pt4_ups)
-        self.C_neg[-1].append(pt4_dwn), self.C_pos[1].append(pt4_dwn)
-        self.C_neg[-1].append(pt3p),    self.C_pos.append([pt3p])
-
-        self.triangle_obj.append([pt4_ups, ptw_ups, None])
-        self.triangle_obj.append([pt4_dwn, ptw_dwn, pt3p])
-        self.shock_object_list[-1].append(tmc_cone), self.shock_object_list[-1].append(shockObj)
-        self.shock_upst_segments_obj.append(pt4_ups)
-        self.shockPts_backside.append(pt4_dwn)
-        self.shockPts_backside.append(ptw_dwn)
-        self.shockPts_frontside.append(pt4_ups)
-
-        count = 0 
-        while True: 
-            #generate subsequent shock points 
-            pt_s_ups, pt_s_dwn, pt_a = pt4_ups, pt4_dwn, pt3p
-            [pt4_dwn, pt4_ups, def4, beta4, pt3p, shockObj] = \
-                shock.interior_incident_shock_point(pt_s_ups, pt_s_dwn, beta4, \
-                                                    def4, shock_inc, pt_a, \
-                                                        self.pcTOL, self.delta,\
-                                                            self.gasProps,"pos")
-            print(f"shock angle: {math.degrees(beta4)} deg")
-            pt4_dwn = Mesh_Point(pt4_dwn.x, pt4_dwn.y, pt4_dwn.u, pt4_dwn.v, 0, isShock=True) 
-            pt4_ups = Mesh_Point(pt4_ups.x, pt4_ups.y, pt4_ups.u, pt4_ups.v, -1, isShock=True)
-            pt3p = Mesh_Point(pt3p.x, pt3p.y, pt3p.u, pt3p.v, 0)
-
-            self.C_neg.append([pt4_ups])
-            self.C_neg[-1].append(pt4_dwn)
-            self.C_neg[-1].append(pt3p)
-
-            self.C_pos[0].append(pt4_ups)
-            self.C_pos[1].append(pt4_dwn)
-            self.C_pos[2].append(pt3p)
-
-            self.triangle_obj.append([pt4_ups, pt_s_ups, None])
-            self.triangle_obj.append([pt4_dwn, pt_s_dwn, None])
-            self.triangle_obj.append([pt3p, pt4_dwn, pt_a])
-
-            self.shock_upst_segments_obj.append(pt4_ups)
-            self.shockPts_backside.append(pt4_dwn)
-            self.shockPts_frontside.append(pt4_ups)
-            
-            if count == 43: break
-            count += 1 
-            #check if cowl lip has been passed or intersected
-            
-            hasIntersected = False 
-            hasPassed = False
-            m = (pt4_dwn.y-pt3p.y)/(pt4_dwn.x - pt3p.x)
-            for x in range(min(pt4_dwn.x, pt3p.x), max(pt4_dwn.x, pt3p.x)):
-                y = pt4_dwn.y + m*(x - pt4_dwn.x)
-                if self.geom.y_cowl(x) == y: 
-                    hasIntersected = True
-                    break 
-            
-            if hasIntersected == False: 
-                #if no intersect detected, check instead for pass
-                x_clip = self.geom.x_cowl_lip
-                y_clip = self.geom.y_cowl(x_clip)
-                y = m*(x_clip - pt4_dwn.x) + \
-                    pt4_dwn.y
-                if y > y_clip: #if passed  
-                    hasPassed = True
-                    break 
-            
-
-        return 
-        ##GENERATING MESH:
-        #continue next characteristic 
-        while hasIntersected == False:
-            #wall point  
-
-            for pt in self.C_pos[-1][1:]:
-                #interior points 
-                pass 
-                #check for intersect
-
-        ##HANDLING INTERSECTION:
-        #apply inverse wall point 
-
-
-        ##GENERATING REMAINDER OF MESH
-    """
-
     def generate_initial_char_from_cb_point(self):
 
         """
@@ -264,7 +142,6 @@ class Mesh:
                 pt1 = self.C_neg[-1][1] #2nd point in most recent characteristic
                 [x3,y3,u3,v3] = moc_op.direct_wall(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs, "pos")
                 pt3 = Mesh_Point(x3,y3,u3,v3, self.working_region, isWall=True)
-                self.numPointsGen += 1 
                 self.triangle_obj.append([pt3, None, pt1]) 
                 i,_ = self.find_mesh_point(pt1, self.C_pos)
                 self.C_pos[i].append(pt3) #add to positive
@@ -305,9 +182,10 @@ class Mesh:
         if self.check_for_passed_shock_point(charList) == False:
             print("Shock Point Not Within Mesh")
             return  
-        self.compute_wall_to_wall_shock(charDir, self.shockPts_frontside[-1])
+        try: self.compute_wall_to_wall_shock(charDir, self.shockPts_frontside[-1]) 
+        except: return
+
         if self.impending_shock_reflec:
-            
             while True: 
                 
                 if charDir == "pos": charDir = "neg"
@@ -316,7 +194,7 @@ class Mesh:
                 try: self.generate_mesh_for_shock_reflec(charDir)  
                 except: return 
                 
-                try:self.compute_wall_to_wall_shock(charDir, self.shockPts_backside[-1])
+                try: self.compute_wall_to_wall_shock(charDir, self.shockPts_backside[-1])
                 except: return 
 
     def generate_mesh_from_line(self, dl, charDir):
@@ -330,7 +208,6 @@ class Mesh:
             #top wall solution
             pt1 = dl[1]
             [x3,y3,u3,v3] = moc_op.direct_wall(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs, "pos")
-            self.numPointsGen += 1
             if self.f_kill[0](self) == True:
                 self.f_kill[1] = True
                 return 
@@ -344,7 +221,6 @@ class Mesh:
             #bottom wall solution
             pt2 = dl[1]
             [x3,y3,u3,v3] = moc_op.direct_wall(pt2, self.geom.y_centerbody, self.geom.dydx_centerbody, self.gasProps, self.delta, self.pcTOL, self.funcs, "neg")
-            self.numPointsGen += 1
             if self.f_kill[0](self) == True:
                 self.f_kill[1] = True
                 return 
@@ -448,7 +324,6 @@ class Mesh:
             pt2 = init_point #above
             pt1 = pt #below 
             [x3, y3, u3, v3] = moc_op.interior_point(pt1, pt2, self.gasProps, self.delta, self.pcTOL, self.funcs)
-            self.numPointsGen += 1
             pt3 = Mesh_Point(x3, y3, u3, v3, self.working_region)
             if check_for_intersect: 
                 if self.check_for_int_intersect(pt3, pt2, pt1, "neg"):
@@ -482,7 +357,6 @@ class Mesh:
             if continueChar:
                 pt2 = C_off[-1][-1]
                 [x3,y3,u3,v3] = moc_op.direct_wall(pt2, self.geom.y_centerbody, self.geom.dydx_centerbody, self.gasProps, self.delta, self.pcTOL, self.funcs, "neg")
-                self.numPointsGen += 1
                 pt3 = Mesh_Point(x3, y3, u3, v3, self.working_region, isWall=True)
                 i,_ = self.find_mesh_point(pt2, C_on)
                 C_on[i].append(pt3)
@@ -490,7 +364,6 @@ class Mesh:
             else:
                 pt2 = C_on[-1][-1]
                 [x3,y3,u3,v3] = moc_op.direct_wall(pt2, self.geom.y_centerbody, self.geom.dydx_centerbody, self.gasProps, self.delta, self.pcTOL, self.funcs, "neg")
-                self.numPointsGen += 1
                 pt3 = Mesh_Point(x3, y3, u3, v3, self.working_region, isWall=True)
                 C_on[-1].append(pt3)
 
@@ -517,7 +390,6 @@ class Mesh:
             pt2 = pt #above
             pt1 = init_point #below 
             [x3, y3, u3, v3] = moc_op.interior_point(pt1, pt2, self.gasProps, self.delta, self.pcTOL, self.funcs)
-            self.numPointsGen += 1
             pt3 = Mesh_Point(x3, y3, u3, v3, self.working_region)
             if check_for_intersect: 
                 if self.check_for_int_intersect(pt3, pt2, pt1, "pos"):
@@ -551,7 +423,6 @@ class Mesh:
             if continueChar:
                 pt1 = C_off[-1][-1]
                 [x3,y3,u3,v3] = moc_op.direct_wall(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs, "pos")
-                self.numPointsGen += 1
                 pt3 = Mesh_Point(x3, y3, u3, v3, self.working_region, isWall=True)
                 i,_ = self.find_mesh_point(pt1, C_on)
                 C_on[i].append(pt3)
@@ -559,7 +430,6 @@ class Mesh:
             else: 
                 pt1 = C_on[-1][-1]
                 [x3,y3,u3,v3] = moc_op.direct_wall(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs, "pos")
-                self.numPointsGen += 1
                 pt3 = Mesh_Point(x3, y3, u3, v3, self.working_region, isWall=True)
                 C_on[-1].append(pt3)
 
@@ -647,7 +517,6 @@ class Mesh:
                 pt1 = self.C_neg[-1][1] #2nd point in most recent characteristic
                 [x3,y3,u3,v3] = moc_op.direct_wall(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs, "pos")
                 pt3 = Mesh_Point(x3,y3,u3,v3,self.working_region,isWall=True)
-                self.numPointsGen += 1 
                 self.triangle_obj.append([pt3, None, pt1]) 
                 i,_ = self.find_mesh_point(pt1, self.C_pos)
                 self.C_pos[i].append(pt3) #add to positive
@@ -660,7 +529,6 @@ class Mesh:
                 pt2 = self.C_pos[-1][1] #2nd point in most recent characteristic
                 [x3,y3,u3,v3] = moc_op.direct_wall(pt2, self.geom.y_centerbody, self.geom.dydx_centerbody, self.gasProps, self.delta, self.pcTOL, self.funcs, "neg")
                 pt3 = Mesh_Point(x3,y3,u3,v3,self.working_region,isWall=True)
-                self.numPointsGen += 1 
                 self.triangle_obj.append([pt3, pt2, None]) 
                 i,_ = self.find_mesh_point(pt2, self.C_neg)
                 self.C_neg[i].append(pt3) #add to positive
@@ -696,15 +564,24 @@ class Mesh:
             y_x_i, dydx_i = self.geom.y_centerbody, self.geom.dydx_centerbody
             y_x_f, dydx_f = self.geom.y_cowl, self.geom.dydx_cowl
 
-        
-        #generate from-wall shock point
+        #GENERATE FIRST SHOCK POINT#############################################
         pt_w_ups = init_shock_point
         [i,j] = self.find_mesh_point(pt_w_ups, C_on)
         pt = C_on[i][j+1]
         [ii,jj] = self.find_mesh_point(pt, C_off)
         pt1 = C_off[ii][jj-1]
+        [i_,j_] = self.find_mesh_point(pt1, C_on)
+        pt0 = C_on[i_][j_-1]
 
         [pt4_dwn, pt4_ups, def4, beta4, ptw_dwn, pt3p, shockObj_wall, shockObj] = shock.wall_shock_point(pt_w_ups, y_x_i, dydx_i, pt1, self.pcTOL, self.delta, self.gasProps, shockDir)        
+        
+        #check if new shock point intersects same-family characteristic:
+        delPts = None
+        if self.check_for_shock_char_intersect(pt0, pt1, pt_w_ups, shockPt2=pt4_ups):
+            pt1 = C_off[ii][jj-2]
+            [pt4_dwn, pt4_ups, def4, beta4, ptw_dwn, pt3p, shockObj_wall, shockObj] = shock.wall_shock_point(pt_w_ups, y_x_i, dydx_i, pt1, self.pcTOL, self.delta, self.gasProps, shockDir)
+            delPts = C_on[i_][j_:]
+        
         pt4_dwn = Mesh_Point(pt4_dwn.x, pt4_dwn.y, pt4_dwn.u, pt4_dwn.v, self.working_region+1, isShock=True)
         pt4_ups = Mesh_Point(pt4_ups.x, pt4_ups.y, pt4_ups.u, pt4_ups.v, self.working_region, isShock=True)
         ptw_dwn = Mesh_Point(ptw_dwn.x, ptw_dwn.y, ptw_dwn.u, ptw_dwn.v, self.working_region+1, isShock=True, isWall=True)
@@ -729,15 +606,13 @@ class Mesh:
         C_on.append([pt3p])
         
         pt_s_ups, pt_s_dwn = pt4_ups, pt4_dwn 
+
+        if delPts is not None: 
+            self.delete_mesh_points(delPts, C_on=C_on, C_off=C_off)
         
-        #INTERIOR POINT LOOP
+        #INTERIOR POINT LOOP####################################################
         count = 0 
         while True: 
-
-            #if count == 4 and self.working_region==2: 
-            #    if shockDir == "neg": self.C_neg, self.C_pos = C_on, C_off
-            #    elif shockDir == "pos": self.C_pos, self.C_neg = C_on, C_off
-            #    return
             
             [i,j] = self.find_mesh_point(pt_s_ups, C_on)
             pt = C_on[i][j+1]
@@ -760,13 +635,10 @@ class Mesh:
             [pt4_dwn, pt4_ups, def4, beta4, pt3p, shockObj] = shock.interior_shock_point(pt_s_ups, pt_s_dwn, beta4, def4, pt1, pt_a, self.pcTOL, self.delta, self.gasProps, shockDir)
             
             #check for and handle intersection of shock wave with downstream (same-family) characteristic
-            
             while self.check_for_shock_char_intersect(pt3p, pt_a, pt_s_ups, shockPt2=pt4_ups):
-                #print("\tInterior shock segment and same-family mach line intersection detected! Applying fix...") 
                 if pt_a.isWall: 
                     [pt4_dwn, pt4_ups, def4, beta4, pt3p, pt_a, shockObj, C_on, C_off] = self.handle_from_wall_shock_char_intersect(pt_s_ups, pt_s_dwn, beta4_old, def4_old, pt_a, pt1, pt3p, C_on, C_off, shockDir) 
                     ii += 1 #update ii due to new characteristic being inserted between s and 4
-                    #TODO write for multiple intersections between characteristics (recursive)
                 else:  
                     [pt4_dwn, pt4_ups, def4, beta4, pt3p, pt_a, shockObj, C_on, C_off] = self.handle_interior_shock_char_intersect(pt_s_ups, pt_s_dwn, beta4_old, def4_old, pt1, pt_a, C_on, C_off, shockDir)
 
@@ -798,7 +670,7 @@ class Mesh:
             if C_off[ii][jj-1].isWall:
                 break
         
-        #setup for to-wall shock point
+        #TO WALL SHOCK POINT####################################################
         [i,j] = self.find_mesh_point(pt_s_ups, C_on)
         pt = C_on[i][j+1]
         [ii,jj] = self.find_mesh_point(pt, C_off)
@@ -818,9 +690,9 @@ class Mesh:
         pt_s_ups, pt_s_dwn = pt4_ups, pt4_dwn
         beta4_old, def4_old = beta4, def4
         [pt4_dwn, pt4_ups, def4, beta4, reflec, pt3p, shockObj] = shock.to_wall_shock_point(pt_s_ups, pt_s_dwn, beta4, def4, pt1, pt_a, y_x_f, dydx_f, self.pcTOL, self.delta, self.gasProps, shockDir)
-        #TODO check if new wall point causes shock to intersect characteristic 
+
+        #check for same-family shock characteristic intersection on downstream side
         if self.check_for_shock_char_intersect(pt3p, pt_a, pt_s_ups, shockPt2=pt4_ups):
-                #print("\tWall shock segment and same-family mach line intersection detected! Applying fix...")
                 [pt4_dwn, pt4_ups, def4, beta4, reflec, pt3p, pt_a, shockObj, C_on, C_off] = self.handle_wall_shock_char_intersect(pt_s_ups, pt_s_dwn, beta4_old, def4_old, pt1, pt_a, C_on, C_off, y_x_f, dydx_f, shockDir)
                 
         pt4_dwn = Mesh_Point(pt4_dwn.x, pt4_dwn.y, pt4_dwn.u, pt4_dwn.v, self.working_region+1, isShock=True, isWall=True)
@@ -911,6 +783,29 @@ class Mesh:
             
             return False
 
+    def check_for_coalescence(self, charList1, charList2):
+        """
+        checks if two characteristic lines intersect. If there is an intersect
+        returns i1, i2: indices in charList1 and charList2 after which the 
+        intersection occurs. Returns False otherwide. 
+        """
+        def do_segments_intersect(p1, p2, p3, p4):
+            def ccw(A, B, C):
+                return (C.y - A.y) * (B.x - A.x) > (B.y - A.y) * (C.x - A.x)
+
+            return ccw(p1, p3, p4) != ccw(p2, p3, p4) and ccw(p1, p2, p3) != ccw(p1, p2, p4)
+                
+        for i, p1 in enumerate(charList1[:-1]):
+            p2 = charList1[i + 1]
+
+            for j, p3 in enumerate(charList2[:-1]):
+                p4 = charList2[j + 1]
+
+                if do_segments_intersect(p1, p2, p3, p4):
+                    return i, j
+
+        return None,None
+
     def handle_from_wall_shock_char_intersect(self, pt_s_ups, pt_s_dwn, beta_s, def_s, pt_a, pt1, pt3p, C_on, C_off, shockDir):
         """
         generates a downstream wall point to deal with an intersection of a shock segment and same family characteristic when point a is a wall point
@@ -965,13 +860,40 @@ class Mesh:
         ii,_ = self.find_mesh_point(pt, C_off)
         [x3, y3, u3, v3] = moc_op.direct_wall(pt, y_x, dydx, self.gasProps, self.delta, self.pcTOL, self.funcs, offDir) #create first wall point
         init_point = Mesh_Point(x3, y3, u3, v3, self.working_region+1, isWall=True)
-
         C_on.append([init_point]), C_off[ii].append(init_point), self.triangle_obj.append([init_point, pt, None])
+
         if shockDir=="neg":
             C_on, C_off = self.compute_next_neg_char(init_point, pointList, onChars=C_on, offChars=C_off, continueChar=True, terminate_wall=False, check_for_intersect=False)
         elif shockDir=="pos":
             C_on, C_off = self.compute_next_pos_char(init_point, pointList, onChars=C_on, offChars=C_off, continueChar=True, terminate_wall=False, check_for_intersect=False)
         
+        #check if new mach line coalesces with a same family mach line before 
+        #reaching the shock point
+        line1, line2 = C_on[-1], C_on[-2]
+        i1,i2 = self.check_for_coalescence(line1, line2)
+
+        while None not in [i1,i2]:
+            #if an intersection was detected enter this loop until it's fixed
+            #delete invalid points from last characteristic
+            self.delete_mesh_points(line1[i1+1:], C_on=C_on, C_off=C_off)
+            #direct wall point
+            pt = C_on[-1][1]
+            I,_ = self.find_mesh_point(pt, C_off)
+            [x3, y3, u3, v3] = moc_op.direct_wall(pt, y_x, dydx, self.gasProps, self.delta, self.pcTOL, self.funcs, offDir) #create first wall point
+            init_point = Mesh_Point(x3, y3, u3, v3, self.working_region+1, isWall=True)
+            C_on.append([init_point]), C_off[I].append(init_point), self.triangle_obj.append([init_point, pt, None])
+            
+            #compute next char
+            pointList = C_on[-2][2:] + line2[i2+1:] #create point list from 
+            if shockDir=="neg":
+                C_on, C_off = self.compute_next_neg_char(init_point, pointList, onChars=C_on, offChars=C_off, continueChar=True, terminate_wall=False, check_for_intersect=False)
+            elif shockDir=="pos":
+                C_on, C_off = self.compute_next_pos_char(init_point, pointList, onChars=C_on, offChars=C_off, continueChar=True, terminate_wall=False, check_for_intersect=False)
+            
+            #check for coalescence
+            line1, line2 = C_on[-1], C_on[-2]
+            i1, i2 = self.check_for_coalescence(line1, line2)
+
         pt_a_upd = C_on[-1][-1]
         [pt4_dwn, pt4_ups, def_4, beta4, pt3p, shockObj] = shock.interior_shock_point(pt_s_ups, pt_s_dwn, beta_s, def_s, pt1, pt_a_upd, self.pcTOL, self.delta, self.gasProps, shockDir)
 
@@ -984,15 +906,19 @@ class Mesh:
         """
         if shockDir == "neg":
             offDir = "pos"
+            y_i = self.geom.y_cowl
+            dydx_i = self.geom.dydx_cowl
 
         elif shockDir == "pos":
             offDir = "neg"
+            y_i = self.geom.y_centerbody
+            dydx_i = self.geom.dydx_centerbody
 
         i,j = self.find_mesh_point(pt_a, C_on)
         pointList = C_on[i][2:j+1]
         pt = C_on[i][1] #first interior point
         ii,_ = self.find_mesh_point(pt, C_off)
-        [x3, y3, u3, v3] = moc_op.direct_wall(pt, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs, offDir) #create first wall point
+        [x3, y3, u3, v3] = moc_op.direct_wall(pt, y_i, dydx_i, self.gasProps, self.delta, self.pcTOL, self.funcs, offDir) #create first wall point
         init_point = Mesh_Point(x3, y3, u3, v3, self.working_region+1, isWall=True)
         C_on.append([init_point]), C_off[ii].append(init_point), self.triangle_obj.append([init_point, pt, None])
         

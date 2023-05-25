@@ -12,9 +12,9 @@
         "Initiation":                   "MACH LINE", 
         "Compute Shocks":               true, 
         "Convergence Tolerance":        0.00001,
-        "Kill Function":                "lambda mesh: mesh.numPointsGen >= 200000"
+        "Kill Function":                "lambda mesh: mesh.numPointsGen >= 10"
     },
     "Initial Data":{
-        "Num Points":                   30
-    }                       
+        "Num Points":                   32
+    }                    
 }

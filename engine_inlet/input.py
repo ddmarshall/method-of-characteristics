@@ -49,7 +49,7 @@ class inputObj:
         #TODO write this part if using .toml files for inputs
         import toml 
 
-    def import_geom(self, geomFile):
+    def import_geom(self, geomFile, preview_geom=False):
         import geometry.geom_pre_processor as gproc
         """
         Accesses geometry file and stores in input object
@@ -63,6 +63,18 @@ class inputObj:
             self.delta = 0
         elif self.geom.geom_type in ["Axi", "AXI", "axi"]:
             self.delta = 1
+
+        if preview_geom:
+            #generate a preview of the loaded geometry before continuing 
+            import matplotlib.pyplot as plt
+            import numpy as np 
+            x_range_cb = np.linspace(geomObj.centerbody_bounds[0], geomObj.centerbody_bounds[-1], 100)
+            x_range_cowl = np.linspace(geomObj.cowl_bounds[0], geomObj.cowl_bounds[-1], 100)
+            plt.figure()
+            plt.plot(x_range_cb, [geomObj.y_centerbody(x) for x in x_range_cb], label="centerbody")
+            plt.plot(x_range_cowl, [geomObj.y_cowl(x) for x in x_range_cowl], label="cowl")
+            plt.grid()
+            plt.show()
 
     def print_inputs(self):
         """

@@ -671,15 +671,11 @@ if __name__ == "__main__":
     gas = GasProps(gam, R, T0)
     
     def y_x_up(x):
-        if x<1:
-            return 1
-        else: 
-            return 1-math.tan(math.radians(5))*x
+        if x<1:return 1
+        else: return 1-math.tan(math.radians(5))*x
     def dydx_up(x):
-        if x<1: 
-            return 0
-        else:
-            return -math.tan(math.radians(5))
+        if x<1: return 0
+        else:return -math.tan(math.radians(5))
     def y_x_low(x):
         return 0.5
     def dydx_low(x):

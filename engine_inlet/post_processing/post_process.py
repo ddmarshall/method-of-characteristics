@@ -274,7 +274,7 @@ class create_figure:
             self.plot_incident_shock_solution(ax1, mainObj) 
             self.plot_initial_data_line(ax1, mainObj)
             self.plot_mesh(ax1, mainObj.mesh, annotate=self.mesh_annotate)
-            if hasattr(self, "mflow_plot"):
+            if self.mflow_plot:
                 self.plot_mass_flow_ratio(ax2, mainObj.mesh) 
         
         elif self.type == "scalar":
@@ -357,15 +357,19 @@ class create_figure:
         if hasattr(self, "figname"):
             self.fig.canvas.manager.set_window_title(self.figname)
         
-        if hasattr(self, "mflow_plot") or self.surf_props:
-            ax1 = self.fig.add_subplot(212)
-            ax2 = self.fig.add_subplot(211)
-            ax2.grid(linewidth=0.3, color='grey')
-            #self.fig.tight_layout()
+        ax1 = self.fig.add_subplot(111)
+        ax2 = None
 
-        else: 
-            ax1 = self.fig.add_subplot(111)
-            ax2 = None
+        if hasattr(self, "mflow_plot"):
+            if self.mflow_plot: 
+                ax1 = self.fig.add_subplot(212) 
+                ax2 = self.fig.add_subplot(211)
+                ax2.grid(linewidth=0.3, color='grey')
+        elif hasattr(self, "surf_props"):
+            if self.surf_props: 
+                ax1 = self.fig.add_subplot(212)
+                ax2 = self.fig.add_subplot(211)
+                ax2.grid(linewidth=0.3, color='grey')            
 
         ax1.grid(linewidth=0.3, color='grey')
 
