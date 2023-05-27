@@ -6,22 +6,22 @@ class Main:
     """
     This class controls all modules of AIMCAT.
     """
-    def __init__(self, inputFile=None, geomFile=None, plotFile=None):
-        print("="*160)
-        ans = None
+    def __init__(self, inputFile:str, geomFile:str, export: bool = False, plotFile:str = None) -> None:
        
-        if inputFile is not None and geomFile is not None: 
-            self.load_inputs(inputFile, geomFile) #generate input object 
-            self.run_solution() #run solution 
-            self.print_details() #prints important details to the console
+        self.load_inputs(inputFile, geomFile) #generate input object 
+        self.run_solution() #run solution 
+        self.print_details() #prints important details to the console
 
         if plotFile is not None: #if plotfile is provided, run it 
             self.plot_solution(plotFile)
 
-    def load_inputs(self, inpFile, geomFile):
-        import input as inp
+        if export is not None: 
+            self.export_results()
+
+    def load_inputs(self, inpFile:str, geomFile:str) -> None:
+        import Input.input as inp
         import math 
-        inpObj = inp.inputObj(inpFile, geomFile)
+        inpObj = inp.Input(inpFile, geomFile)
         self.inputs = inpObj
 
         #Kind of a dirty solution, but adds freestream object for plotting purposes
@@ -41,7 +41,7 @@ class Main:
 
         self.inputs.freeStream = freeStream(inpObj)
 
-    def run_solution(self):
+    def run_solution(self) -> None:
         print("\nrunning solution...")
         import method_of_characteristics.moc_mesh_engine as moc
         import initial_data_line.idl as idl
@@ -103,7 +103,7 @@ class Main:
         
         self.solution_runtime = time.perf_counter()-t0 #storing runtime
 
-    def plot_solution(self, plotFile):
+    def plot_solution(self, plotFile:str) -> None:
         """
         load in plot file and create plots from save file
         """
@@ -112,7 +112,8 @@ class Main:
         import json 
 
         print("\ngenerating figures...\n")
-        plotDict = json.load(open(plotFile, 'r'))
+        try: plotDict = json.load(open(plotFile, 'r'))
+        except: plotDict = json.load(open("post_processing/"+plotFile, 'r'))
         plotSettings = plotDict["global plot settings"]
         del plotDict["global plot settings"]
         
@@ -125,7 +126,7 @@ class Main:
 
         plt.show() 
 
-    def print_details(self):
+    def print_details(self) -> None:
         """
         prints relevant solution information to console
         to be called after run_solution() is called 
@@ -141,16 +142,35 @@ class Main:
         print(f"\tNumber of Regions: {len(self.mesh.tot_press_by_region)}") 
         print(f"\tTotal Pressure Ratio By Region: {[round(p/self.inputs.p0, 4) for p in self.mesh.tot_press_by_region]}")  
 
+    def export_results(self) -> None:
+        import pandas as pd
+        print("\nexporting solution...")
+        export_name = self.inputs.geom.name + f"M_{self.inputs.M_inf}.csv"
+
+        #create data dictionaries
+
+        #create surface property dictionaries
+
+
+        #create dataframes 
+        df1 = pd.DataFrame(paramDict)
+        df2 = pd.DataFrame(cowlDict)
+        df3 = pd.DataFrame(centDict)
+
+        with open(export_name, 'w') as file: 
+            file.write()
+
 if __name__ == "__main__":
 
-    #inletFile = "geometry/single_cone_12_5deg.json"      
-    inletFile = "geometry/2D_isentropic_ramp_5deg.json"
+    #inletFile = "single_cone_12_5deg.json"      
+    #inletFile = "2D_isentropic_ramp_5deg.json"
+    inletFile = "NASA_D6078_Inlet.json"
 
-    plotfile = "plot_settings_test.json"
-    #plotfile = "plot_mesh.json"
+    #plotfile = "plot_settings_test.json"
+    plotfile = "plot_mesh.json"
 
     #inputFile = 'test_idl_straight_inputs.json'
     inputFile = 'test_mach_line_idl_straight_inputs.json'
 
     #run solution then plot results
-    sol = Main(inputFile=inputFile, geomFile=inletFile, plotFile=plotfile) 
+    Main(inputFile=inputFile, geomFile=inletFile, plotFile=None, export=True)

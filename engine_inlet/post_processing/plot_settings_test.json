@@ -2,7 +2,7 @@
     "global plot settings":{
         "style": "dark_background",
         "figure size": [14,9],
-        "xlim": [0, 4],
+        "xlim": [0, 5],
         "ylim": [0, 1.25]
     },
     "CHARACTERISTIC MESH":{
