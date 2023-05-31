@@ -48,6 +48,12 @@ class create_figure:
         self.xlim, self.ylim = None, None
         self.mflow_xlim, self.mflow_ylim = None, None 
         self.surfPlot_xlim, self.surfPlot_ylim = None, None 
+        self.theme = "light"
+
+        if "theme" in plotSettings.keys():
+            self.theme = plotSettings["theme"]
+            if self.theme == "dark":
+                plt.style.use("dark_background")
 
         if "figure size" in plotSettings.keys():
             self.figsize = plotSettings["figure size"]
@@ -58,8 +64,6 @@ class create_figure:
         if "ylim" in plotSettings.keys():
             self.ylim = plotSettings["ylim"]
         
-        if "style" in plotSettings.keys():
-            plt.style.use(plotSettings["style"])
 
         if "mass flow xlim" in plotSettings.keys():
             self.mflow_xlim = plotSettings["mass flow xlim"]
@@ -100,26 +104,30 @@ class create_figure:
 
     def initialize_figure(self):
         
-        self.fig = plt.figure(figsize=self.figsize)
-        if hasattr(self, "figname"):
-            self.fig.canvas.manager.set_window_title(self.figname)
-
-        ax1, ax2 = None,None
+        ax1, ax2 =  None,None
         if hasattr(self, "mflow_plot"):
             if self.mflow_plot: 
-                ax1 = self.fig.add_subplot(212) 
-                ax2 = self.fig.add_subplot(211)
+                self.fig, axs = plt.subplots(2,1,figsize=self.figsize, gridspec_kw={"height_ratios":[1,2.5]}) 
+                self.fig.tight_layout()
+                ax2, ax1 = axs
                 ax2.grid(linewidth=0.3, color='grey')
         elif hasattr(self, "surf_props"):
             if self.surf_props: 
-                ax1 = self.fig.add_subplot(212)
-                ax2 = self.fig.add_subplot(211)
+                self.fig, axs = plt.subplots(2,1, figsize=self.figsize, gridspec_kw={"height_ratios":[1,2.5]})
+                self.fig.tight_layout()
+                ax2, ax1 = axs
                 ax2.grid(linewidth=0.3, color='grey')            
-        
+
         if ax1 is None: 
-            ax1 = self.fig.add_subplot(111)
+            self.fig, ax1 = plt.subplots(1,1, figsize=self.figsize)
 
         ax1.grid(linewidth=0.3, color='grey')
+        
+        if hasattr(self, "figname"):
+            self.fig.canvas.manager.set_window_title(self.figname)
+
+        figManager = plt.get_current_fig_manager()
+        figManager.window.showMaximized()
 
         if self.xlim is not None: 
             ax1.set_xlim(self.xlim[0], self.xlim[-1])
@@ -128,12 +136,17 @@ class create_figure:
 
         return ax1, ax2 
 
-    def plot_inlet_geom(self,ax, inletGeom):
+    def plot_inlet_geom(self, ax, inletGeom):
         """
         plots the upper and lower cowl surfaces of the inlet
         """
-        line_color = "white"
-        face_color= "black"
+        line_color, face_color = None, None
+        if self.theme == "dark":
+            line_color = "white"
+            face_color = "black"
+        elif self.theme == "light":
+            line_color = "black"
+            face_color = "white"
 
         x_cowl = np.linspace(inletGeom.cowl_bounds[0], inletGeom.cowl_bounds[1], 100)
         ax.plot(x_cowl, [inletGeom.y_cowl(x) for x in x_cowl], color=line_color, linewidth=2)
@@ -189,7 +202,12 @@ class create_figure:
         docstring
         """
         idl = mainObj.idlObj
-        line_color = "aquamarine"
+        line_color = None 
+        if self.theme == "dark":
+            line_color = "aquamarine"
+        elif self.theme == "light":
+            line_color = "dimgrey"
+
         ax.plot(idl.x, idl.y, '-o', linewidth=0.5, markersize=2, color=line_color)
         
         if hasattr(mainObj, "coneSol") == 1: 
@@ -208,8 +226,12 @@ class create_figure:
         """
 
         """
-        mesh_color = "aquamarine"
-        #mesh_color = "dimgrey"
+        mesh_color = None 
+        if self.theme == "dark":
+            mesh_color = "aquamarine"
+        elif self.theme == "light":
+            mesh_color = "dimgrey"
+
         ax.scatter([pt.x for pt in mesh.meshPts],[pt.y for pt in mesh.meshPts], color=mesh_color, s=2)
         
         if annotate: 
@@ -285,7 +307,6 @@ class create_figure:
             xList += [pt.x for pt in pts]
             yList += [pt.y for pt in pts]
             for pt in pts: 
-                obj = pt
                 scalarList = scalarList + [getattr(pt, self.scalar)]
 
             mocReg = matplotlib.tri.Triangulation(xList,yList) 
@@ -309,7 +330,7 @@ class create_figure:
         
         if hasattr(self, "cbar_label"): barLabel = self.cbar_label
         else: barLabel = self.scalar
-        plt.colorbar(mappable=map_, orientation='horizontal', shrink=0.5, ax=ax, \
+        plt.colorbar(mappable=map_, location="bottom", orientation='horizontal', shrink=0.3, ax=ax, \
                      label=barLabel)
 
     def plot_surface_properties(self, ax, mesh):
@@ -330,14 +351,34 @@ class create_figure:
         plots local mass flow ratio throughout the mesh. Used for checking order
         of accuracy of solution
         """
+        axlinecolor = None
+        if self.theme == "dark":
+            axlinecolor = "white"
+        elif self.theme == "light":
+            axlinecolor = "black"
+
         ax.plot(mesh.mesh_mass_flow[0][0], mesh.mesh_mass_flow[0][1], "o-", label="+ Characteristics", markerfacecolor="none")
         ax.plot(mesh.mesh_mass_flow[1][0], mesh.mesh_mass_flow[1][1], "o-", label="- Characteristics", markerfacecolor="none")
         mflows_max = max([max(mesh.mesh_mass_flow[0][1]), max(mesh.mesh_mass_flow[1][1])])
         mflows_min = min([min(mesh.mesh_mass_flow[0][1]), min(mesh.mesh_mass_flow[1][1])])
         mflows_range = mflows_max - mflows_min
         #ax.set_ylim(0.96, 1.02)
-        ax.axhline(mflows_max, linestyle="--", color="white"), ax.axhline(mflows_min, linestyle="--", color="white")
+        ax.axhline(mflows_max, linestyle="--", color=axlinecolor), ax.axhline(mflows_min, linestyle="--", color=axlinecolor)
         ax.set_xlabel("mach line #"), ax.set_ylabel("local mass flow ratio")
         ax.set_title(f"range = {round(mflows_range,5)}")
         ax.grid(linewidth=0.3, color='grey')
         ax.legend()
+
+class Preview_Geom(create_figure):
+
+    def __init__(self, mainObj:object, plotSettings:dict):
+
+        self.set_default_settings(plotSettings)
+        fig = plt.figure(figsize=self.figsize)
+        ax = fig.add_subplot(111)
+        ax.grid(linewidth=0.3, color='grey')
+        ax.set_xlim(self.xlim), ax.set_ylim(self.ylim)
+        ax.set_title("Geometry Preview")
+        self.plot_inlet_geom(ax, mainObj.inputs.geom)
+        print("\nGeometry preview generated. Close figure to continue")
+        plt.show()

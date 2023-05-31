@@ -37,7 +37,7 @@ class Inlet_Geom:
 
         #starting with centerbody:
         if centerbody_list is not None:
-            y_centerbody, dydx_centerbody, centerbody_bounds = self.unpack_surface_function_dict(centerbody_list)
+            y_centerbody, dydx_centerbody, centerbody_bounds = self.unpack_surface_function_list(centerbody_list)
 
         elif centerbody_coord_list is not None:
             y_centerbody, dydx_centerbody, centerbody_bounds = self.process_coords_list(centerbody_coord_list) 
@@ -64,7 +64,7 @@ class Inlet_Geom:
 
         #next cowl
         if cowl_list is not None:
-            y_cowl, dydx_cowl, cowl_bounds = self.unpack_surface_function_dict(cowl_list)
+            y_cowl, dydx_cowl, cowl_bounds = self.unpack_surface_function_list(cowl_list)
 
         elif cowl_coord_list is not None: 
             y_cowl, dydx_cowl, cowl_bounds = self.process_coords_list(cowl_coord_list) 
@@ -133,7 +133,6 @@ class Inlet_Geom:
             endpoints_flatten += pt
 
         return y_func_combined, dydx_func_combined, [min(endpoints_flatten), max(endpoints_flatten)]
-
        
     def process_coords_list(self, surface_list):
         """
@@ -172,7 +171,6 @@ class Inlet_Geom:
             return y_comb, dydx_comb, [min(x_tot), max(x_tot)]
 
         return y_list[0], dydx_list[0], [min(x_tot), max(x_tot)] 
-
 
     def read_sub_dict(self, subDict):
         """

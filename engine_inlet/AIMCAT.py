@@ -6,17 +6,26 @@ class Main:
     """
     This class controls all modules of AIMCAT.
     """
-    def __init__(self, inputFile:str, geomFile:str, export: bool = False, plotFile:str = None) -> None:
+    def __init__(self, inputFile:str, geomFile:str, export:bool=False, \
+                 plotFile:str=None, preview_geom:bool=False) -> None:
        
         self.load_inputs(inputFile, geomFile) #generate input object 
+        if preview_geom: 
+            import post_processing.post_process as post_process
+            import json
+            try: plotDict = json.load(open(plotFile, 'r'))
+            except: plotDict = json.load(open("post_processing/"+plotFile, 'r'))
+            plotSettings = plotDict["global plot settings"]
+            post_process.Preview_Geom(self, plotSettings)
+
         self.run_solution() #run solution 
         self.print_details() #prints important details to the console
 
+        if export: 
+            self.export_results()
+
         if plotFile is not None: #if plotfile is provided, run it 
             self.plot_solution(plotFile)
-
-        if export is not None: 
-            self.export_results()
 
     def load_inputs(self, inpFile:str, geomFile:str) -> None:
         import Input.input as inp
@@ -140,37 +149,89 @@ class Main:
         print(f"\tRun Time: {round(self.solution_runtime,3)} seconds")
         print(f"\tNumber of Mesh Points: {len(self.mesh.meshPts)}")   
         print(f"\tNumber of Regions: {len(self.mesh.tot_press_by_region)}") 
-        print(f"\tTotal Pressure Ratio By Region: {[round(p/self.inputs.p0, 4) for p in self.mesh.tot_press_by_region]}")  
+        print(f"\tTotal Pressure Ratio By Region: \
+              {[round(p/self.inputs.p0, 4) for p in self.mesh.tot_press_by_region]}")  
 
     def export_results(self) -> None:
         import pandas as pd
+        import numpy as np 
+        import math
         print("\nexporting solution...")
-        export_name = self.inputs.geom.name + f"M_{self.inputs.M_inf}.csv"
+        export_name = "save_" + self.inputs.geom.name + f"_M{self.inputs.M_inf}.csv"
+ 
+        geomtype = ["AXI" if self.inputs.delta == 1 else "2D"][0]
+        basic_info_list = [
+            f"Geom Type:,   {geomtype}\n",
+            f"M_inf:,       {self.inputs.M_inf}\n"
+            f"gamma:,       {self.inputs.gam}\n"
+        ]
 
-        #create data dictionaries
+        if hasattr(self, "coneSol"):
+            method = "Taylor-Maccoll Equation"
+            def_ = math.degrees(self.coneSol.cone_ang)
+            beta = math.degrees(self.coneSol.shock_ang)
+            p02_p01 = self.coneSol.p02_p01
 
-        #create surface property dictionaries
+        elif hasattr(self, "rampSol"):
+            method = "2D Oblique Shock"
+            def_ = math.degrees(self.rampSol.deflec)
+            beta = math.degrees(self.rampSol.beta)
+            p02_p01 = self.rampSol.p02_p01
 
+        init_solution_list = [
+            f"solution method:,             {method}\n"
+            f"initial deflection (deg):,    {def_}\n",
+            f"wave angle (deg):,            {beta}\n"
+            f"p02/p01:,                     {p02_p01}\n"
+        ]
 
-        #create dataframes 
-        df1 = pd.DataFrame(paramDict)
-        df2 = pd.DataFrame(cowlDict)
-        df3 = pd.DataFrame(centDict)
+        x_cb = np.linspace(self.inputs.geom.centerbody_bounds[0], \
+                           self.inputs.geom.centerbody_bounds[-1], 100)
+        x_cowl = np.linspace(self.inputs.geom.cowl_bounds[0], \
+                             self.inputs.geom.cowl_bounds[-1], 100)
+        geometry_dict = {
+            "centerbody x":         x_cb, 
+            "centerbody y":         [self.inputs.geom.y_centerbody(x) for x in x_cb], 
+            "centerbody dydx":      [self.inputs.geom.dydx_centerbody(x) for x in x_cb],
+            "cowl x":               x_cowl, 
+            "cowl y":               [self.inputs.geom.y_cowl(x) for x in x_cowl], 
+            "cowl dydx":            [self.inputs.geom.dydx_cowl(x) for x in x_cowl] 
+            
+        } 
+        df_geom = pd.DataFrame(geometry_dict)
+        df_geom.insert(3, None, None)
+
+        cb_mesh_points = {"index": [],"x": [],"y": [],"u": [],"v": [],"M": [], "Region": []}
+        for pt in self.mesh.wallPtsLower:
+            cb_mesh_points["index"].append(pt.i)
+            cb_mesh_points["x"].append(pt.x)
+            cb_mesh_points["y"].append(pt.y)
+            cb_mesh_points["u"].append(pt.u)
+            cb_mesh_points["v"].append(pt.v)
+            cb_mesh_points["M"].append(pt.mach)
+            cb_mesh_points["Region"].append(pt.reg)
+        df_cb_pts = pd.DataFrame(cb_mesh_points)
+
+        cowl_mesh_points = {"index": [],"x": [],"y": [],"u": [],"v": [],"M": [], "Region": []}
+        for pt in self.mesh.wallPtsUpper:
+            cowl_mesh_points["index"].append(pt.i)
+            cowl_mesh_points["x"].append(pt.x)
+            cowl_mesh_points["y"].append(pt.y)
+            cowl_mesh_points["u"].append(pt.u)
+            cowl_mesh_points["v"].append(pt.v)
+            cowl_mesh_points["M"].append(pt.mach)
+            cowl_mesh_points["Region"].append(pt.reg)
+        df_cowl_pts = pd.DataFrame(cowl_mesh_points)
 
         with open(export_name, 'w') as file: 
-            file.write()
+            file.write("BASIC INFO\n")
+            [file.write(line) for line in basic_info_list]
+            file.write("\nINITIALIZATION SOLUTION\n")
+            [file.write(line) for line in init_solution_list]
+            file.write("\nCENTERBODY & COWL GEOMETRY\n")
+            df_geom.to_csv(file, index=False, lineterminator="\n")
+            file.write("\nCENTERBODY MESH POINTS\n")
+            df_cb_pts.to_csv(file, index=False, lineterminator="\n")
+            file.write("\nCOWL MESH POINTS\n")
+            df_cowl_pts.to_csv(file, index=False, lineterminator="\n")
 
-if __name__ == "__main__":
-
-    #inletFile = "single_cone_12_5deg.json"      
-    #inletFile = "2D_isentropic_ramp_5deg.json"
-    inletFile = "NASA_D6078_Inlet.json"
-
-    #plotfile = "plot_settings_test.json"
-    plotfile = "plot_mesh.json"
-
-    #inputFile = 'test_idl_straight_inputs.json'
-    inputFile = 'test_mach_line_idl_straight_inputs.json'
-
-    #run solution then plot results
-    Main(inputFile=inputFile, geomFile=inletFile, plotFile=None, export=True)

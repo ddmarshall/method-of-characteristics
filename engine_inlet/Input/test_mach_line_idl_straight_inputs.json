@@ -6,7 +6,7 @@
         "Ideal Gas Constant (J/kgK)":   287.05
     },
     "Flow Properties":{
-        "Freestream Mach":              3.47
+        "Freestream Mach":              2.5
     },
     "MOC Settings":{
         "Initiation":                   "MACH LINE", 

@@ -16,7 +16,7 @@ class Input:
         else: 
             raise NameError(f'Invalid Filetype: .{ext}')
 
-        self.import_geom(geomFile, preview_geom=True) #store geometry object as attribute
+        self.import_geom(geomFile) #store geometry object as attribute
         self.print_inputs()
 
     def import_json(self,file):
@@ -48,7 +48,7 @@ class Input:
          key_i in list(json_data.keys()) for key_j in json_data[key_i].keys()\
               if key_j in json_translator.keys()]
 
-    def import_geom(self, geomFile, preview_geom=True):
+    def import_geom(self, geomFile):
         import geometry.geom_pre_processor as gproc
         """
         Accesses geometry file and stores in input object
@@ -65,18 +65,6 @@ class Input:
             self.delta = 0
         elif self.geom.geom_type in ["Axi", "AXI", "axi"]:
             self.delta = 1
-
-        if preview_geom:
-            #generate a preview of the loaded geometry before continuing 
-            import matplotlib.pyplot as plt
-            import numpy as np 
-            x_range_cb = np.linspace(geomObj.centerbody_bounds[0], geomObj.centerbody_bounds[-1], 100)
-            x_range_cowl = np.linspace(geomObj.cowl_bounds[0], geomObj.cowl_bounds[-1], 100)
-            plt.figure(figsize=(10,4))
-            plt.plot(x_range_cb, [geomObj.y_centerbody(x) for x in x_range_cb], label="centerbody")
-            plt.plot(x_range_cowl, [geomObj.y_cowl(x) for x in x_range_cowl], label="cowl")
-            plt.grid(), plt.legend(), plt.title("Inlet Geometry Preview")
-            plt.show()
 
     def print_inputs(self):
         """
