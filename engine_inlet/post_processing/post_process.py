@@ -148,9 +148,9 @@ class create_figure:
             line_color = "black"
             face_color = "white"
 
-        x_cowl = np.linspace(inletGeom.cowl_bounds[0], inletGeom.cowl_bounds[1], 100)
+        x_cowl = np.linspace(inletGeom.cowl_bounds[0], inletGeom.cowl_bounds[1], 200)
         ax.plot(x_cowl, [inletGeom.y_cowl(x) for x in x_cowl], color=line_color, linewidth=2)
-        x_cb = np.linspace(inletGeom.centerbody_bounds[0], inletGeom.centerbody_bounds[1], 100)
+        x_cb = np.linspace(inletGeom.centerbody_bounds[0], inletGeom.centerbody_bounds[1], 200)
         ax.plot(x_cb, [inletGeom.y_centerbody(x) for x in x_cb], color=line_color, linewidth=2)
         ax.axhline(0, color=line_color, linestyle='dashed', linewidth=1) 
         fill_x = np.array([max(x_cb)])
@@ -374,11 +374,41 @@ class Preview_Geom(create_figure):
     def __init__(self, mainObj:object, plotSettings:dict):
 
         self.set_default_settings(plotSettings)
-        fig = plt.figure(figsize=self.figsize)
-        ax = fig.add_subplot(111)
-        ax.grid(linewidth=0.3, color='grey')
-        ax.set_xlim(self.xlim), ax.set_ylim(self.ylim)
-        ax.set_title("Geometry Preview")
-        self.plot_inlet_geom(ax, mainObj.inputs.geom)
+        fig, axs = plt.subplots(3,1,figsize=self.figsize, gridspec_kw={"height_ratios":[1.75,1,1]})
+        
+        axs[0].grid(linewidth=0.3, color='grey')
+        axs[0].set_xlim(self.xlim), axs[0].set_ylim(self.ylim)
+        axs[0].set_title("Geometry Preview")
+        axs[0].set_aspect('equal', adjustable='box')
+        self.plot_inlet_geom(axs[0], mainObj.inputs.geom)
+
+        x_cb = np.linspace(mainObj.inputs.geom.centerbody_bounds[0], \
+                           mainObj.inputs.geom.centerbody_bounds[1], 200)
+        x_cowl = np.linspace(mainObj.inputs.geom.cowl_bounds[0], \
+                             mainObj.inputs.geom.cowl_bounds[1], 200)
+        
+        #Display the first derivative 
+        dydx_cb = np.array([mainObj.inputs.geom.dydx_centerbody(x) for x in x_cb])
+        dydx_cowl = np.array([mainObj.inputs.geom.dydx_cowl(x) for x in x_cowl])
+        axs[1].plot(x_cb, dydx_cb, label="centerbody", linewidth=1)
+        axs[1].plot(x_cowl, dydx_cowl, label="cowl", linewidth=1)
+        axs[1].set_ylabel("dy/dx")
+        axs[1].set_xlim(self.xlim)
+        axs[1].legend()
+        axs[1].grid(linewidth=0.2, color='grey')
+
+        #calculate and display the curvature (x must be uniformly spaced)
+        d2ydx2_cb = np.gradient(dydx_cb, x_cb[1]-x_cb[0])
+        d2ydx2_cowl = np.gradient(dydx_cowl, x_cowl[1]-x_cowl[0])
+
+        k_cb = [abs(d2ydx2_cb[i]/((1 + dydx**2)**(3/2))) for i,dydx in enumerate(dydx_cb)]
+        k_cowl = [abs(d2ydx2_cowl[i]/((1 + dydx**2)**(3/2))) for i,dydx in enumerate(dydx_cowl)]
+        axs[2].plot(x_cb, k_cb, label="centerbody", linewidth=1)
+        axs[2].plot(x_cowl, k_cowl, label="cowl", linewidth=1)
+        axs[2].set_ylabel("Curvature")
+        axs[2].set_xlim(self.xlim)
+        axs[2].legend()
+        axs[2].grid(linewidth=0.2, color='grey')
+
         print("\nGeometry preview generated. Close figure to continue")
         plt.show()

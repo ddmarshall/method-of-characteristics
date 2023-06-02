@@ -1,4 +1,4 @@
-import AIMCAT as AIMCAT
+import aimcat as aimcat
 """
 Control script for AIMCAT module. Specify input file locations and run AIMCAT by
  calling class "Main" with the appropriate inputs filled out. 
@@ -16,9 +16,9 @@ AIMCAT.Main(inputFile:str, geomFile:str, plotFile:str, export:bool=False,
         None
 """
 #SPECIFY INLET GEOMETRY FILE####################################################
-inletFile = "single_cone_12_5deg.json"      
+#inletFile = "single_cone_12_5deg.json"      
 #inletFile = "2D_isentropic_ramp_5deg.json"
-#inletFile = "NASA_D6078_Inlet.json"
+inletFile = "NASA_D6078_Inlet.json"
 
 #SPECIFY PLOTTING FILE##########################################################
 plotfile = "plot_settings_test.json"
@@ -29,5 +29,5 @@ plotfile = "plot_settings_test.json"
 inputFile = 'test_mach_line_idl_straight_inputs.json'
 
 #RUN SOLUTION###################################################################
-AIMCAT.Main(inputFile=inputFile, geomFile=inletFile, plotFile=None, \
-            export=True, preview_geom=False)
+aimcat.Main(inputFile=inputFile, geomFile=inletFile, plotFile=plotfile, \
+            export=True, preview_geom=True)

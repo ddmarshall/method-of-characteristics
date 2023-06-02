@@ -27,7 +27,6 @@ class Mesh:
         self.shockMesh = explicit_shocks
         self.init_method = inputObj.init_method
         self.working_region = 0 #iterator to denote multiple flowfield regions (bounded by shocks and walls)
-
         self.idl_p0 = idl.p0
         self.idl = [Mesh_Point(x, idl.y[i], idl.u[i], idl.v[i], self.working_region, isIdl=True) for i,x in enumerate(idl.x)]
 
