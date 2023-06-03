@@ -16,9 +16,9 @@ AIMCAT.Main(inputFile:str, geomFile:str, plotFile:str, export:bool=False,
         None
 """
 #SPECIFY INLET GEOMETRY FILE####################################################
-#inletFile = "single_cone_12_5deg.json"      
+inletFile = "single_cone_12_5deg.json"      
 #inletFile = "2D_isentropic_ramp_5deg.json"
-inletFile = "NASA_D6078_Inlet.json"
+#inletFile = "NASA_D6078_Inlet.json"
 
 #SPECIFY PLOTTING FILE##########################################################
 plotfile = "plot_settings_test.json"
