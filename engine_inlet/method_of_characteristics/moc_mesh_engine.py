@@ -27,7 +27,7 @@ class Mesh:
         self.shockMesh = explicit_shocks
         self.init_method = inputObj.init_method
         self.working_region = 0 #iterator to denote multiple flowfield regions (bounded by shocks and walls)
-        self.idl_p0 = idl.p0
+        self.idl_p0_p0f = idl.p0_p0f
         self.idl = [Mesh_Point(x, idl.y[i], idl.u[i], idl.v[i], self.working_region, isIdl=True) for i,x in enumerate(idl.x)]
 
         #if hasattr(idl, 'cowlPoint'):
@@ -57,7 +57,7 @@ class Mesh:
             self.generate_mesh_from_cowl()
         
         self.compile_mesh_points()
-        [pt.get_point_properties(self) for pt in self.meshPts]
+        self.get_point_properties_and_minmax()
         self.compile_wall_points(self.geom.y_cowl, self.geom.y_centerbody) 
         self.compute_local_mass_flow()
 
@@ -952,7 +952,7 @@ class Mesh:
             self.triangle.append([pt.i if pt is not None else None for pt in tri])
 
         if self.init_method in ["STRAIGHT IDL", "MACH LINE"]:
-            self.tot_press_by_region = [self.idl_p0]
+            self.p0_ratio_by_region = [self.idl_p0_p0f]
 
         if self.shockMesh: 
             
@@ -965,9 +965,38 @@ class Mesh:
                     if len(shock) == 0: continue
                     tot_press_loss = [s.p02_p01 for s in shock]
                     avg_tot_press_loss = sum(tot_press_loss)/len(shock)
-                    upd_tot_press = avg_tot_press_loss*self.tot_press_by_region[-1]
-                    self.tot_press_by_region.append(upd_tot_press)
-            
+                    p0_p0f = avg_tot_press_loss
+                    for ratio in self.p0_ratio_by_region: 
+                        p0_p0f *= ratio
+                    self.p0_ratio_by_region.append(p0_p0f)
+
+    def get_point_properties_and_minmax(self):
+        """
+        """
+        self.minmax_p_p0f = [0,0]
+        self.minmax_T_T0 = [0,0]
+        self.minmax_rho_rho0f = [0,0]
+        self.minmax_V = [0,0]
+        for pt in self.meshPts:
+            pt.get_point_properties(self)
+
+            if pt.p_p0f < self.minmax_p_p0f[0]: self.minmax_p_p0f[0] = pt.p_p0f
+            if pt.p_p0f > self.minmax_p_p0f[-1]: self.minmax_p_p0f[-1] = pt.p_p0f
+
+            if pt.T_T0 < self.minmax_T_T0[0]: self.minmax_T_T0[0] = pt.T_T0
+            if pt.T_T0 > self.minmax_T_T0[-1]: self.minmax_T_T0[-1] = pt.T_T0
+
+            if pt.rho_rho0f < self.minmax_rho_rho0f[0]: 
+                self.minmax_rho_rho0f[0] = pt.rho_rho0f
+            if pt.rho_rho0f > self.minmax_rho_rho0f[-1]: 
+                self.minmax_rho_rho0f[-1] = pt.rho_rho0f
+
+            V = math.sqrt(pt.u**2 + pt.v**2)
+            if V < self.minmax_V[0]: self.minmax_V[0] = V
+            if V > self.minmax_V[-1]: self.minmax_V[-1] = V
+
+
+
     def find_mesh_point(self, pt, C_posneg):
         """
         gets the index of point in C_posneg (self.C_pos or self.C_neg)
@@ -1101,20 +1130,17 @@ class Mesh:
         
         def calculate_mass_flow(dl):
             """
-            calculates the total mass flow rate across a data line
+            calculates the ratio of mass flow to freestream total density across a data line
             dl: list of mesh points dl[0] and dl[-1] should be wall points for this calculation to be meaningful 
             TODO: need static density at each point
             """
             #first, delete sequences of points which have same coordinate (i.e. pairs of shock points)
-            dl_corrected = []
-            for i,pt2 in enumerate(dl):
-                if i == 0: 
-                    dl_corrected.append(pt2)
-                    continue
-                
+            dl_corrected = [dl[0]]
+            for i,pt2 in enumerate(dl[1:]):
                 pt1 = dl[i-1] 
                 if np.linalg.norm(np.array([pt2.y - pt1.y, -1*(pt2.x - pt1.x)]), ord=2) != 0:
                     dl_corrected.append(pt2) 
+            
             #iterate through corrected data line, and summate mass flow rate
             mdot = 0
             for i,pt2 in enumerate(dl_corrected):
@@ -1122,7 +1148,7 @@ class Mesh:
                 pt1 = dl_corrected[i-1]
 
                 V = np.array([0.5*(pt2.u + pt1.u), 0.5*(pt2.v + pt1.v)]) #average velocity 
-                rho_avg = 0.5*(pt1.rho + pt2.rho)
+                rho_avg = 0.5*(pt1.rho_rho0f + pt2.rho_rho0f)
                 nHat = np.array([pt2.y - pt1.y, -1*(pt2.x - pt1.x)])
                 nHat = np.divide(nHat, np.linalg.norm(nHat, ord=2))
 
@@ -1182,16 +1208,19 @@ class Mesh_Point:
         """
         #unpacking
         gam, a0, T0 = mesh.gasProps.gam, mesh.gasProps.a0, mesh.gasProps.T0
-        p0 = mesh.tot_press_by_region[self.reg]
+        #p0 = mesh.tot_press_by_region[self.reg]
         V = math.sqrt(self.u**2 + self.v**2)
         a = math.sqrt(a0**2 - 0.5*(gam-1)*V**2)
         self.mach = V/a #mach number 
         self.T = T0/(1+0.5*(gam-1)*(V/a)**2) #static temperature
         self.T_T0 = (1 + 0.5*(gam-1)*self.mach**2)**-1
-        self.p = p0/((1 + 0.5*(gam-1)*(V/a)**2)**(gam/(gam-1))) #static pressure 
+        #self.p = p0/((1 + 0.5*(gam-1)*(V/a)**2)**(gam/(gam-1))) #static pressure 
         self.p_p0 = ((1 + 0.5*(gam-1)*self.mach**2)**(gam/(gam-1)))**-1
-        self.rho = self.p/(mesh.gasProps.R*self.T) #ideal gas law
+        #self.rho = self.p/(mesh.gasProps.R*self.T) #ideal gas law
         self.rho_rho0 = ((1 + 0.5*(gam-1)*self.mach**2)**(1/(gam-1)))**-1
+
+        self.p_p0f = self.p_p0*mesh.p0_ratio_by_region[self.reg]
+        self.rho_rho0f = self.rho_rho0*mesh.p0_ratio_by_region[self.reg] #p and rho are directly proportional via ideal gas law 
 
 def linear_interpolate(x, z1, z3, x1, x3):
     """

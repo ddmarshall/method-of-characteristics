@@ -25,7 +25,7 @@ class Generate_TMC_Initial_Data_Line:
             #if using class for region of flow upstream of cowl point and positive charcteristic
             self.generate_char_from_cowl_lip_to_incident_shock(geom, tmc_res, gasProps)
             self.p02_p01_inc_shock = tmc_res.p02_p01 #total pressure change across incident shock
-            self.get_properties_on_idl(gasProps)
+            self.get_properties_on_idl(gasProps, tmc_res)
             return 
 
         if endPoints is not None: 
@@ -35,7 +35,7 @@ class Generate_TMC_Initial_Data_Line:
             self.generate_initial_char_from_cowl_lip(geom, tmc_res, gasProps, nPts)
 
         self.p02_p01_inc_shock = tmc_res.p02_p01 #total pressure change across incident shock
-        self.get_properties_on_idl(gasProps)
+        self.get_properties_on_idl(gasProps, tmc_res)
 
     def generate_2_point_idl(self, geom, tmc_res, nPts, endPoints):
        
@@ -169,13 +169,14 @@ class Generate_TMC_Initial_Data_Line:
             self.u.append(U)
             self.v.append(V)
 
-    def get_properties_on_idl(self, gasProps):
+    def get_properties_on_idl(self, gasProps, init_sol_obj):
         #unpacking
         gam, a0, T0, R = gasProps.gam, gasProps.a0, gasProps.T0, gasProps.R
 
-        self.p0 = gasProps.p0*self.p02_p01_inc_shock
+        #self.p0 = gasProps.p0*self.p02_p01_inc_shock
         self.mach = []
-        self.T, self.p, self.rho = [],[],[]
+        self.T = []
+        #self.p, self.rho = [],[]
         self.T_T0, self.p_p0, self.rho_rho0 = [],[],[]
         for i,_ in enumerate(self.x):
             V = math.sqrt(self.u[i]**2 + self.v[i]**2)
@@ -184,10 +185,13 @@ class Generate_TMC_Initial_Data_Line:
             self.mach.append(mach)
             self.T.append(T0/(1+0.5*(gam-1)*(V/a)**2))
             self.T_T0.append((1 + 0.5*(gam-1)*mach**2)**-1)
-            self.p.append(self.p0*(T0/self.T[i])**(gam/(gam-1)))
+            #self.p.append(self.p0*(T0/self.T[i])**(gam/(gam-1)))
             self.p_p0.append(((1 + 0.5*(gam-1)*mach**2)**(gam/(gam-1)))**-1)
-            self.rho.append(self.p[-1]/(R*self.T[-1]))
-            self.rho_rho0.append(((1 + 0.5*(gam-1)*mach**2)**(1/(gam-1)))**-1)            
+            #self.rho.append(self.p[-1]/(R*self.T[-1]))
+            self.rho_rho0.append(((1 + 0.5*(gam-1)*mach**2)**(1/(gam-1)))**-1)
+            self.p0_p0f = init_sol_obj.p02_p01    
+            self.p_p0f = [p_p0/self.p0_p0f for p_p0 in self.p_p0]
+            self.rho_rho0f = [rho_rho0/self.p0_p0f for rho_rho0 in self.rho_rho0]  
             
 
 class Generate_2D_Initial_Data_Line(Generate_TMC_Initial_Data_Line): 
@@ -214,7 +218,7 @@ class Generate_2D_Initial_Data_Line(Generate_TMC_Initial_Data_Line):
             self.generate_initial_char_from_cowl_lip(inputs.geom, shockObj, gasProps, nPts)
         
         self.p02_p01_inc_shock = shockObj.p02_p01
-        self.get_properties_on_idl(gasProps) 
+        self.get_properties_on_idl(gasProps, shockObj) 
 
     def generate_straight_cowl_lip_idl(self, geom, nPts, shockObj, endPoints, gasProps): 
         """

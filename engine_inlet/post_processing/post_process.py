@@ -28,9 +28,10 @@ class create_figure:
             #interpret scalar parameter
             scalar_interpreter = {
                 "mach":                 "mach",
-                "pressure ratio":       "p_p0",
+                "pressure ratio":       "p_p0f",
                 "temperature ratio":    "T_T0",
-                "density ratio":        "rho_rho0"
+                "density ratio":        "rho_rho0f",
+                "velocity":             "V"
             }            
             self.get_shock_endpoint(mainObj)
             self.scalar = scalar_interpreter[self.scalar_param]
@@ -260,10 +261,12 @@ class create_figure:
         if hasattr(self, "cbar_lims"):
             lims = self.cbar_lims
         else:
-            if self.scalar in ["p_p0", "T_T0", "rho_rho0"]:
-                lims = [0,1]
-            elif self.scalar == "mach":
+            if self.scalar == "mach":
                 lims = [1, mainObj.inputs.M_inf]
+            elif hasattr(mainObj.mesh, "minmax_" + self.scalar):
+                lims = getattr(mainObj.mesh, "minmax_" + self.scalar)
+            else:
+                lims = [0,1]
 
         #plot region past incident shock but before idl region 
         data_ups = mainObj.upstream_data
@@ -274,6 +277,7 @@ class create_figure:
             x_reg.append(r*math.cos(thet))
             y_reg.append(r*math.sin(thet))
             scal_reg.append(getattr(data_ups, self.scalar)[i])
+            
         x_reg += data_ups.x
         y_reg += data_ups.y
         scal_reg += getattr(data_ups, self.scalar)

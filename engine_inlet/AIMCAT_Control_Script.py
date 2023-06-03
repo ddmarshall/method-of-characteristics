@@ -30,4 +30,4 @@ inputFile = 'test_mach_line_idl_straight_inputs.json'
 
 #RUN SOLUTION###################################################################
 aimcat.Main(inputFile=inputFile, geomFile=inletFile, plotFile=plotfile, \
-            export=True, preview_geom=True)
+            export=True, preview_geom=False)

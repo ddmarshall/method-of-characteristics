@@ -36,14 +36,12 @@ class Main:
         #Kind of a dirty solution, but adds freestream object for plotting purposes
         class freeStream:
             def __init__(frst, inputObj):
-                M, p0, T0, gam, R = inputObj.M_inf, inputObj.p0, inputObj.T0, inputObj.gam, inputObj.R
+                M, T0, gam, R = inputObj.M_inf, inputObj.T0, inputObj.gam, inputObj.R
                 frst.mach = M
-                frst.p = p0*(1 + 0.5*(gam - 1)*M**2)**(-gam/(gam-1))
-                frst.p_p0 = frst.p/p0
+                frst.p_p0f = (1 + 0.5*(gam - 1)*M**2)**(-gam/(gam-1))
                 frst.T = T0/(1 + 0.5*(gam - 1)*M**2)
                 frst.T_T0 = frst.T/T0
-                frst.rho = frst.p/(R*frst.T)
-                frst.rho_rho0 = frst.rho/(p0/(R*T0))
+                frst.rho_rho0f = (1 + 0.5*(gam - 1)*M**2)**(-1/(gam-1))
                 a = math.sqrt(gam*R*frst.T)
                 frst.u = M*a
                 frst.v = 0 #!change if want angled flow for 2d case  
@@ -60,10 +58,10 @@ class Main:
         t0 = time.perf_counter() #intial time
         inp = self.inputs
         class gasProps:
-            def __init__(self, gam, R, T0, p0): 
-                self.gam, self.R, self.T0, self.p0 = gam, R, T0, p0
+            def __init__(self, gam, R, T0): 
+                self.gam, self.R, self.T0 = gam, R, T0
                 self.a0 = math.sqrt(gam*R*T0)
-        inp.gasProps = gasProps(inp.gam, inp.R, inp.T0, inp.p0) #create gas properties object 
+        inp.gasProps = gasProps(inp.gam, inp.R, inp.T0) #create gas properties object 
 
         #RUNNING TAYLOR-MACCOLL or 2D WEDGE SOLUTION: 
         if inp.delta==1: #cone
@@ -148,22 +146,34 @@ class Main:
         print("\nRESULTS:")
         print(f"\tRun Time: {round(self.solution_runtime,3)} seconds")
         print(f"\tNumber of Mesh Points: {len(self.mesh.meshPts)}")   
-        print(f"\tNumber of Regions: {len(self.mesh.tot_press_by_region)}") 
-        print(f"\tTotal Pressure Ratio By Region: \
-              {[round(p/self.inputs.p0, 4) for p in self.mesh.tot_press_by_region]}")  
+        print(f"\tNumber of Regions: {len(self.mesh.p0_ratio_by_region)}") 
+        print(f"\tTotal Pressure Ratio By Region:\
+               {[round(p,4) for p in self.mesh.p0_ratio_by_region]}")  
 
     def export_results(self) -> None:
+        import os 
         import pandas as pd
         import numpy as np 
         import math
         print("\nexporting solution...")
         export_name = "save_" + self.inputs.geom.name + f"_M{self.inputs.M_inf}.csv"
- 
+
+        abort = True
+        if os.path.isfile(export_name):
+            inp = input(f"\t{export_name} already exists. Overwrite? [y/n]: ")
+            if inp in ["Y", "y"]:
+                abort = False 
+
+        if abort: 
+            print("\texport aborted\n")
+            return 
+
         geomtype = ["AXI" if self.inputs.delta == 1 else "2D"][0]
         basic_info_list = [
-            f"Geom Type:,   {geomtype}\n",
-            f"M_inf:,       {self.inputs.M_inf}\n"
-            f"gamma:,       {self.inputs.gam}\n"
+            f"Geom Type:,           {geomtype}\n",
+            f"M_inf:,               {self.inputs.M_inf}\n"
+            f"gamma:,               {self.inputs.gam}\n"
+            f"p0 region ratios:,    {[round(p, 4) for p in self.mesh.p0_ratio_by_region]}\n"
         ]
 
         if hasattr(self, "coneSol"):
@@ -201,26 +211,34 @@ class Main:
         df_geom = pd.DataFrame(geometry_dict)
         df_geom.insert(3, None, None)
 
-        cb_mesh_points = {"index": [],"x": [],"y": [],"u": [],"v": [],"M": [], "Region": []}
+        cb_mesh_points = {"index": [],"x": [],"y": [],"u": [],"v": [],"Mach": [],\
+                           "Region": [], "p/p0f": [], "T/T0f": [], "rho/rho0f": []}
         for pt in self.mesh.wallPtsLower:
             cb_mesh_points["index"].append(pt.i)
             cb_mesh_points["x"].append(pt.x)
             cb_mesh_points["y"].append(pt.y)
             cb_mesh_points["u"].append(pt.u)
             cb_mesh_points["v"].append(pt.v)
-            cb_mesh_points["M"].append(pt.mach)
+            cb_mesh_points["Mach"].append(pt.mach)
             cb_mesh_points["Region"].append(pt.reg)
+            cb_mesh_points["p/p0f"].append(pt.p_p0f)
+            cb_mesh_points["T/T0f"].append(pt.T_T0)
+            cb_mesh_points["rho/rho0f"].append(pt.rho_rho0f)
         df_cb_pts = pd.DataFrame(cb_mesh_points)
 
-        cowl_mesh_points = {"index": [],"x": [],"y": [],"u": [],"v": [],"M": [], "Region": []}
+        cowl_mesh_points = {"index": [],"x": [],"y": [],"u": [],"v": [],"Mach": [],\
+                           "Region": [], "p/p0f": [], "T/T0f": [], "rho/rho0f": []}
         for pt in self.mesh.wallPtsUpper:
             cowl_mesh_points["index"].append(pt.i)
             cowl_mesh_points["x"].append(pt.x)
             cowl_mesh_points["y"].append(pt.y)
             cowl_mesh_points["u"].append(pt.u)
             cowl_mesh_points["v"].append(pt.v)
-            cowl_mesh_points["M"].append(pt.mach)
+            cowl_mesh_points["Mach"].append(pt.mach)
             cowl_mesh_points["Region"].append(pt.reg)
+            cowl_mesh_points["p/p0f"].append(pt.p_p0f)
+            cowl_mesh_points["T/T0f"].append(pt.T_T0)
+            cowl_mesh_points["rho/rho0f"].append(pt.rho_rho0f)
         df_cowl_pts = pd.DataFrame(cowl_mesh_points)
 
         with open(export_name, 'w') as file: 
@@ -235,3 +253,4 @@ class Main:
             file.write("\nCOWL MESH POINTS\n")
             df_cowl_pts.to_csv(file, index=False, lineterminator="\n")
 
+        print(f"\texported: {export_name} to {os.getcwd()}\n")
