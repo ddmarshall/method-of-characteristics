@@ -973,11 +973,13 @@ class Mesh:
     def get_point_properties_and_minmax(self):
         """
         """
-        self.minmax_p_p0f = [0,0]
-        self.minmax_T_T0 = [0,0]
-        self.minmax_rho_rho0f = [0,0]
-        self.minmax_V = [0,0]
-        for pt in self.meshPts:
+        self.meshPts[0].get_point_properties(self)
+        pt_sample = self.meshPts[0]
+        self.minmax_p_p0f = [pt_sample.p_p0f, pt_sample.p_p0f] #!IN PROGRESS...
+        self.minmax_T_T0 = [pt_sample.T_T0, pt_sample.T_T0]
+        self.minmax_rho_rho0f = [pt_sample.rho_rho0f, pt_sample.rho_rho0f]
+        self.minmax_V = [pt_sample.V, pt_sample.V]
+        for pt in self.meshPts[1:]:
             pt.get_point_properties(self)
 
             if pt.p_p0f < self.minmax_p_p0f[0]: self.minmax_p_p0f[0] = pt.p_p0f
@@ -994,8 +996,6 @@ class Mesh:
             V = math.sqrt(pt.u**2 + pt.v**2)
             if V < self.minmax_V[0]: self.minmax_V[0] = V
             if V > self.minmax_V[-1]: self.minmax_V[-1] = V
-
-
 
     def find_mesh_point(self, pt, C_posneg):
         """
@@ -1138,15 +1138,18 @@ class Mesh:
             dl_corrected = [dl[0]]
             for i,pt2 in enumerate(dl[1:]):
                 pt1 = dl[i-1] 
-                if np.linalg.norm(np.array([pt2.y - pt1.y, -1*(pt2.x - pt1.x)]), ord=2) != 0:
-                    dl_corrected.append(pt2) 
+                if np.linalg.norm(np.array([pt2.y - pt1.y, -1*(pt2.x - pt1.x)]), ord=2) == 0:
+                    continue
+                if pt2.x-pt1.x == 0:
+                    continue
+                
+                dl_corrected.append(pt2) 
             
             #iterate through corrected data line, and summate mass flow rate
             mdot = 0
-            for i,pt2 in enumerate(dl_corrected):
-                if i == 0: continue 
+            for i,pt2 in enumerate(dl_corrected[1:]):
+                
                 pt1 = dl_corrected[i-1]
-
                 V = np.array([0.5*(pt2.u + pt1.u), 0.5*(pt2.v + pt1.v)]) #average velocity 
                 rho_avg = 0.5*(pt1.rho_rho0f + pt2.rho_rho0f)
                 nHat = np.array([pt2.y - pt1.y, -1*(pt2.x - pt1.x)])
@@ -1209,10 +1212,10 @@ class Mesh_Point:
         #unpacking
         gam, a0, T0 = mesh.gasProps.gam, mesh.gasProps.a0, mesh.gasProps.T0
         #p0 = mesh.tot_press_by_region[self.reg]
-        V = math.sqrt(self.u**2 + self.v**2)
-        a = math.sqrt(a0**2 - 0.5*(gam-1)*V**2)
-        self.mach = V/a #mach number 
-        self.T = T0/(1+0.5*(gam-1)*(V/a)**2) #static temperature
+        self.V = math.sqrt(self.u**2 + self.v**2)
+        a = math.sqrt(a0**2 - 0.5*(gam-1)*self.V**2)
+        self.mach = self.V/a #mach number 
+        self.T = T0/(1+0.5*(gam-1)*(self.V/a)**2) #static temperature
         self.T_T0 = (1 + 0.5*(gam-1)*self.mach**2)**-1
         #self.p = p0/((1 + 0.5*(gam-1)*(V/a)**2)**(gam/(gam-1))) #static pressure 
         self.p_p0 = ((1 + 0.5*(gam-1)*self.mach**2)**(gam/(gam-1)))**-1

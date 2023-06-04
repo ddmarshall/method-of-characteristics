@@ -21,8 +21,8 @@ inletFile = "single_cone_12_5deg.json"
 #inletFile = "NASA_D6078_Inlet.json"
 
 #SPECIFY PLOTTING FILE##########################################################
-plotfile = "plot_settings_test.json"
-#plotfile = "plot_mesh.json"
+#plotfile = "plot_settings_test.json"
+plotfile = "plot_mesh.json"
 
 #SPECIFY USER INPUT FILE########################################################
 #inputFile = 'test_idl_straight_inputs.json'
@@ -30,4 +30,4 @@ inputFile = 'test_mach_line_idl_straight_inputs.json'
 
 #RUN SOLUTION###################################################################
 aimcat.Main(inputFile=inputFile, geomFile=inletFile, plotFile=plotfile, \
-            export=True, preview_geom=False)
+            export=False, preview_geom=False)

@@ -14,7 +14,6 @@
         "type": "scalar",
         "parameter": "mach",
         "show surface plots": true,
-        "colorbar limits": [1, 3.5],
         "colorbar label": "MACH #"
     },
     "PRESSURE RATIO":{
@@ -26,6 +25,16 @@
         "type": "scalar",
         "parameter": "temperature ratio",
         "show surface plots": false
+    },
+    "DENSITY RATIO":{
+        "type": "scalar",
+        "parameter": "density ratio",
+        "show surface plots": true
+    },
+    "VELOCITY": {
+        "type": "scalar",
+        "parameter": "velocity",
+        "show surface plots": true
     }
 
 }

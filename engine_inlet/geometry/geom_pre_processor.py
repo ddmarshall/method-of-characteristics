@@ -115,7 +115,7 @@ class Inlet_Geom:
         def y_func_combined(x):
             y = None
             for i,func in enumerate(y_funcs):
-                if endpoints[i][0] <= x < endpoints[i][-1]:
+                if endpoints[i][0] <= x <= endpoints[i][-1]:
                     y = func(x)
                 else:continue
             return y
@@ -123,7 +123,7 @@ class Inlet_Geom:
         def dydx_func_combined(x):
             dydx = None
             for i,func in enumerate(dydx_funcs):
-                if endpoints[i][0] <= x < endpoints[i][-1]:
+                if endpoints[i][0] <= x <= endpoints[i][-1]:
                     dydx = func(x)
                 else:continue
             return dydx

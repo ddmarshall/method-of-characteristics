@@ -175,7 +175,7 @@ class Generate_TMC_Initial_Data_Line:
 
         #self.p0 = gasProps.p0*self.p02_p01_inc_shock
         self.mach = []
-        self.T = []
+        self.T, self.V = [], []
         #self.p, self.rho = [],[]
         self.T_T0, self.p_p0, self.rho_rho0 = [],[],[]
         for i,_ in enumerate(self.x):
@@ -183,7 +183,8 @@ class Generate_TMC_Initial_Data_Line:
             a = math.sqrt(a0**2 - 0.5*(gam-1)*V**2)
             mach = V/a
             self.mach.append(mach)
-            self.T.append(T0/(1+0.5*(gam-1)*(V/a)**2))
+            self.T.append(T0/(1+0.5*(gam-1)*mach**2))
+            self.V.append(V)
             self.T_T0.append((1 + 0.5*(gam-1)*mach**2)**-1)
             #self.p.append(self.p0*(T0/self.T[i])**(gam/(gam-1)))
             self.p_p0.append(((1 + 0.5*(gam-1)*mach**2)**(gam/(gam-1)))**-1)

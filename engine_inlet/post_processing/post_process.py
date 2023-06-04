@@ -121,6 +121,7 @@ class create_figure:
 
         if ax1 is None: 
             self.fig, ax1 = plt.subplots(1,1, figsize=self.figsize)
+            ax1.set_aspect('equal', adjustable='box')
 
         ax1.grid(linewidth=0.3, color='grey')
         
