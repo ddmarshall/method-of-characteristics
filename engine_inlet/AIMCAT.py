@@ -44,7 +44,7 @@ class Main:
                 frst.rho_rho0f = (1 + 0.5*(gam - 1)*M**2)**(-1/(gam-1))
                 a = math.sqrt(gam*R*frst.T)
                 frst.u = M*a
-                frst.v = 0 #!change if want angled flow for 2d case
+                frst.v = 0 #!change if angled flow for 2d case
                 frst.V = math.sqrt(frst.u**2 + frst.v**2)  
 
         self.inputs.freeStream = freeStream(inpObj)

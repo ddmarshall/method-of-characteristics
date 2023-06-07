@@ -95,35 +95,6 @@ class Mesh:
                         self.f_kill[1] = True
                         return
     
-    """
-    def generate_initial_mesh_from_mach_line_idl_old(self, charDir):
-        
-        #creates initial portion of the mesh from an initial data line defined 
-        #by a mach line extending from the cowl lip to the centerbody
-        
-        idl = self.idl
-        idl.reverse()
-        if charDir == "pos":
-            pass 
-        elif charDir == "neg":
-            self.C_pos.append([pt for pt in idl])
-            [self.C_neg.append([pt]) for pt in idl]
-
-        #generating initial mesh
-        for i,pt in enumerate(idl[1:]):
-            if i==1:
-                [x3,y3,u3,v3] = moc_op.direct_wall(pt, self.geom.y_centerbody,\
-                                self.geom.dydx_centerbody, self.gasProps, \
-                                    self.delta, self.pcTOL, self.funcs, "neg")
-                pt3 = Mesh_Point(x3,y3,u3,v3, self.working_region, isWall=True)
-                self.triangle_obj.append([pt3, None, pt])
-                i,_ = self.find_mesh_point(pt, self.C_neg)
-                self.C_neg[i].append(pt3)
-                self.C_pos.append([pt3])
-            else: 
-                self.compute_next_neg_char(pt, self.C_neg[i-1][1:], continueChar=True) 
-    """
-
     def generate_initial_mesh_from_mach_line_idl(self, charDir):
         """
         
@@ -162,57 +133,6 @@ class Mesh:
         TODO write this 
         """
     
-    """
-    def generate_mesh_from_cowl_old(self):
-        
-        #generates shock-less characteristic mesh until the kill function is triggered 
-        #Handles shock waves implicitly i.e. trims mesh after same-family intersection and does NOT include oblique shock calculations
-        
-        charDir = "neg" #!hard coded for now... starting direction
-        self.compile_mesh_points()
-        while True:
-            try:  
-            #!following sections were written for initiating with neg lines. Untested for starting with positive
-                if charDir == "neg" and self.alternateChar == False:
-                    #TODO use generate_mesh_from_line here instead 
-
-                    #generate initial above-wall point 
-                    pt1 = self.C_neg[-1][1] #2nd point in most recent characteristic
-                    [x3,y3,u3,v3] = moc_op.direct_wall(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs, "pos")
-                    pt3 = Mesh_Point(x3,y3,u3,v3, self.working_region, isWall=True)
-                    self.triangle_obj.append([pt3, None, pt1]) 
-                    i,_ = self.find_mesh_point(pt1, self.C_pos)
-                    self.C_pos[i].append(pt3) #add to positive
-                    prev_n_char = self.C_neg[-1][2:]
-                    self.compute_next_neg_char(pt3, prev_n_char)
-                    if self.alternateChar: #if intersection occured, need to iterate over family to capture reflection 
-                        charDir = "pos"
-
-                elif charDir == "pos" and self.alternateChar == False:
-                    #TODO add if starting with positive characteristics
-                    pass
-
-                if charDir == "pos" and self.alternateChar:
-                    #execute after finishing a crossed characteristic
-                    self.alternateChar = False
-                    if self.hasIntersected == True: 
-                        self.generate_until_non_intersect(self.C_neg[-1], "neg")  
-                    self.generate_mesh_from_line(self.C_neg[-1], "pos")    
-                    if self.alternateChar: 
-                        charDir = "neg"  
-         
-                if charDir == "neg" and self.alternateChar: 
-                    self.alternateChar = False
-                    if self.hasIntersected == True: 
-                        self.generate_until_non_intersect(self.C_pos[-1], "pos") 
-                    self.generate_mesh_from_line(self.C_pos[-1],"neg")   
-                    if self.alternateChar:
-                        charDir = "pos" 
-                    break  
-            
-            except: return 
-    """
-
     def generate_mesh_from_cowl(self):
         """
         generate fully isentropic mesh between cowl and centerbody 
@@ -260,72 +180,6 @@ class Mesh:
                 
                 try: self.compute_wall_to_wall_shock(charDir, self.shockPts_backside[-1])
                 except: return 
-
-    """
-    def generate_mesh_from_line(self, dl, charDir):
-        
-        #Generates the characteristic mesh from an existing characteristic (either pos or neg) terminates when all opposite characteristics originating 
-        #from dl have been generated
-        #dl = list of mesh points from positive/negative characteristic spanning wall to wall 
-             
-        if charDir == "pos":
-            #top wall solution
-            pt1 = dl[1]
-            [x3,y3,u3,v3] = moc_op.direct_wall(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs, "pos")
-            if self.f_kill[0](self) == True:
-                self.f_kill[1] = True
-                return 
-            pt3 = Mesh_Point(x3,y3,u3,v3,self.working_region,isWall=True)
-            self.triangle_obj.append([pt3, None, pt1])
-            self.C_neg.append([pt3])
-            i,_ = self.find_mesh_point(pt1, self.C_pos)
-            self.C_pos[i].append(pt3)
-        
-        elif charDir == "neg":
-            #bottom wall solution
-            pt2 = dl[1]
-            [x3,y3,u3,v3] = moc_op.direct_wall(pt2, self.geom.y_centerbody, self.geom.dydx_centerbody, self.gasProps, self.delta, self.pcTOL, self.funcs, "neg")
-            if self.f_kill[0](self) == True:
-                self.f_kill[1] = True
-                return 
-            pt3 = Mesh_Point(x3,y3,u3,v3,self.working_region,isWall=True)
-            self.triangle_obj.append([pt3, pt2, None])
-            self.C_pos.append([pt3])
-            i,_ = self.find_mesh_point(pt2, self.C_neg)
-            self.C_neg[i].append(pt3) 
-
-        for ind,initPt in enumerate(dl):
-            
-            if ind >= 2:
-                self.hasIntersected = False  
-                if charDir == "neg":
-                    i,j = self.find_mesh_point(initPt, self.C_pos) 
-                    pt0 = self.C_pos[i][j-1]
-                    i,j = self.find_mesh_point(pt0, self.C_neg)
-                    prev_n_char = self.C_neg[i][j+1:]
-                    try: self.compute_next_neg_char(initPt, prev_n_char, continueChar=True);
-                    except: #if math error occurs (due to subsonic) kill mesher 
-                        self.f_kill[1] = True
-                        return 
-                    
-                    if self.f_kill[0](self) == True:
-                        self.f_kill[1] = True
-                        return 
- 
-                elif charDir == "pos":
-                    i,j = self.find_mesh_point(initPt, self.C_neg)
-                    pt0 = self.C_neg[i][j-1]
-                    i,j = self.find_mesh_point(pt0, self.C_pos)
-                    prev_p_char = self.C_pos[i][j+1:]
-                    try:self.compute_next_pos_char(initPt, prev_p_char, continueChar=True);  
-                    except: #if math error occurs (due to subsonic) kill mesher 
-                        self.f_kill[1] = True
-                        return
-
-                    if self.f_kill[0](self) == True:
-                        self.f_kill[1] = True
-                        return 
-    """
 
     def generate_mesh_for_shock_reflec(self, charDir):
         
@@ -615,45 +469,6 @@ class Mesh:
 
         if onChars is not None and offChars is not None: return C_on, C_off
         else: self.C_pos, self.C_neg = C_on, C_off
-    
-    """
-    def check_for_int_intersect(self, pt3, pt2, pt1, charDir):
-        
-        #checks for a same-family characteristic intersection for an interior point solution
-        #pt3 = new point from interior solution 
-        #pt2 = above parent point 
-        #pt1 = below parent point
-        
-        hasIntersected = False 
-        def ccw(A,B,C):
-            return (C[1]-A[1])*(B[0]-A[0]) > (B[1]-A[1])*(C[0]-A[0])
-        # Return true if line segments AB and CD intersect
-        def intersect(A,B,C,D):
-            #return true is segments A-B and C-D intersect 
-            #check if points intersect at the ends (guard clause)
-            if A in [C,D] or B in [C,D]:
-                return False
-            return ccw(A,C,D) != ccw(B,C,D) and ccw(A,B,C) != ccw(A,B,D) 
-
-        if charDir == "neg":
-            #find pt0: 
-            i,j = self.find_mesh_point(pt2, self.C_pos)
-            pt0 = self.C_pos[i][j-1]
-            #check for intersection:
-            A,B = [pt2.x, pt2.y], [pt3.x, pt3.y]
-            C,D = [pt0.x, pt0.y], [pt1.x, pt1.y]
-
-        elif charDir == "pos":
-            #find pt0: 
-            i,j = self.find_mesh_point(pt1, self.C_neg)
-            pt0 = self.C_neg[i][j-1]
-            #check for intersection:
-            A,B = [pt1.x, pt1.y], [pt3.x, pt3.y]
-            C,D = [pt0.x, pt0.y], [pt2.x, pt2.y]
-
-        if intersect(A,B,C,D): hasIntersected = True
-        return hasIntersected
-    """
 
     def check_for_interior_intersect(self, pt3, pt2, pt1, C_off, charDir):
         """
@@ -719,37 +534,6 @@ class Mesh:
 
         if intersect(A,B,C,D): hasIntersected = True 
         return hasIntersected
-    
-    """
-    def generate_until_non_intersect(self, dl, charDir):
-        
-        # will generate successive + or - chars until one makes it wall to wall without a same-family intersection
-        
-        while self.hasIntersected == True: 
-            self.hasIntersected = False #set to false
-            if charDir == "neg":
-                pt1 = self.C_neg[-1][1] #2nd point in most recent characteristic
-                [x3,y3,u3,v3] = moc_op.direct_wall(pt1, self.geom.y_cowl, self.geom.dydx_cowl, self.gasProps, self.delta, self.pcTOL, self.funcs, "pos")
-                pt3 = Mesh_Point(x3,y3,u3,v3,self.working_region,isWall=True)
-                self.triangle_obj.append([pt3, None, pt1]) 
-                i,_ = self.find_mesh_point(pt1, self.C_pos)
-                self.C_pos[i].append(pt3) #add to positive
-                init_point = pt3
-                prev_n_char = self.C_neg[-1][2:]
-                self.compute_next_neg_char(init_point, prev_n_char)
-
-            elif charDir == "pos":
-                
-                pt2 = self.C_pos[-1][1] #2nd point in most recent characteristic
-                [x3,y3,u3,v3] = moc_op.direct_wall(pt2, self.geom.y_centerbody, self.geom.dydx_centerbody, self.gasProps, self.delta, self.pcTOL, self.funcs, "neg")
-                pt3 = Mesh_Point(x3,y3,u3,v3,self.working_region,isWall=True)
-                self.triangle_obj.append([pt3, pt2, None]) 
-                i,_ = self.find_mesh_point(pt2, self.C_neg)
-                self.C_neg[i].append(pt3) #add to positive
-                init_point = pt3
-                prev_p_char = self.C_pos[-1][2:] 
-                self.compute_next_pos_char(init_point, prev_p_char) 
-    """
     
     def check_for_passed_shock_point(self, C_posneg):
         """
