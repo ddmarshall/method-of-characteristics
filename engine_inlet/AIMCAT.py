@@ -105,9 +105,9 @@ class Main:
         
         #GENERATING MESH 
         if inp.compute_shocks:        
-            self.mesh = moc.Mesh(inp, eval(inp.kill), idl=self.idlObj, explicit_shocks=True) #shocked mesh
+            self.mesh = moc.Mesh(inp, idl=self.idlObj, explicit_shocks=True) #shocked mesh
         else:  
-            self.mesh = moc.Mesh(inp, eval(inp.kill), idl=self.idlObj) #shockless mesh 
+            self.mesh = moc.Mesh(inp, idl=self.idlObj) #shockless mesh 
         
         self.solution_runtime = time.perf_counter()-t0 #storing runtime
 

@@ -10,10 +10,9 @@
     "MOC Settings":{
         "Initiation":                   "MACH LINE", 
         "Compute Shocks":               true, 
-        "Convergence Tolerance":        0.00001,
-        "Kill Function":                "lambda mesh: mesh.numPointsGen >= 10"
+        "Convergence Tolerance":        0.00001
     },
     "Initial Data":{
-        "Num Points":                   32
+        "Num Points":                   48
     }                    
 }

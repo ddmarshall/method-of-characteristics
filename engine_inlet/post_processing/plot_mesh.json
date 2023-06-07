@@ -1,13 +1,13 @@
 {
     "global plot settings":{
-        "theme":            "light",
+        "theme":            "dark",
         "figure size":      [16,8],
-        "xlim":             [0, 5],
-        "ylim":             [0, 1.25]
+        "xlim":             [0.5, 4],
+        "ylim":             [0, 1.1]
     },
     "CHARACTERISTIC MESH":{
         "type":             "mesh",
         "annotate":         false,
-        "show mass flow":   true
+        "show mass flow":   false
     }
 }

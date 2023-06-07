@@ -9,8 +9,8 @@ characteristics which models the most complex regions of the supersonic flow.
 The following packages are required: 
 numpy, scipy, matplotlib, json, pandas
 
-I have been working with Python 3.9 for the development of this code. I can't 
-promise compatibility with previous versions
+I have been exclusively working with Python 3.9 for the development of this code, 
+so I can't promise compatibility with previous versions.
 
 # How to Use
 

@@ -1,6 +1,5 @@
 from scipy.optimize import curve_fit 
 from scipy.interpolate import PchipInterpolator
-import numpy as np
 import math 
 """
 Class responsible for parametricising discrete geometry data into polynomial 
@@ -252,6 +251,11 @@ class Curve:
                 if x_a <= x <= max(xs):
                     return 5*A*(x-x_a)**4 + 4*B*(x-x_a)**3 + 3*C*(x-x_a)**2 + 2*D*(x-x_a) + startPoint_dydx
                 else: return None
+
+        #compile error and print to console
+        y_x_err = [abs(y_x(x) - ys[i]) for i,x in enumerate(xs)]
+        print(f"\nmaximum least squares position error: {max(y_x_err)}\n\
+              average error: {sum(y_x_err)/len(y_x_err)}")
 
         return y_x, dydx_x
 

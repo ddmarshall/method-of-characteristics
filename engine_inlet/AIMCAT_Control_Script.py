@@ -1,15 +1,15 @@
 import aimcat as aimcat
 """
-Control script for AIMCAT module. Specify input file locations and run AIMCAT by
- calling class "Main" with the appropriate inputs filled out. 
+Control script for aimcat module. Specify input file locations and run AIMCAT by
+calling class "Main" with the appropriate inputs filled out. 
 
-AIMCAT.Main(inputFile:str, geomFile:str, plotFile:str, export:bool=False, 
-    preview_geom:bool=False)
+aimcat.Main(inputFile:str, geomFile:str, plotFile:str or None, export:bool, 
+    preview_geom:bool)
     
     Inputs: 
-        inputFile:      file path of main input .json file (relative to cwd)
-        geomFile:       file path of geometry .json file (relative to cwd)
-        plotFile:       file path of plot .json file (relative to cwd)
+        inputFile:      file name of main input file
+        geomFile:       file name of geometry file 
+        plotFile:       file name of plot file 
         export:         export results to csv when solution finished 
         preview_geom:   preview of loaded geometry before running 
     Returns: 
@@ -18,7 +18,8 @@ AIMCAT.Main(inputFile:str, geomFile:str, plotFile:str, export:bool=False,
 #SPECIFY INLET GEOMETRY FILE####################################################
 inletFile = "single_cone_12_5deg.json"      
 #inletFile = "2D_isentropic_ramp_5deg.json"
-#inletFile = "NASA_D6078_Inlet.json"
+#inletFile = "NASA_D6078_Inlet_Interpolated.json"
+#inletFile = "NASA_D6078_Inlet_least_squares.json"
 
 #SPECIFY PLOTTING FILE##########################################################
 #plotfile = "plot_settings_test.json"

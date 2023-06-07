@@ -28,17 +28,14 @@ class Input:
         json_translator = { #converts dictionary keys to object attributes 
             #Gas Properties
             "Freestream Stag Temp (K)":     "T0",
-            "Freestream Stag Pres (Pa)":    "p0",
             "Spec Heat Ratio":              "gam",
             "Ideal Gas Constant (J/kgK)":   "R",
             #Flow Properties
             "Freestream Mach":              "M_inf",
             #MOC Settings
-            #"Delta":                        "delta",
             "Initiation":                   "init_method",
             "Compute Shocks":               "compute_shocks",
             "Convergence Tolerance":        "pcTOL",
-            "Kill Function":                "kill",
             #Initial Data
             "Endpoints":                    "idlEndPts",
             "Num Points":                   "nIdlPts",
