@@ -13,6 +13,6 @@
         "Convergence Tolerance":        0.00001
     },
     "Initial Data":{
-        "Num Points":                   48
+        "Num Points":                   24
     }                    
 }

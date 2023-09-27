@@ -395,6 +395,7 @@ class Preview_Geom(create_figure):
         #Display the first derivative 
         dydx_cb = np.array([mainObj.inputs.geom.dydx_centerbody(x) for x in x_cb])
         dydx_cowl = np.array([mainObj.inputs.geom.dydx_cowl(x) for x in x_cowl])
+
         axs[1].plot(x_cb, dydx_cb, label="centerbody", linewidth=1)
         axs[1].plot(x_cowl, dydx_cowl, label="cowl", linewidth=1)
         axs[1].set_ylabel("dy/dx")

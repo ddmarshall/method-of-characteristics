@@ -85,7 +85,7 @@ class Main:
         #GENERATING INITIAL DATA LINE
         if inp.init_method == "STRAIGHT IDL":
             if inp.delta == 1: #axisymmetric case 
-                self.idlObj = idl.Generate_TMC_Initial_Data_Line(inp.geom, self.coneSol, inp.gasProps, nPts=inp.nIdlPts, endpoints=inp.idlEndPts)
+                self.idlObj = idl.Generate_TMC_Initial_Data_Line(inp.geom, self.coneSol, inp.gasProps, nPts=inp.nIdlPts, endPoints=inp.idlEndPts)
             elif inp.delta == 0: #2D case
                 self.idlObj = idl.Generate_2D_Initial_Data_Line(inp, self.rampSol, inp.gasProps, nPts=inp.nIdlPts, endpoints=inp.idlEndPts)
 

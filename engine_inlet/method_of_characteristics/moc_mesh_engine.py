@@ -84,16 +84,8 @@ class Mesh:
         #generating intial mesh: 
         for i,pt in enumerate(idl):
             if i == 0: continue #first point has no - char passing through it 
-            if charDir == "neg":
-                self.compute_next_neg_char(pt, self.C_neg[i-1])
-                if self.f_kill[0](self) == True:
-                        self.f_kill[1] = True
-                        return 
-            elif charDir == "pos":
-                self.compute_next_pos_char(pt, self.C_pos[i-1])
-                if self.f_kill[0](self) == True:
-                        self.f_kill[1] = True
-                        return
+            if charDir == "neg": self.compute_next_neg_char(pt, self.C_neg[i-1], check_for_intersect=False)
+            elif charDir == "pos": self.compute_next_pos_char(pt, self.C_pos[i-1], check_for_intersect=False)
     
     def generate_initial_mesh_from_mach_line_idl(self, charDir):
         """
@@ -947,7 +939,7 @@ class Mesh:
         if C is not None: 
             Clist = C
         else: 
-            Clist = self.C_neg #both C_neg and C_pos should contain the same points so this should be fine. Maybe put a check here? 
+            Clist = self.C_pos #both C_neg and C_pos should contain the same points so this should be fine. Maybe put a check here? 
 
         self.meshPts = []
         i = 0 
@@ -1238,6 +1230,7 @@ class Mesh_Point:
         #density 
         self.rho_rho0 = ((1 + 0.5*(gam-1)*self.mach**2)**(1/(gam-1)))**-1
         self.rho_rho0f = self.rho_rho0*mesh.p0_ratio_by_region[self.reg] #p and rho are directly proportional via ideal gas law 
+
 
 def linear_interpolate(x, z1, z3, x1, x3):
     """

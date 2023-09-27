@@ -1,8 +1,8 @@
 {
     "global plot settings":{
-        "theme":            "dark",
+        "theme":            "light",
         "figure size":      [16,8],
-        "xlim":             [0.5, 4],
+        "xlim":             [0, 5],
         "ylim":             [0, 1.1]
     },
     "CHARACTERISTIC MESH":{

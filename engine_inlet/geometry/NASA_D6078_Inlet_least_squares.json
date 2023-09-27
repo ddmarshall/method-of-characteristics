@@ -2,7 +2,7 @@
     "name":                             "NASA_TN_D6078-Axi_Mix-Comp_Inlet",
     "initial deflection angle (deg)":   9.984,    
     "2D/Axi":                           "Axi",
-    "cowl lip x coord":                 2.835,                          
+    "cowl lip x coord":                 3,                          
     "cowl fit data":[
         {
             "type": "polynomial",
