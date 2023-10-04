@@ -92,10 +92,8 @@ class TaylorMaccoll_Cone:
             #shock_ang_est = 1*(cone_ang + 0.5*alpha_inf) #initial guess shock angle 
             shock_ang_est = 1.1*alpha_inf
 
-            print("\nComputing Taylor Maccoll Cone Solution...")
             fsolve_output = scipy.optimize.fsolve(TMC_cone_guess, x0=shock_ang_est, args=(cone_ang, M_inf, gam, "error"), full_output=True)
             shock_ang = float(fsolve_output[0])    
-            print(f"\nfound cone shock angle: {math.degrees(shock_ang)} deg")      
             
             #run function with correct shock angle:
             solution = TMC_cone_guess(shock_ang, cone_ang, M_inf, gam, "solution")
@@ -190,24 +188,18 @@ class TaylorMaccoll_Cone:
         """ 
         gam = self.gam
         R = self.R
-        shock_ang = self.shock_ang
-        #determine temperature just upstream of cone shock assuming isentropic acceleration
-        T1 = self.T0/(1 + 0.5*(gam-1)*self.M_inf**2) #static temperature of freestream
-        T2 = T1*self.T2_T1 #temperature immediately behind shock
-        M2 = self.f_mach(shock_ang) #mach number immediately behind shock 
-        T0 = T2*(1 + 0.5*(gam-1)*M2**2) #get stagnation temperature
+        T0 = self.T0
 
         #define function to convert velocities
         def get_veloc_uv(thet): 
             [Vrp, Vthetp] = self.numerical_solution.sol(thet)
             M = self.f_mach(thet)
-            T = T0/(1 + 0.5*(gam-1)*M**2)
+            T = T0/self.f_T0_T(thet)
             a = math.sqrt(gam*R*T)
             V = M*a
-            Vmax = math.sqrt(2*(a**2/(gam-1) + V**2/2))
-            Vr, Vthet = Vrp*Vmax, Vthetp*Vmax
-            u = Vr*math.cos(thet) - Vthet*math.sin(thet)
-            v = Vr*math.sin(thet) + Vthet*math.cos(thet) 
+            phi = math.atan(Vthetp/Vrp)
+            u = V*math.cos(phi + thet)
+            v = V*math.sin(phi + thet)
             return u,v
 
         self.f_veloc_uv = get_veloc_uv

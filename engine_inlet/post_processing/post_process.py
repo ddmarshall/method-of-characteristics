@@ -6,145 +6,415 @@ import math
 """
 module responsible for generating plots and figures
 """
-class create_slice_plot:
-    
-    def __init__(self, plotDict, mainObj):
+class create_figure:
+    """
+    creates a single figure depending on a figure dictionary
+    """
+    def __init__(self, fig_dict, mainObj, plotSettings):
+
+        self.set_default_settings(plotSettings)
+        self.read_fig_dict(fig_dict)
+        ax1, ax2 = self.initialize_figure()
+        self.plot_inlet_geom(ax1, mainObj.inputs.geom)  
+
+        if self.type == "mesh":
+            self.plot_incident_shock_solution(ax1, mainObj) 
+            self.plot_initial_data_line(ax1, mainObj)
+            self.plot_mesh(ax1, mainObj.mesh, annotate=self.mesh_annotate)
+            if self.mflow_plot:
+                self.plot_mass_flow_ratio(ax2, mainObj.mesh) 
         
-        fig,ax = self.initialize_figure() #TODO take in default settings dictionary
-        pos = [0.05, 1] #placeholder 
-        self.display_sol_params(ax, pos, mainObj)
-        self.plot_from_plotDict(plotDict, ax, mainObj) #
+        elif self.type == "scalar":
+            #interpret scalar parameter
+            scalar_interpreter = {
+                "mach":                 "mach",
+                "pressure ratio":       "p_p0f",
+                "temperature ratio":    "T_T0",
+                "density ratio":        "rho_rho0f",
+                "velocity":             "V"
+            }            
+            self.get_shock_endpoint(mainObj)
+            self.scalar = scalar_interpreter[self.scalar_param]
+            self.plot_scalar(ax1, mainObj)
 
-    def initialize_figure(self): 
-        fig = plt.figure(figsize=(16,7)) #create figure object
-        ax = fig.add_subplot(1,1,1) 
-        ax.set_ylim(0,1.25)
-        ax.set_xlabel('x'), ax.set_ylabel('y', rotation='horizontal'), ax.grid(linewidth=0.3, color='grey')
-        return fig, ax 
-
-    def display_sol_params(self, axes, pos, mainObj):
-        textStr = f"Freestream:\n M = {mainObj.freestream.mach}\n T = {round(mainObj.freestream.T,2)} K \np = {round(mainObj.freestream.p,1)} Pa"
-        axes.text(pos[0], pos[1], textStr)
-
-    def plot_from_plotDict(self, plotDict, axes, mainObj):
+            if self.surf_props:
+                self.plot_surface_properties(ax2, mainObj.mesh)
+            
+    def set_default_settings(self, plotSettings):
         """
-        Loads input file and converts entries to object attributes
-        TODO write this
+        sets initial object attributes
         """
-        for key in plotDict.keys(): 
+        self.figname = None
+        self.figsize = None
+        self.xlim, self.ylim = None, None
+        self.mflow_xlim, self.mflow_ylim = None, None 
+        self.surfPlot_xlim, self.surfPlot_ylim = None, None 
+        self.theme = "light"
 
-            typ = plotDict[key]["type"]
+        if "theme" in plotSettings.keys():
+            self.theme = plotSettings["theme"]
+            if self.theme == "dark":
+                plt.style.use("dark_background")
 
-            if typ == "geom":
-                self.plot_inletGeom(axes, mainObj.inputs.geom)
+        if "figure size" in plotSettings.keys():
+            self.figsize = plotSettings["figure size"]
 
-            elif typ == "mesh":
-                anno=False
-                if plotDict[key]["annotate"] == True: anno=True
-                self.plot_coneSol(axes, mainObj.coneSol, mainObj.inputs.geom)
-                self.plot_mesh(axes, mainObj.mesh, annotate=anno)
-                self.plot_idl(axes, mainObj.idlObj)
+        if "xlim" in plotSettings.keys():
+            self.xlim = plotSettings["xlim"]
+        
+        if "ylim" in plotSettings.keys():
+            self.ylim = plotSettings["ylim"]
+        
 
-            elif typ == "scalar":
-                self.plot_coneSol(axes, mainObj.coneSol, mainObj.inputs.geom)
-                scalar = plotDict[key]["scalar"]
-                #freeStScal = getattr(mainObj.freestream, scalar)
-                zs = [getattr(pt, scalar) for pt in mainObj.mesh.meshPts]
-                #zs.append(freeStScal)
-                vMinMax = [min(zs), max(zs)]
-                #self.plot_scalar_contours(axes, scalar, vMinMax, idl=mainObj.idlObj, mesh=mainObj.mesh, coneSol=mainObj.coneSol, freeStream = mainObj.freestream)
-                self.plot_scalar_contours(axes, scalar, vMinMax, idl=mainObj.idlObj, mesh=mainObj.mesh) #dumbed down to not include freestream 
+        if "mass flow xlim" in plotSettings.keys():
+            self.mflow_xlim = plotSettings["mass flow xlim"]
 
+        if "mass flow ylim" in plotSettings.keys():
+            self.mflow_ylim = plotSettings["mass flow ylim"]
 
-            else: 
-                raise ValueError(f"invalid displayer type: {typ}")
+        if "surf props xlim" in plotSettings.keys():
+            self.surfPlot_xlim = plotSettings["surf props xlim"]
 
-    def plot_coneSol(self, axes, cone, inletGeom):
-        xint = np.array([0, 1])
-        if inletGeom is not None:
-            #plot interval only which conforms to inlet geometry 
-            xint = np.array([min(inletGeom.centerbody_bounds), max(inletGeom.centerbody_bounds)])
-        else: 
-            axes.plot(xint, [x*math.tan(cone.cone_ang) for x in xint], label=f'cone = {round(math.degrees(cone.cone_ang),2)}', color='w', linewidth=1.3) #plot straight cone surface
+        if "surf props ylim" in plotSettings.keys():
+            self.surfPlot_ylim = plotSettings["surf props ylim"]
 
-        axes.plot(xint, [x*math.tan(cone.shock_ang) for x in xint], label=f'shock = {round(math.degrees(cone.shock_ang),2)} deg', color='red', linewidth=1) 
+    def read_fig_dict(self, fig_dict):
 
-    def plot_inletGeom(self, axes, inletGeom):
-        #plot inlet geometry: 
-        x_cowl = np.linspace(inletGeom.cowl_bounds[0], inletGeom.cowl_bounds[1], 100)
-        axes.plot(x_cowl, [inletGeom.y_cowl(x) for x in x_cowl], '-w', linewidth=2)
-        x_cb = np.linspace(inletGeom.centerbody_bounds[0], inletGeom.centerbody_bounds[1], 100)
-        #axes.plot(x_cb, [inletGeom.y_centerbody(x) for x in x_cb], '-w', linewidth=2)
-        axes.axhline(0, color='w', linestyle='dashed', linewidth=1) 
+        translator = {
+            "figure name":              "figname",
+            "figure size":              "figsize",
+            "type":                     "type",
+            "parameter":                "scalar_param",
+            "show surface plots":       "surf_props",
+            "colorbar limits":          "cbar_lims",
+            "colorbar label":           "cbar_label",
+            "annotate":                 "mesh_annotate",
+            "show mass flow":           "mflow_plot",
+            "geom x limits":            "xlim",
+            "geom y limits":            "ylim",
+            "mass flow x limits":       "mflow_xlim",
+            "mass flow y limits":       "mflow_ylim",
+            "surface plot x limits":    "surfPlot_xlim",
+            "surface plot y limits":    "surfPlot_ylim"
+        }
 
+        #set attributes 
+        for key in fig_dict.keys():
+            if key in translator.keys():
+                setattr(self, translator[key], fig_dict[key])
+
+    def initialize_figure(self):
+        
+        ax1, ax2 =  None,None
+        if hasattr(self, "mflow_plot"):
+            if self.mflow_plot: 
+                self.fig, axs = plt.subplots(2,1,figsize=self.figsize, gridspec_kw={"height_ratios":[1,2.5]}) 
+                self.fig.tight_layout()
+                ax2, ax1 = axs
+                ax2.grid(linewidth=0.3, color='grey')
+        elif hasattr(self, "surf_props"):
+            if self.surf_props: 
+                self.fig, axs = plt.subplots(2,1, figsize=self.figsize, gridspec_kw={"height_ratios":[1,2.5]})
+                self.fig.tight_layout()
+                ax2, ax1 = axs
+                ax2.grid(linewidth=0.3, color='grey')            
+
+        if ax1 is None: 
+            self.fig, ax1 = plt.subplots(1,1, figsize=self.figsize)
+            ax1.set_aspect('equal', adjustable='box')
+
+        ax1.grid(linewidth=0.3, color='grey')
+        
+        if hasattr(self, "figname"):
+            self.fig.canvas.manager.set_window_title(self.figname)
+
+        figManager = plt.get_current_fig_manager()
+        figManager.window.showMaximized()
+
+        if self.xlim is not None: 
+            ax1.set_xlim(self.xlim[0], self.xlim[-1])
+        if self.ylim is not None: 
+            ax1.set_ylim(self.ylim[0], self.ylim[-1])
+
+        return ax1, ax2 
+
+    def plot_inlet_geom(self, ax, inletGeom):
+        """
+        plots the upper and lower cowl surfaces of the inlet
+        """
+        line_color, face_color = None, None
+        if self.theme == "dark":
+            line_color = "white"
+            face_color = "black"
+        elif self.theme == "light":
+            line_color = "black"
+            face_color = "white"
+
+        x_cowl = np.linspace(inletGeom.cowl_bounds[0], inletGeom.cowl_bounds[1], 200)
+        ax.plot(x_cowl, [inletGeom.y_cowl(x) for x in x_cowl], color=line_color, linewidth=2)
+        x_cb = np.linspace(inletGeom.centerbody_bounds[0], inletGeom.centerbody_bounds[1], 200)
+        ax.plot(x_cb, [inletGeom.y_centerbody(x) for x in x_cb], color=line_color, linewidth=2)
+        ax.axhline(0, color=line_color, linestyle='dashed', linewidth=1) 
         fill_x = np.array([max(x_cb)])
         fill_x = np.append(fill_x, x_cb)
         fill_y = np.array([0])
         fill_y = np.append(fill_y, [inletGeom.y_centerbody(x) for x in x_cb])
-        axes.fill(fill_x, fill_y, facecolor="black", edgecolor="white", zorder=15, hatch="\\\\", linewidth=2) 
-         
-    def plot_idl(self, axes, idl, annotate=None): 
-        axes.plot(idl.x, idl.y, '-o', linewidth=0.5, markersize=2, color='aquamarine')
-        for i,x in enumerate(idl.x): 
-            axes.plot([0,x],[0,idl.y[i]],linewidth=0.5,color='aquamarine')
-        if annotate: 
-            for i,x in enumerate(idl.x):
-                text = f"V={round(idl.u[i],1)}, {round(idl.v[i],1)}"
-                xy = (x,idl.y[i])
-                axes.annotate(text, xy)
+        ax.fill(fill_x, fill_y, facecolor=face_color, edgecolor=line_color, zorder=15, hatch="\\\\", linewidth=2) 
 
-    def plot_mesh(self, axes, mesh, annotate=False):
+    def get_shock_endpoint(self, mainObj):
+        """
         
-        axes.scatter([pt.x for pt in mesh.meshPts],[pt.y for pt in mesh.meshPts], color='aquamarine', s=2)
+        """
+        xint = [min(mainObj.inputs.geom.centerbody_bounds), max(mainObj.inputs.geom.centerbody_bounds)]
+        if hasattr(mainObj, "coneSol"):
+            self.shock_endpoint = [xint[-1], math.tan(mainObj.coneSol.shock_ang)*xint[-1]]
+        elif hasattr(mainObj, "rampSol"):
+            self.shock_endpoint = [xint[-1], math.tan(mainObj.rampSol.beta)*xint[-1]]
+
+    def plot_incident_shock_solution(self, ax, mainObj):
+        """
+        plots the incident shock wave on the ramp or cone incident point
+        """
+        inletGeom = mainObj.inputs.geom
+        xint = np.array([min(inletGeom.centerbody_bounds), max(inletGeom.centerbody_bounds)])
+
+        if hasattr(mainObj, "coneSol"):
+            cone_flow = mainObj.coneSol
+            
+            #ax.plot(xint, [x*math.tan(cone_flow.cone_ang) for x in xint],\
+            #    label=f'cone = {round(math.degrees(cone_flow.cone_ang),2)}',\
+            #        color='k', linewidth=1.3) #plot straight cone surface
+
+            ax.plot(xint, [x*math.tan(cone_flow.shock_ang) for x in xint],\
+                label=f'shock = {round(math.degrees(cone_flow.shock_ang),2)} \
+                    deg', color='crimson', linewidth=2, linestyle='dashdot') 
+
+        elif hasattr(mainObj, "rampSol"):
+            ramp_flow = mainObj.rampSol
+            #ax.plot(xint, [x*math.tan(ramp_flow.deflec) for x in xint],\
+            #    label=f'cone = {round(math.degrees(ramp_flow.deflec),2)}',\
+            #        color='k', linewidth=1.3) #plot straight cone surface
+
+            ax.plot(xint, [x*math.tan(ramp_flow.beta) for x in xint],\
+                label=f'shock = {round(math.degrees(ramp_flow.beta),2)} \
+                    deg', color='crimson', linewidth=2, linestyle='dashdot')
+
+    def plot_initial_data_line(self, ax, mainObj):
+        """
+        docstring
+        """
+        idl = mainObj.idlObj
+        line_color = None 
+        if self.theme == "dark":
+            line_color = "aquamarine"
+        elif self.theme == "light":
+            line_color = "dimgrey"
+
+        ax.plot(idl.x, idl.y, '-o', linewidth=0.5, markersize=2, color=line_color)
+        
+        if hasattr(mainObj, "coneSol") == 1: 
+            for i,x in enumerate(idl.x): 
+                ax.plot([0,x],[0,idl.y[i]],linewidth=0.5,color=line_color)
+        
+        elif hasattr(mainObj, "rampSol"):
+            ramp = mainObj.rampSol
+            for i,x_i in enumerate(idl.x):
+                y_i = idl.y[i]
+                y = (y_i - math.tan(ramp.deflec)*x_i)/(1 - (math.tan(ramp.deflec)/math.tan(ramp.beta)))
+                x = y/math.tan(ramp.beta)
+                ax.plot([x,x_i],[y,y_i], linewidth=0.5, color=line_color)
+
+    def plot_mesh(self, ax, mesh, annotate=False):
+        """
+
+        """
+        mesh_color = None 
+        if self.theme == "dark":
+            mesh_color = "aquamarine"
+        elif self.theme == "light":
+            mesh_color = "dimgrey"
+
+        ax.scatter([pt.x for pt in mesh.meshPts],[pt.y for pt in mesh.meshPts], color=mesh_color, s=2)
+        
         if annotate: 
-            [axes.annotate(f"{pt.i}", (pt.x,pt.y)) for pt in mesh.meshPts]
+            [ax.annotate(f"{pt.i}", (pt.x,pt.y)) for pt in mesh.meshPts]
                 
         for tri in mesh.triangle:
-            _,b,c = tri
+            a,b,c = tri
+            if a is None: 
+                continue
             if b is not None: 
-                plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[1]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[1]].y], color='aquamarine', linewidth=0.5)
+                ax.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[1]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[1]].y], color=mesh_color, linewidth=0.5)
             if c is not None:
-                plt.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[2]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[2]].y], color='aquamarine', linewidth=0.5)
+                ax.plot([mesh.meshPts[tri[0]].x, mesh.meshPts[tri[2]].x],[mesh.meshPts[tri[0]].y, mesh.meshPts[tri[2]].y], color=mesh_color, linewidth=0.5)
 
-    def plot_scalar_contours(self, axes, scalar, vMinMax, idl=None, coneSol=None, mesh=None, freeStream=None, barLabel=None,):
+        if hasattr(mesh, "shock_segs"):
+            for i,ind in enumerate(mesh.shock_segs):
+                if i != 0: 
+                    prevPt = mesh.meshPts[mesh.shock_segs[i-1]]
+                    pt = mesh.meshPts[ind]
+                    ax.plot([pt.x, prevPt.x],[pt.y, prevPt.y], color='crimson', linewidth=2, linestyle='dashdot')
+
+    def plot_scalar(self, ax, mainObj):
         """
-        TODO: freestream not plotting right. Screws up the blending
+        
         """
-        xList = []
-        yList = []
-        scalarList = []
+        if hasattr(self, "cbar_lims"):
+            lims = self.cbar_lims
+        else:
+            if self.scalar == "mach":
+                lims = [1, mainObj.inputs.M_inf]
+            elif hasattr(mainObj.mesh, "minmax_" + self.scalar):
+                lims = getattr(mainObj.mesh, "minmax_" + self.scalar)
+            else:
+                lims = [0,1]
 
-        if idl is not None: 
-            #plot tmc region upto idl 
-            x_init,y_init = [],[]
-            r = 0.00001
-            for i,x in enumerate(idl.x):
-                thet = math.atan(idl.y[i]/x)
-                x_init.append(r*math.cos(thet))
-                y_init.append(r*math.sin(thet))
+        #plot region past incident shock but before idl region 
+        data_ups = mainObj.upstream_data
+        x_reg, y_reg, scal_reg = [],[],[]
+        r = 1e-5
+        for i,x in enumerate(data_ups.x):
+            thet = math.atan(data_ups.y[i]/x)
+            x_reg.append(r*math.cos(thet))
+            y_reg.append(r*math.sin(thet))
+            scal_reg.append(getattr(data_ups, self.scalar)[i])
+            
+        x_reg += data_ups.x
+        y_reg += data_ups.y
+        scal_reg += getattr(data_ups, self.scalar)
+        tri_reg = matplotlib.tri.Triangulation(x_reg, y_reg)
+        ax.tricontourf(tri_reg, scal_reg, 100, cmap='jet', vmin=lims[0],vmax=lims[1])
 
-            xList += idl.x + x_init
-            yList += idl.y + y_init
-            scalarList = scalarList + getattr(idl, scalar) + getattr(idl,scalar)
+        #plot region from tip of cone to initial data line 
+        idl = mainObj.idlObj
+        x_reg, y_reg, scal_reg = [],[],[]
+        for i,x in enumerate(idl.x):
+            thet = math.atan(idl.y[i]/x)
+            x_reg.append(r*math.cos(thet))
+            y_reg.append(r*math.sin(thet))
+            scal_reg.append(getattr(idl, self.scalar)[i])
+        x_reg += idl.x 
+        y_reg += idl.y
+        scal_reg += getattr(idl, self.scalar)
+        tri_reg = matplotlib.tri.Triangulation(x_reg, y_reg)
+        ax.tricontourf(tri_reg, scal_reg, 100, cmap='jet', vmin=lims[0],vmax=lims[1])
+            
+        #plot characteristic mesh region
+        xList, yList, scalarList = [], [], []
+        mesh_point_regions = [[]]
+        for pt in mainObj.mesh.meshPts: 
+            reg_ind = pt.reg
+            while reg_ind > len(mesh_point_regions)-1: 
+                mesh_point_regions.append([])
+            mesh_point_regions[reg_ind].append(pt)
+            
+        for pts in mesh_point_regions: 
+            xList += [pt.x for pt in pts]
+            yList += [pt.y for pt in pts]
+            for pt in pts: 
+                scalarList = scalarList + [getattr(pt, self.scalar)]
 
-        if mesh is not None: 
-            #plot mesh region
-            xList += [pt.x for pt in mesh.meshPts]
-            yList += [pt.y for pt in mesh.meshPts]
-            scalarList = scalarList + [getattr(pt, scalar) for pt in mesh.meshPts] 
             mocReg = matplotlib.tri.Triangulation(xList,yList) 
-            tcf = axes.tricontourf(mocReg, scalarList, 100, cmap='jet', vmin=vMinMax[0], vmax=vMinMax[1])
+            ax.tricontourf(mocReg, scalarList, 100, cmap='jet', vmin=lims[0], \
+                           vmax=lims[1])
+            scalarList = [] 
+            xList = []
+            yList = []
 
         #plot far field triangle
-        if freeStream is not None and coneSol is not None: 
-            #Testing this out
-            xpts = [0, 2, 0]
-            ypts = [0, 1, 1]
-            z = getattr(freeStream, scalar)
-            scalarList = [z,z,z]
-            freestrReg = matplotlib.tri.Triangulation(xpts, ypts)
-            axes.tricontourf(freestrReg, scalarList, 100, cmap='jet', vmin=vMinMax[0], vmax=vMinMax[1])
+        xpts = [0, self.shock_endpoint[0], 0]
+        ypts = [0, self.shock_endpoint[-1], self.shock_endpoint[-1]]
+        z = getattr(mainObj.inputs.freeStream, self.scalar)
+        scalarList = [z,z,z]
+        freestrReg = matplotlib.tri.Triangulation(xpts, ypts)
+        ax.tricontourf(freestrReg, scalarList, 100, cmap='jet', vmin=lims[0], \
+                       vmax=lims[1])
 
-        #tcf = axes.tricontourf(xList, yList, scalarList, 100, cmap='jet')
-        plt.colorbar(tcf, orientation='horizontal', shrink=0.5, label=barLabel)
-        if barLabel is None: barLabel = scalar
+        map_ = matplotlib.cm.ScalarMappable(norm=matplotlib.colors.Normalize(\
+            vmin=lims[0], vmax=lims[1]), cmap='jet')
+        
+        if hasattr(self, "cbar_label"): barLabel = self.cbar_label
+        else: barLabel = self.scalar
+        plt.colorbar(mappable=map_, location="bottom", orientation='horizontal', shrink=0.3, ax=ax, \
+                     label=barLabel)
+
+    def plot_surface_properties(self, ax, mesh):
+        """
+        
+        """
+        ax.plot([pt.x for pt in mesh.wallPtsUpper],[getattr(pt,self.scalar) \
+                                    for pt in mesh.wallPtsUpper], label="cowl")
+        ax.plot([pt.x for pt in mesh.wallPtsLower],[getattr(pt,self.scalar) \
+                                    for pt in mesh.wallPtsLower], label="centerbody")
+        ax.set_xlabel('x'), ax.set_ylabel(f'{self.scalar}'), \
+                                            ax.grid(linewidth=0.3, color='grey')
+        ax.set_xlim(self.xlim[0], self.xlim[-1])
+        ax.legend()
+        
+    def plot_mass_flow_ratio(self, ax, mesh):
+        """
+        plots local mass flow ratio throughout the mesh. Used for checking order
+        of accuracy of solution
+        """
+        axlinecolor = None
+        if self.theme == "dark":
+            axlinecolor = "white"
+        elif self.theme == "light":
+            axlinecolor = "black"
+
+        ax.plot(mesh.mesh_mass_flow[0][0], mesh.mesh_mass_flow[0][1], "o-", label="+ Characteristics", markerfacecolor="none")
+        ax.plot(mesh.mesh_mass_flow[1][0], mesh.mesh_mass_flow[1][1], "o-", label="- Characteristics", markerfacecolor="none")
+        mflows_max = max([max(mesh.mesh_mass_flow[0][1]), max(mesh.mesh_mass_flow[1][1])])
+        mflows_min = min([min(mesh.mesh_mass_flow[0][1]), min(mesh.mesh_mass_flow[1][1])])
+        mflows_range = mflows_max - mflows_min
+        #ax.set_ylim(0.96, 1.02)
+        ax.axhline(mflows_max, linestyle="--", color=axlinecolor), ax.axhline(mflows_min, linestyle="--", color=axlinecolor)
+        ax.set_xlabel("mach line #"), ax.set_ylabel("local mass flow ratio")
+        ax.set_title(f"range = {round(mflows_range,5)}")
+        ax.grid(linewidth=0.3, color='grey')
+        ax.legend()
+
+class Preview_Geom(create_figure):
+
+    def __init__(self, mainObj:object, plotSettings:dict):
+
+        self.set_default_settings(plotSettings)
+        fig, axs = plt.subplots(3,1,figsize=self.figsize, gridspec_kw={"height_ratios":[1.75,1,1]})
+        
+        axs[0].grid(linewidth=0.3, color='grey')
+        axs[0].set_xlim(self.xlim), axs[0].set_ylim(self.ylim)
+        axs[0].set_title("Geometry Preview")
+        axs[0].set_aspect('equal', adjustable='box')
+        self.plot_inlet_geom(axs[0], mainObj.inputs.geom)
+
+        x_cb = np.linspace(mainObj.inputs.geom.centerbody_bounds[0], \
+                           mainObj.inputs.geom.centerbody_bounds[1], 200)
+        x_cowl = np.linspace(mainObj.inputs.geom.cowl_bounds[0], \
+                             mainObj.inputs.geom.cowl_bounds[1], 200)
+        
+        #Display the first derivative 
+        dydx_cb = np.array([mainObj.inputs.geom.dydx_centerbody(x) for x in x_cb])
+        dydx_cowl = np.array([mainObj.inputs.geom.dydx_cowl(x) for x in x_cowl])
+
+        axs[1].plot(x_cb, dydx_cb, label="centerbody", linewidth=1)
+        axs[1].plot(x_cowl, dydx_cowl, label="cowl", linewidth=1)
+        axs[1].set_ylabel("dy/dx")
+        axs[1].set_xlim(self.xlim)
+        axs[1].legend()
+        axs[1].grid(linewidth=0.2, color='grey')
+
+        #calculate and display the curvature (x must be uniformly spaced)
+        d2ydx2_cb = np.gradient(dydx_cb, x_cb[1]-x_cb[0])
+        d2ydx2_cowl = np.gradient(dydx_cowl, x_cowl[1]-x_cowl[0])
+
+        k_cb = [abs(d2ydx2_cb[i]/((1 + dydx**2)**(3/2))) for i,dydx in enumerate(dydx_cb)]
+        k_cowl = [abs(d2ydx2_cowl[i]/((1 + dydx**2)**(3/2))) for i,dydx in enumerate(dydx_cowl)]
+        axs[2].plot(x_cb, k_cb, label="centerbody", linewidth=1)
+        axs[2].plot(x_cowl, k_cowl, label="cowl", linewidth=1)
+        axs[2].set_ylabel("Curvature")
+        axs[2].set_xlim(self.xlim)
+        axs[2].legend()
+        axs[2].grid(linewidth=0.2, color='grey')
+
+        print("\nGeometry preview generated. Close figure to continue")
+        plt.show()
