@@ -1,0 +1,18 @@
+{
+    "Gas Properties":{
+        "Freestream Stag Temp (K)":     288.15,
+        "Spec Heat Ratio":              1.4, 
+        "Ideal Gas Constant (J/kgK)":   287.05
+    },
+    "Flow Properties":{
+        "Freestream Mach":              2.5
+    },
+    "MOC Settings":{
+        "Initiation":                   "MACH LINE", 
+        "Compute Shocks":               true, 
+        "Convergence Tolerance":        0.00001
+    },
+    "Initial Data":{
+        "Num Points":                   24
+    }                    
+}

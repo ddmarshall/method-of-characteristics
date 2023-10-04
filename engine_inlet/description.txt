@@ -1,1 +1,0 @@
-This folder is for the project associated with using the method of characteristics to model engine inlets in supersonic flows.
