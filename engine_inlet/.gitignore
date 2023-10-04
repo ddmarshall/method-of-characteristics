@@ -4,5 +4,3 @@ Deprecated/
 #Ignore pycache folders and their contents
 __pycache__/
 
-#Ignore exported save files: 
-save_*

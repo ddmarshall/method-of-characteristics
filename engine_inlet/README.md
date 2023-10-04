@@ -25,4 +25,5 @@ The intended workflow for this tool is as follows:
         solution has been run (see post_processing folder)
 
 2. run the main class by importing aimcat, calling aimcat.main() with your .json
-input files. 
+input files. See the example AIMCAT_Control_Script.py for an example on running the 
+main class. 
