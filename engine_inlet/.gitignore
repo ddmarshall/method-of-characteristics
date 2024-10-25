@@ -1,0 +1,6 @@
+#Ignore the deprecated folder
+Deprecated/
+
+#Ignore pycache folders and their contents
+__pycache__/
+
