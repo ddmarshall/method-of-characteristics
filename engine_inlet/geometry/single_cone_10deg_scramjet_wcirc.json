@@ -1,0 +1,36 @@
+{
+    "name":                             "single_cone_10_degree_mixed_inlet",
+    "initial deflection angle (deg)":   10,
+    "2D/Axi":                           "Axi",
+    "cowl lip x coord":                 0,
+    "cowl functions":[
+        {
+            "x bounds":         [4.44, 6.1764819],
+            "y function":       "lambda x: -0.0820421467395*x + 1.49715901152",
+            "dydx function":    "lambda x: -0.0820421467395"   
+        }, 
+        {
+            "x bounds":         [6.1764819, 15],
+            "y function":       "lambda x: 0.990427172151",
+            "dydx function":    "lambda x: 0"   
+        }
+        
+    ],
+    "centerbody functions":[
+        {
+            "x bounds":         [0, 4.44],
+            "y function":       "lambda x: 0.176327 * x",
+            "dydx function":    "lambda x: 0.176327"
+        },
+        {
+            "x bounds":         [4.44, 6.1764819],
+            "y function":       "lambda x: np.sqrt(100 - (x-6.1764819)**2) - 9.06518562",
+            "dydx function":    "lambda x: - (100 - (x -6.1764819)**2) ** -0.5 * (x-6.1764819)"   
+        }, 
+        {
+            "x bounds":         [6.1764819, 15],
+            "y function":       "lambda x: 0.9348144",
+            "dydx function":    "lambda x: 0"
+        }
+    ]
+}

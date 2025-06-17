@@ -1,6 +1,10 @@
 import math 
-import method_of_characteristics.oblique_shock as shock
 import numpy as np 
+
+#TODO: Add switch between CPG and TPG
+import method_of_characteristics.oblique_shock as shock
+from method_of_characteristics.gas_state_TPG import CaloricallyPerfectGas as GS
+
 """
 class for generating initial data line object using flow solution from taylor maccoll module
 """
@@ -78,7 +82,7 @@ class Generate_TMC_Initial_Data_Line:
         def lambda_char(thet):
             #gives slope of + & - mach lines through point x,y in the flow 
             u,v = tmc_res.f_veloc_uv(thet)
-            a =  math.sqrt(a0**2 - 0.5*(gam-1)*(u**2 + v**2))
+            a =  gasProps.GS._a_given_speed(gasProps, u, v)
             dydx = (u*v + a*math.sqrt(u**2 + v**2 - a**2))/(u**2 - a**2)
             return dydx
 
@@ -147,7 +151,7 @@ class Generate_TMC_Initial_Data_Line:
         def lambda_char(thet):
             #gives slope of + & - mach lines through point x,y in the flow 
             u,v = tmc_res.f_veloc_uv(thet)
-            a =  math.sqrt(a0**2 - 0.5*(gam-1)*(u**2 + v**2))
+            a =  gasProps.GS._a_given_speed(gasProps, u, v)
             dydx = (u*v + a*math.sqrt(u**2 + v**2 - a**2))/(u**2 - a**2)
             return dydx
 
@@ -179,18 +183,29 @@ class Generate_TMC_Initial_Data_Line:
         #self.p, self.rho = [],[]
         self.T_T0, self.p_p0, self.rho_rho0 = [],[],[]
         for i,_ in enumerate(self.x):
-            V = math.sqrt(self.u[i]**2 + self.v[i]**2)
-            a = math.sqrt(a0**2 - 0.5*(gam-1)*V**2)
-            mach = V/a
-            self.mach.append(mach)
-            self.T.append(T0/(1+0.5*(gam-1)*mach**2))
+            # V = math.sqrt(self.u[i]**2 + self.v[i]**2)
+            # a = math.sqrt(a0**2 - 0.5*(gam-1)*V**2)
+            # mach = V/a
+            # self.mach.append(mach)
+            # self.T.append(T0/(1+0.5*(gam-1)*mach**2))
+            # self.V.append(V)
+            # self.T_T0.append((1 + 0.5*(gam-1)*mach**2)**-1)
+            # #self.p.append(self.p0*(T0/self.T[i])**(gam/(gam-1)))
+            # self.p_p0.append(((1 + 0.5*(gam-1)*mach**2)**(gam/(gam-1)))**-1)
+            # #self.rho.append(self.p[-1]/(R*self.T[-1]))
+            # self.rho_rho0.append(((1 + 0.5*(gam-1)*mach**2)**(1/(gam-1)))**-1)
+            if hasattr(init_sol_obj, "cone_ang"):
+                M, T, V, T_T0, p02_p01, p_p0, rho_rho0 = gasProps.GS._get_state_after_TMC(init_sol_obj, np.atan(self.y[i] / self.x[i]))
+            else: 
+                M, T, V, T_T0, p02_p01, p_p0, rho_rho0 = gasProps.GS._get_state_after_2D_Shock(init_sol_obj)
+            self.mach.append(M)
+            self.T.append(T)
             self.V.append(V)
-            self.T_T0.append((1 + 0.5*(gam-1)*mach**2)**-1)
-            #self.p.append(self.p0*(T0/self.T[i])**(gam/(gam-1)))
-            self.p_p0.append(((1 + 0.5*(gam-1)*mach**2)**(gam/(gam-1)))**-1)
-            #self.rho.append(self.p[-1]/(R*self.T[-1]))
-            self.rho_rho0.append(((1 + 0.5*(gam-1)*mach**2)**(1/(gam-1)))**-1)
-            self.p0_p0f = init_sol_obj.p02_p01    
+            self.T_T0.append(T_T0)
+            self.p_p0.append(p_p0)
+            self.rho_rho0.append(rho_rho0)
+
+            self.p0_p0f = p02_p01    
             self.p_p0f = [p_p0/self.p0_p0f for p_p0 in self.p_p0]
             self.rho_rho0f = [rho_rho0/self.p0_p0f for rho_rho0 in self.rho_rho0]  
             
@@ -210,7 +225,7 @@ class Generate_2D_Initial_Data_Line(Generate_TMC_Initial_Data_Line):
             #if using class for region of flow upstream of cowl point and positive charcteristic
             self.generate_char_from_cowl_lip_to_incident_shock(inputs.geom, shockObj, gasProps)
             self.p02_p01_inc_shock = shockObj.p02_p01
-            self.get_properties_on_idl(gasProps)
+            self.get_properties_on_idl(gasProps, shockObj)
             return
 
         if endPoints is not None: 
@@ -226,7 +241,8 @@ class Generate_2D_Initial_Data_Line(Generate_TMC_Initial_Data_Line):
         generates straight initial data line which originates at the cowl lip
         with equidistant points along it 
         """
-        V2 = shockObj.M2*math.sqrt(gasProps.gam*gasProps.R*shockObj.T2)
+        #V2 = shockObj.M2*math.sqrt(gasProps.gam*gasProps.R*shockObj.T2)
+        V2 = shockObj.M2 * gasProps.GS._a(gasProps, shockObj.T2)
         u2, v2 = V2*math.cos(shockObj.deflec), V2*math.sin(shockObj.deflec)
         shockObj.V2 = V2
 
@@ -262,7 +278,8 @@ class Generate_2D_Initial_Data_Line(Generate_TMC_Initial_Data_Line):
         x_i, y_i = geom.x_cowl_lip, geom.y_cowl(geom.x_cowl_lip)
         thet_f = shockObj.deflec
 
-        a = math.sqrt(gasProps.gam*gasProps.R*shockObj.T2)
+        #a = math.sqrt(gasProps.gam*gasProps.R*shockObj.T2)
+        a = GS._a(gasProps, shockObj.T2)
         V = shockObj.M2*a
         u,v = V*math.cos(shockObj.deflec), V*math.sin(shockObj.deflec)
         lam_pos = (u*v + a*math.sqrt(u**2 + v**2 - a**2))/(u**2 - a**2)
@@ -282,7 +299,8 @@ class Generate_2D_Initial_Data_Line(Generate_TMC_Initial_Data_Line):
         x_c, y_c = geom.x_cowl_lip, geom.y_cowl(geom.x_cowl_lip)
         thet_f = shockObj.deflec
 
-        a = math.sqrt(gasProps.gam*gasProps.R*shockObj.T2)
+        #a = math.sqrt(gasProps.gam*gasProps.R*shockObj.T2)
+        a = GS._a(gasProps, shockObj.T2)
         V = shockObj.M2*a
         u,v = V*math.cos(shockObj.deflec), V*math.sin(shockObj.deflec)
         lam_pos = (u*v + a*math.sqrt(u**2 + v**2 - a**2))/(u**2 - a**2)

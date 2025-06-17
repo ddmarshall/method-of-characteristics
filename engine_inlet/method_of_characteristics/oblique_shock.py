@@ -5,17 +5,19 @@ This module contains functions useful for calculating flow properties of oblique
 """
 class Oblique_Shock:
 
-    def __init__(self, M1, gam, R=None, deflec=None, beta=None):
+    def __init__(self, M1, gasProp, deflec=None, beta=None):
         """
         M1: upstream mach number
-        gam: specific heat ratio (calorically perfect)
-        R: ideal gas constant 
+        gasProp: holds values based on the model being used
+            (gam) specific heat ratio (calorically perfect)
+            (R)   ideal gas constant 
         deflec: flow deflection angle from upstream velocity 
         beta: shock wave angle relative to upstream velocity
         """
         self.M1 = M1 
-        self.gam = gam 
-        if R is not None: self.R = R
+        self.gam = gasProp.gam 
+        self.T0 = gasProp.T0
+        if gasProp.R is not None: self.R = gasProp.R
         if deflec is not None: self.deflec = deflec 
         if beta is not None: self.beta = beta
 
@@ -27,6 +29,8 @@ class Oblique_Shock:
             self.solve_weak_oblique_shock()
             return 
 
+
+#CHANGE TO TRAISE AN EXCEPTION--> TRY/ CATCH IN other part of the code
         if beta is not None and deflec is None: 
             self.deflec = self.get_flow_deflection(self.beta, self.M1, self.gam)
             if beta < 0: self.deflec = self.deflec*-1
@@ -61,8 +65,9 @@ class Oblique_Shock:
         deflecMax = self.get_flow_deflection(beta_max, M, gam)
 
         if deflec > abs(deflecMax):
-            print(f"Warning: For Upstream Mach Number ({M}), Deflection Angle ({math.degrees(deflec)} deg) is greater than max deflection: ({math.degrees(deflecMax)} deg). Returning 90 deg wave angle.")
-            return k*math.pi/2, None
+            raise ValueError (f"Warning: For Upstream Mach Number ({M}), Deflection Angle ({math.degrees(deflec)} deg) is greater than max deflection: ({math.degrees(deflecMax)} deg).")
+            # print(f"Warning: For Upstream Mach Number ({M}), Deflection Angle ({math.degrees(deflec)} deg) is greater than max deflection: ({math.degrees(deflecMax)} deg). Returning 90 deg wave angle.")
+            # return k*math.pi/2, None
         
         #calculate strong and weak shock solutions
         #def thetBetaM(beta, deflec, M, gam):
@@ -112,7 +117,12 @@ class Oblique_Shock:
             self.deltaS = c_p*math.log(self.T2_T1)
 
         p01_p1 = (1 + 0.5*(gam-1)*M1**2)**(gam/(gam-1))
-        p02_p2 = (1 + 0.5*(gam-1)*self.M2**2)**(gam/(gam-1))
-        self.p02_p01 = p02_p2*self.p2_p1/p01_p1 
-
+        self.p02_p2 = (1 + 0.5*(gam-1)*self.M2**2)**(gam/(gam-1))
+        self.p02_p01 = self.p02_p2*self.p2_p1/p01_p1 
+        self.T2_T0 = (1 + 0.5*(gam - 1)*self.M2**2)**(-1)
+        self.a2 = math.sqrt(self.gam * self.R * self.T2_T0 * self.T0)
+    def f_veloc_uv(self, ang): 
+        u = self.M2 * self.a2 * math.cos(self.beta - self.deflec)
+        v = self.M2 * self.a2 * math.sin(self.beta - self.deflec)
+        return u,v
 pass 

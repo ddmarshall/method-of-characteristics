@@ -1,6 +1,6 @@
 """
 ***MAIN RUN FILE***
-Author: Shay Takei 
+Author: Mario Guardado and Shay Takei
 """
 class Main:
     """
@@ -14,7 +14,7 @@ class Main:
             import post_processing.post_process as post_process
             import json
             try: plotDict = json.load(open(plotFile, 'r'))
-            except: plotDict = json.load(open("post_processing/"+plotFile, 'r'))
+            except: plotDict = json.load(open("engine_inlet/post_processing/"+plotFile, 'r'))
             plotSettings = plotDict["global plot settings"]
             post_process.Preview_Geom(self, plotSettings)
 
@@ -30,22 +30,41 @@ class Main:
     def load_inputs(self, inpFile:str, geomFile:str) -> None:
         import Input.input as inp
         import math 
+        from method_of_characteristics.gas_state_TPG import CaloricallyPerfectGas as GS
         inpObj = inp.Input(inpFile, geomFile)
         self.inputs = inpObj
 
         #Kind of a dirty solution, but adds freestream object for plotting purposes
         class freeStream:
             def __init__(frst, inputObj):
-                M, T0, gam, R = inputObj.M_inf, inputObj.T0, inputObj.gam, inputObj.R
-                frst.mach = M
-                frst.p_p0f = (1 + 0.5*(gam - 1)*M**2)**(-gam/(gam-1))
-                frst.T = T0/(1 + 0.5*(gam - 1)*M**2)
-                frst.T_T0 = frst.T/T0
-                frst.rho_rho0f = (1 + 0.5*(gam - 1)*M**2)**(-1/(gam-1))
-                a = math.sqrt(gam*R*frst.T)
-                frst.u = M*a
-                frst.v = 0 #!change if angled flow for 2d case
-                frst.V = math.sqrt(frst.u**2 + frst.v**2)  
+                if inputObj.gas_delta == 0:
+                    M, T0, gam, R = inputObj.M_inf, inputObj.T0, inputObj.gam, inputObj.R
+                    frst.mach = M
+                    frst.p_p0f = (1 + 0.5*(gam - 1)*M**2)**(-gam/(gam-1))
+                    frst.T = T0/(1 + 0.5*(gam - 1)*M**2)
+                    frst.T_T0 = frst.T/T0
+                    frst.rho_rho0f = (1 + 0.5*(gam - 1)*M**2)**(-1/(gam-1))
+                    a = math.sqrt(gam*R*frst.T)
+                    frst.u = M*a
+                    frst.v = 0 #!change if angled flow for 2d case
+                    frst.V = math.sqrt(frst.u**2 + frst.v**2)  
+                else: 
+                    import engine_inlet.method_of_characteristics.gas_state_TPG as gas_state_frstm
+                    M, p0, T0, gam, R, Tv= inputObj.M_inf, inputObj.p0, inputObj.T0, inputObj.gam, inputObj.R, inputObj.Tv
+                    frst.mach = M
+                    frst.T = gas_state_frstm.ThermallyPerfectGas._T_given_T0_M(R, Tv, T0, M)
+                    frst.T_T0 = frst.T / T0
+                    rho0 = p0 / (R * T0)
+                    rho = gas_state_frstm.ThermallyPerfectGas._isen_rho_given_T(Tv, frst.T, T0, rho0)
+                    frst.rho_rho0f = rho / rho0
+                    a = math.sqrt(gas_state_frstm.ThermallyPerfectGas._gamma(R, Tv, frst.T) * R * frst.T)
+                    frst.u = M * a 
+                    frst.v = 0 
+                    frst.V = math.sqrt(frst.u**2 + frst.v**2)  
+                    frst.p_p0f = (rho * R * frst.T) / p0
+
+
+
 
         self.inputs.freeStream = freeStream(inpObj)
 
@@ -55,28 +74,48 @@ class Main:
         import initial_data_line.idl as idl
         import math
         import time
+        import method_of_characteristics.gas_state_TPG as gas_state
+        import method_of_characteristics.oblique_shock as shock_cpg
+        import method_of_characteristics.oblique_shock_tpg as shock_tpg
+        import taylor_maccoll_cone.taylor_maccoll as tmc_cpg
+        import taylor_maccoll_cone.taylor_maccoll_tpg as tmc_tpg
 
         t0 = time.perf_counter() #intial time
         inp = self.inputs
         class gasProps:
-            def __init__(self, gam, R, T0): 
-                self.gam, self.R, self.T0 = gam, R, T0
-                self.a0 = math.sqrt(gam*R*T0)
-        inp.gasProps = gasProps(inp.gam, inp.R, inp.T0) #create gas properties object 
+            def __init__(self, gam, R, T0, p0, delta, Tv ): 
+                self.gam, self.R, self.T0, self.p0f, self.delta, self.Tv = gam, R, T0, p0, delta, Tv
+                self.p0_p0f = 1
+                if delta == 1: 
+                    #Enable Vibrational Mode
+                    self.Tv = Tv
+                    self.p0f = p0
+
+                    self.GS = gas_state.ThermallyPerfectGas
+                    self.tmc = tmc_tpg
+                    self.obs = shock_tpg
+
+                    self.a0 = self.GS._a(self, T0)
+                else: 
+                    self.GS = gas_state.CaloricallyPerfectGas
+                    self.tmc = tmc_cpg
+                    self.obs = shock_cpg
+                    self.a0 = self.GS._a(self, T0)
+        inp.gasProps = gasProps(inp.gam, inp.R, inp.T0, inp.p0, inp.gas_delta, inp.Tv) #create gas properties object 
 
         #RUNNING TAYLOR-MACCOLL or 2D WEDGE SOLUTION: 
         if inp.delta==1: #cone
-            import taylor_maccoll_cone.taylor_maccoll as tmc 
-            self.coneSol = tmc.TaylorMaccoll_Cone(math.radians(inp.geom.init_turn_ang_deg), inp.M_inf, inp.gasProps)
+            
+            self.coneSol = inp.gasProps.tmc.TaylorMaccoll_Cone(math.radians(inp.geom.init_turn_ang_deg), inp.M_inf, inp.gasProps)
             #check if incident shock crosses centerbody geometry:
             if inp.geom.y_cowl(inp.geom.x_cowl_lip) > math.tan(self.coneSol.shock_ang)*inp.geom.x_cowl_lip:
                 #!assumes straight incident shock up to cowl lip  
                 raise ValueError("Incident Shock Crosses Cowl Geometry. Solution Cannot Proceed.")
 
         elif inp.delta==0: #wedge
-            import method_of_characteristics.oblique_shock as shock 
+            
             deflec = math.radians(inp.geom.init_turn_ang_deg)
-            self.rampSol = shock.Oblique_Shock(inp.M_inf, inp.gasProps.gam, inp.gasProps.R, deflec=deflec)
+            self.rampSol = inp.gasProps.obs.Oblique_Shock(inp.M_inf, inp.gasProps, deflec=deflec)
             #check if incident shock crosses centerbody geometry:
             if inp.geom.y_cowl(inp.geom.x_cowl_lip) > math.tan(self.rampSol.beta)*inp.geom.x_cowl_lip:
                 #!assumes straight incident shock up to cowl lip  
@@ -87,7 +126,7 @@ class Main:
             if inp.delta == 1: #axisymmetric case 
                 self.idlObj = idl.Generate_TMC_Initial_Data_Line(inp.geom, self.coneSol, inp.gasProps, nPts=inp.nIdlPts, endPoints=inp.idlEndPts)
             elif inp.delta == 0: #2D case
-                self.idlObj = idl.Generate_2D_Initial_Data_Line(inp, self.rampSol, inp.gasProps, nPts=inp.nIdlPts, endpoints=inp.idlEndPts)
+                self.idlObj = idl.Generate_2D_Initial_Data_Line(inp, self.rampSol, inp.gasProps, nPts=inp.nIdlPts, endPoints=inp.idlEndPts)
 
         elif inp.init_method == "MACH LINE":
             if inp.delta==1: #axisymmetric
@@ -121,7 +160,7 @@ class Main:
 
         print("\ngenerating figures...\n")
         try: plotDict = json.load(open(plotFile, 'r'))
-        except: plotDict = json.load(open("post_processing/"+plotFile, 'r'))
+        except: plotDict = json.load(open("engine_inlet/post_processing/"+plotFile, 'r'))
         plotSettings = plotDict["global plot settings"]
         del plotDict["global plot settings"]
         

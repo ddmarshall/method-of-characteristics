@@ -44,6 +44,7 @@ class TaylorMaccoll_Cone:
             M_inf: freestream Mach number 
             gam: specific heat ratio 
             """
+            shock_ang = shock_ang
             #get conditions directly after shock
             Mn1 = M_inf*math.sin(shock_ang) #normal freestream mach component
     
@@ -192,7 +193,7 @@ class TaylorMaccoll_Cone:
 
         #define function to convert velocities
         def get_veloc_uv(thet): 
-            [Vrp, Vthetp] = self.numerical_solution.sol(thet)
+            [Vrp, Vthetp] = self.numerical_solution.sol(thet) #numbers are nondimensional
             M = self.f_mach(thet)
             T = T0/self.f_T0_T(thet)
             a = math.sqrt(gam*R*T)

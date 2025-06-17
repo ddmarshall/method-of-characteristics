@@ -24,12 +24,16 @@ class Input:
         try: 
             json_data = json.load(open(file))
         except:
-            json_data = json.load(open("Input/" + file))
+            json_data = json.load(open("engine_inlet/Input/" + file))
         json_translator = { #converts dictionary keys to object attributes 
             #Gas Properties
             "Freestream Stag Temp (K)":     "T0",
+            "Freestream Stag Press (Pa)":   "p0",
             "Spec Heat Ratio":              "gam",
             "Ideal Gas Constant (J/kgK)":   "R",
+            "Vibrational Temperature (K)":  "Tv", 
+            "Gas Delta (0 or 1)":           "gas_delta",
+
             #Flow Properties
             "Freestream Mach":              "M_inf",
             #MOC Settings
@@ -53,7 +57,7 @@ class Input:
         try: 
             geomDict = json.load(open(geomFile))
         except: 
-            geomDict = json.load(open("geometry/" + geomFile))
+            geomDict = json.load(open("engine_inlet/geometry/" + geomFile))
             
         geomObj = gproc.Inlet_Geom(geomDict)
         self.geom = geomObj

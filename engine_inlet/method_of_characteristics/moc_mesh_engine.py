@@ -2,6 +2,7 @@ import method_of_characteristics.unit_processes as moc_op
 import method_of_characteristics.oblique_shock_point_irrot as shock
 import math
 import numpy as np
+from method_of_characteristics.gas_state_TPG import CaloricallyPerfectGas as GS
 """
 Module responsible for generating method-of-characteristics mesh and mesh points
 TODO: for shock mesh, make function to perform inverse wall operations in compression corners and add to shockPoint list
@@ -160,7 +161,7 @@ class Mesh:
             return  
         try: self.compute_wall_to_wall_shock(charDir, self.shockPts_frontside[-1]) 
         except: return
-
+        #self.compute_wall_to_wall_shock(charDir, self.shockPts_frontside[-1]) 
         if self.impending_shock_reflec:
             while True: 
                 
@@ -270,20 +271,42 @@ class Mesh:
 
             intersect, type_ = self.check_for_interior_intersect(pt3, pt2, pt1, C_off, charDir)
             if intersect: #if intersection occured
+                # if type_ == 1: #handle type 1 intersection
+                #     C_on, C_off = self.trim_mesh_after_intersect(pt2, pt1, charDir, C_on=C_on, C_off=C_off)
+                #     init_point = pt2
+                #     i,j = self.find_mesh_point(init_point, C_off)
+                #     print(f"Handling type 1 intersection: pt2={pt2}, i={i}, j={j}")
+                #     pt0 = C_off[i][j-2]
+                #     i,j = self.find_mesh_point(pt0, C_on)
+                #     prev_char = C_on[i][j+1:] 
+                #     return self.compute_next_char(prev_char, charDir, C_on, C_off, init_wall=False,\
+                #                         init_point=init_point, continueChar=True) #recursion ooooh spooky 
+
+                # if type_ == 2: #handle type 2 intersection
+                #     i,j = self.find_mesh_point(pt2, C_on)
+                #     print(f"Handling type 2 intersection: pt2={pt2}, i={i}, j={j}")
+                #     self.delete_mesh_points([pt2], C_on=C_on, C_off=C_off)
+                #     pt2 = C_on[i][j-1]
+                
                 if type_ == 1: #handle type 1 intersection
-                    C_on, C_off = self.trim_mesh_after_intersect(pt2, pt1, charDir, C_on=C_on, C_off=C_off)
                     init_point = pt2
+
                     i,j = self.find_mesh_point(init_point, C_off)
                     pt0 = C_off[i][j-2]
                     i,j = self.find_mesh_point(pt0, C_on)
+                    C_on, C_off = self.trim_mesh_after_intersect(pt2, pt1, charDir, C_on=C_on, C_off=C_off)
+
                     prev_char = C_on[i][j+1:] 
                     return self.compute_next_char(prev_char, charDir, C_on, C_off, init_wall=False,\
                                         init_point=init_point, continueChar=True) #recursion ooooh spooky 
 
                 if type_ == 2: #handle type 2 intersection
+                    
                     i,j = self.find_mesh_point(pt2, C_on)
-                    self.delete_mesh_points([pt2], C_on=C_on, C_off=C_off)
+                    print(f"Handling type 2 intersection: pt2={pt2}, i={i}, j={j}")
                     pt2 = C_on[i][j-1]
+                    self.delete_mesh_points([pt2], C_on=C_on, C_off=C_off)
+                                        
                     if charDir == "neg": 
                         [x3, y3, u3, v3] = moc_op.interior_point(pt1, pt2, \
                                     self.gasProps, self.delta, self.pcTOL, \
@@ -492,7 +515,7 @@ class Mesh:
             
         if intersect(A,B,C,D):#check for type 1 intersection:
             return True, 1
-        if intersect(A,C, B,D):#check for type 2 intersection:
+        elif intersect(A,C, B,D):#check for type 2 intersection:
             return True, 2
         else: 
             return False, None
@@ -563,6 +586,11 @@ class Mesh:
         pt1 = C_off[ii][jj-1]
         [i_,j_] = self.find_mesh_point(pt1, C_on)
         pt0 = C_on[i_][j_-1]
+
+        if self.working_region == 0: 
+            self.gasProps.p0_p0f = self.idl_p0_p0f
+        else: 
+            self.gasProps.p0_p0f = self.gasProps.p0_p0f * self.shock_object_list[self.working_region-1][self.working_region-1].p02_p01
 
         [pt4_dwn, pt4_ups, def4, beta4, ptw_dwn, pt3p, shockObj_wall, shockObj] = shock.wall_shock_point(pt_w_ups, y_x_i, dydx_i, pt1, self.pcTOL, self.delta, self.gasProps, shockDir)        
         
@@ -963,14 +991,15 @@ class Mesh:
             
             #compute total pressure of each shock region
             if len(self.shock_object_list) > 0: #if at least one shock 
-                for shock in self.shock_object_list:
+                i = 1
+                for i, shock in enumerate(self.shock_object_list):
                     if len(shock) == 0: continue
                     tot_press_loss = [s.p02_p01 for s in shock]
                     avg_tot_press_loss = sum(tot_press_loss)/len(shock)
-                    p0_p0f = avg_tot_press_loss
-                    for ratio in self.p0_ratio_by_region: 
-                        p0_p0f *= ratio
+                    p0_p0f = avg_tot_press_loss * self.p0_ratio_by_region[i]
                     self.p0_ratio_by_region.append(p0_p0f)
+
+                    
 
     def get_point_properties_and_minmax(self):
         """
@@ -1211,25 +1240,33 @@ class Mesh_Point:
         """
         Gets flow properties at an individual mesh point. Calculates temperature, pressure, density, mach number, etc. 
         """
-        #unpacking
-        gam, a0, T0 = mesh.gasProps.gam, mesh.gasProps.a0, mesh.gasProps.T0
+        # #unpacking
+        # gam, a0, T0 = mesh.gasProps.gam, mesh.gasProps.a0, mesh.gasProps.T0
         
-        #speed
-        self.V = math.sqrt(self.u**2 + self.v**2)
-        a = math.sqrt(a0**2 - 0.5*(gam-1)*self.V**2)
-        self.mach = self.V/a #mach number 
+        # #speed
+        # self.V = math.sqrt(self.u**2 + self.v**2)
+        # a = math.sqrt(a0**2 - 0.5*(gam-1)*self.V**2)
+        # self.mach = self.V/a #mach number 
         
-        #temperature 
-        self.T = T0/(1+0.5*(gam-1)*(self.V/a)**2) #static temperature
-        self.T_T0 = (1 + 0.5*(gam-1)*self.mach**2)**-1
+        # #temperature 
+        # self.T = T0/(1+0.5*(gam-1)*(self.V/a)**2) #static temperature
+        # self.T_T0 = (1 + 0.5*(gam-1)*self.mach**2)**-1
         
-        #total pressure 
-        self.p_p0 = ((1 + 0.5*(gam-1)*self.mach**2)**(gam/(gam-1)))**-1
-        self.p_p0f = self.p_p0*mesh.p0_ratio_by_region[self.reg]
+        # #total pressure 
+        # self.p_p0 = ((1 + 0.5*(gam-1)*self.mach**2)**(gam/(gam-1)))**-1
+        # self.p_p0f = self.p_p0*mesh.p0_ratio_by_region[self.reg]
 
-        #density 
-        self.rho_rho0 = ((1 + 0.5*(gam-1)*self.mach**2)**(1/(gam-1)))**-1
-        self.rho_rho0f = self.rho_rho0*mesh.p0_ratio_by_region[self.reg] #p and rho are directly proportional via ideal gas law 
+        # #density 
+        # self.rho_rho0 = ((1 + 0.5*(gam-1)*self.mach**2)**(1/(gam-1)))**-1
+        # self.rho_rho0f = self.rho_rho0*mesh.p0_ratio_by_region[self.reg] #p and rho are directly proportional via ideal gas law 
+
+        # Adjusted for modularization
+        #self.gasProps.p0_p0f = mesh.p0_ratio_by_region[self.reg]
+
+        self.V, self.mach, self.T, self.T_T0, self.p_p0, self.rho_rho0, self.p_p0f, self.rho_rho0f = mesh.gasProps.GS._get_mesh_point_properties(mesh.gasProps, mesh.p0_ratio_by_region[self.reg], self.u, self.v)
+        
+        #self.p_p0f = self.p_p0*mesh.p0_ratio_by_region[self.reg]
+        #self.rho_rho0f = self.rho_rho0*mesh.p0_ratio_by_region[self.reg] #p and rho are directly proportional via ideal gas law 
 
 
 def linear_interpolate(x, z1, z3, x1, x3):

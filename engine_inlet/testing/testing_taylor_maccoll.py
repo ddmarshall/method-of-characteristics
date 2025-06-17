@@ -6,7 +6,7 @@ import os
 import unittest
 import math
 sys.path.append(os.getcwd()) #add path to taylor maccoll module
-import taylor_maccoll_cone.taylor_maccoll as taylor_maccoll
+import engine_inlet.taylor_maccoll_cone.taylor_maccoll as taylor_maccoll_cpg
 
 class Test_Taylor_Maccoll(unittest.TestCase):
 
@@ -25,7 +25,7 @@ class Test_Taylor_Maccoll(unittest.TestCase):
 
         gas = gasProps(1.4, 287.05, 288.15)
 
-        cone_flow = taylor_maccoll.TaylorMaccoll_Cone(cone_ang, M_inf, gas)
+        cone_flow = taylor_maccoll_cpg.TaylorMaccoll_Cone(cone_ang, M_inf, gas)
         #Compare calculated shock angle with expected angle: 
         shock_ang_exp = math.radians(26.7351759) 
         self.assertAlmostEqual(cone_flow.shock_ang, shock_ang_exp, places=1)

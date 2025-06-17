@@ -3,6 +3,13 @@ import matplotlib.colors
 import matplotlib.tri
 import numpy as np 
 import math 
+plt.rcParams['font.family'] = 'Times New Roman'
+plt.rcParams['font.size'] = 34
+plt.rcParams["mathtext.fontset"] = "custom"
+plt.rcParams["mathtext.rm"] = "Times New Roman"
+plt.rcParams["mathtext.it"] = "Times New Roman:italic"
+plt.rcParams["mathtext.bf"] = "Times New Roman:bold"
+plt.rcParams["mathtext.default"] = "rm"
 """
 module responsible for generating plots and figures
 """
@@ -16,7 +23,7 @@ class create_figure:
         self.read_fig_dict(fig_dict)
         ax1, ax2 = self.initialize_figure()
         self.plot_inlet_geom(ax1, mainObj.inputs.geom)  
-
+        
         if self.type == "mesh":
             self.plot_incident_shock_solution(ax1, mainObj) 
             self.plot_initial_data_line(ax1, mainObj)
@@ -129,7 +136,7 @@ class create_figure:
             self.fig.canvas.manager.set_window_title(self.figname)
 
         figManager = plt.get_current_fig_manager()
-        figManager.window.showMaximized()
+#        figManager.window.showMaximized()
 
         if self.xlim is not None: 
             ax1.set_xlim(self.xlim[0], self.xlim[-1])

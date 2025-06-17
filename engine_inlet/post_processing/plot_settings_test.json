@@ -1,9 +1,9 @@
 {
     "global plot settings":{
-        "theme": "dark",
+        "theme": "light",
         "figure size": [14,9],
         "xlim": [0, 5],
-        "ylim": [0, 1.25]
+        "ylim": [0, 1.2]
     },
     "CHARACTERISTIC MESH":{
         "type": "mesh",
@@ -14,22 +14,25 @@
         "type": "scalar",
         "parameter": "mach",
         "show surface plots": true,
-        "colorbar label": "MACH #"
+        "colorbar label": "Mach"
     },
     "PRESSURE RATIO":{
         "type": "scalar",
         "parameter": "pressure ratio",
-        "show surface plots": true
+        "show surface plots": true, 
+        "colorbar label": "$p/p_0$"
     },
     "TEMPERATURE RATIO":{
         "type": "scalar",
         "parameter": "temperature ratio",
-        "show surface plots": false
+        "show surface plots": false, 
+        "colorbar label": "$T/T_0$"
     },
     "DENSITY RATIO":{
         "type": "scalar",
         "parameter": "density ratio",
-        "show surface plots": true
+        "show surface plots": true, 
+        "colorbar label": "$\\rho / \\rho_0$"
     },
     "VELOCITY": {
         "type": "scalar",

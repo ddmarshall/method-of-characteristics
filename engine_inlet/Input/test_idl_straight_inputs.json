@@ -1,11 +1,14 @@
 {
     "Gas Properties":{
-        "Freestream Stag Temp (K)":     288.15,
+        "Freestream Stag Temp (K)":     1500,
+        "Freestream Stag Press (Pa)":   101325,
         "Spec Heat Ratio":              1.405, 
-        "Ideal Gas Constant (J/kgK)":   287.05
+        "Ideal Gas Constant (J/kgK)":   287.05, 
+        "Vibrational Temperature (K)":  3500, 
+        "Gas Delta (0 or 1)":           0
     },
     "Flow Properties":{
-        "Freestream Mach":              2.5
+        "Freestream Mach":              6
     },
     "MOC Settings":{
         "Initiation":                   "STRAIGHT IDL",
@@ -13,7 +16,7 @@
         "Convergence Tolerance":        0.00001
     },
     "Initial Data":{
-        "Endpoints":                    [[2,"cowl"], [2,"centerbody"]],
+        "Endpoints":                    [[4.44,"cowl"], [4,"centerbody"]],
         "Num Points":                   24
     }
 }

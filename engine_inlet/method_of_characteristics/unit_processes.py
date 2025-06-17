@@ -1,6 +1,8 @@
 import math
 import numpy as np
 import scipy.optimize
+from method_of_characteristics.gas_state_TPG import CaloricallyPerfectGas as GS
+
 
 """
 Method of characteristics operator functions for irrotational, isentropic axisymmetric/2D flow. 
@@ -10,7 +12,7 @@ class operator_funcs:
     generates repeatedly-used functions object which are necessary for MOC unit processes
     """
     def __init__(self):
-        self.a = lambda a0, gam, u, v : math.sqrt(a0**2 - 0.5*(gam-1)*(u**2 + v**2))
+        self.a = lambda gasProps, u, v : gasProps.GS._a_given_speed(gasProps, u, v)
         self.S = lambda delta, a, v, y : delta*(a**2*v/y)
         self.Q = lambda u, a : u**2 - a**2
         self.R = lambda u, v, Q, lam: 2*u*v - Q*lam
@@ -54,21 +56,21 @@ def interior_point(pt1, pt2, gasProps, delta, pcTOL, funcs):
 
     def solve_interior_point(u13, v13, y13, u23, v23, y23, first_iter=None): 
         #Calculate coefficients
-        a1 = funcs.a(a0, gam, u1, v1)
-        a2 = funcs.a(a0, gam, u2, v2)
+        a1 = funcs.a(gasProps, u1, v1)
+        a2 = funcs.a(gasProps, u2, v2)
         if first_iter: 
             lam13 = funcs.lam_plus(u1, v1, a1)
             lam23 = funcs.lam_min(u2, v2, a2)
         else: 
-            a3 = funcs.a(a0, gam, u3, v3)
+            a3 = funcs.a(gasProps, u3, v3)
             lam13 = 0.5*(funcs.lam_plus(u1, v1, a1) + funcs.lam_plus(u3, v3, a3))
             lam23 = 0.5*(funcs.lam_min(u2, v2, a2) + funcs.lam_min(u3, v3, a3))
 
-        a13 = funcs.a(a0, gam, u13, v13)
+        a13 = funcs.a(gasProps, u13, v13)
         S13, Q13 = funcs.S(delta, a13, v13, y13), funcs.Q(u13, a13)
         R13 = funcs.R(u13, v13, Q13, lam13)
 
-        a23 = funcs.a(a0, gam, u23, v23)
+        a23 = funcs.a(gasProps, u23, v23)
         S23, Q23 = funcs.S(delta, a23, v23, y23), funcs.Q(u23, a23)
         R23 = funcs.R(u23, v23, Q23, lam23)
 
@@ -119,14 +121,14 @@ def direct_wall(pt1, y_x, dydx, gasProps, delta, pcTOL, funcs, charDir):
     y13 = 1 if y1 == 0 else y1
 
     def solve_direct_wall(u13, v13, y13, first_iter=None):
-        a1 = funcs.a(a0, gam, u1, v1)
-        a13 = funcs.a(a0, gam, u13, v13)
+        a1 = funcs.a(gasProps, u1, v1)
+        a13 = funcs.a(gasProps, u13, v13)
 
         if first_iter: 
             if charDir=="pos": lam13 = funcs.lam_plus(u1, v1, a1)
             elif charDir=="neg": lam13 = funcs.lam_min(u1, v1, a1)
         else: 
-            a3 = funcs.a(a0, gam, u3, v3)
+            a3 = funcs.a(gasProps, u3, v3)
             if charDir=="pos": lam13 = 0.5*(funcs.lam_plus(u1, v1, a1) + funcs.lam_plus(u3, v3, a3))
             elif charDir=="neg": lam13 = 0.5*(funcs.lam_min(u1, v1, a1) + funcs.lam_min(u3, v3, a3))
 
@@ -190,9 +192,9 @@ def inverse_wall(pt1, pt2, pt3, gasProps, delta, pcTOL, funcs, charDir):
 
     #compute values for C- characteristic (2 -> 1)
     u12, v12, y12 = 0.5*(u1+u2), 0.5*(v1+v2), 0.5*(y1+y2)
-    a1 = funcs.a(a0, gam, u1, v1)
-    a2 = funcs.a(a0, gam, u2, v2)
-    a12 = funcs.a(a0, gam, u12, v12)
+    a1 = funcs.a(gasProps, u1, v1)
+    a2 = funcs.a(gasProps, u2, v2)
+    a12 = funcs.a(gasProps, u12, v12)
     if charDir == "pos":
         lam12 = 0.5*(funcs.lam_min(u1, v1, a1) + funcs.lam_min(u2, v2, a2))
     elif charDir == "neg":
@@ -204,10 +206,10 @@ def inverse_wall(pt1, pt2, pt3, gasProps, delta, pcTOL, funcs, charDir):
     def solve_inverse_wall(ya, ua, va, u3, v3): 
         
         ua3, va3, ya3 = 0.5*(ua+u3), 0.5*(va+v3), 0.5*(ya+y3)
-        aa3 = funcs.a(a0, gam, ua3, va3)
+        aa3 = funcs.a(gasProps, ua3, va3)
 
-        aa = funcs.a(a0, gam, ua, va)
-        a3 = funcs.a(a0, gam, u3, v3)
+        aa = funcs.a(gasProps, ua, va)
+        a3 = funcs.a(gasProps, u3, v3)
         if charDir == "pos":
             lama3 = 0.5*(funcs.lam_plus(ua, va, aa) + funcs.lam_plus(u3, v3, a3))
         elif charDir == "neg":

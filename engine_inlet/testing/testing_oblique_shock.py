@@ -3,7 +3,7 @@ import os
 import unittest
 import math
 sys.path.append(os.getcwd())
-import method_of_characteristics.oblique_shock as obs
+import engine_inlet.method_of_characteristics.oblique_shock as obs
 
 class Test_Oblique_Shock(unittest.TestCase):
 
@@ -12,7 +12,15 @@ class Test_Oblique_Shock(unittest.TestCase):
         M1 = 3 
         thet = math.radians(10)
         gam = 1.4
-        shock = obs.Oblique_Shock(M1, gam, thet=thet) #create object 
+        class gasProps: 
+            def __init__(self, gam, R=None):
+                gasProps.gam = gam 
+                if R is not None: self.R = R
+                else: self.R = None
+                pass
+        gasProp = gasProps(gam)
+
+        shock = obs.Oblique_Shock(M1, gasProp, deflec=thet) #create object 
         beta_w_exp, beta_s_exp = math.radians(27.3826906), math.radians(86.4082502)
         p2_p1_exp, rho2_rho1_exp, T2_T1_exp, p02_p01_exp = 2.05447215,1.65458799,1.24168201,0.96308338
 

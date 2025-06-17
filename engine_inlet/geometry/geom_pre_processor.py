@@ -1,6 +1,7 @@
 from scipy.optimize import curve_fit 
 from scipy.interpolate import PchipInterpolator
 import math 
+import numpy as np
 """
 Class responsible for parametricising discrete geometry data into polynomial 
 equations which can be used with AIMCAT
