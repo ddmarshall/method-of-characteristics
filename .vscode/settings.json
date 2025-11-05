@@ -1,0 +1,21 @@
+{
+    "gitflow.disableOnRepo": true,
+	"editor.rulers": [
+		80
+	],
+	"editor.formatOnSave": true,
+	"files.trimTrailingWhitespace": true,
+	"python.venvPath": "${workspaceFolder}/venvs",
+	"python.testing.cwd": "${workspaceFolder}",
+	"pythonTestExplorer.testFramework": "pytest",
+	"python.testing.pytestEnabled": true,
+	"pylint.importStrategy": "fromEnvironment",
+	"python.analysis.extraPaths": [
+		"${workspaceFolder}/src",
+	],
+	"basedpyright.analysis.inlayHints.genericTypes": true,
+	"pylint.args": [
+		"--disable=relative-beyond-top-level"
+	],
+	"jupyter.notebookFileRoot": "${workspaceFolder}",
+}

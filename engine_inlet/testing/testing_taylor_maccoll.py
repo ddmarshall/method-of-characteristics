@@ -1,7 +1,7 @@
 """
 This file runs unit tests on the Taylor_Maccoll.py module
 """
-import sys 
+import sys
 import os
 import unittest
 import math
@@ -12,25 +12,25 @@ class Test_Taylor_Maccoll(unittest.TestCase):
 
     def test_TMC_Cone(self):
         """
-        Expected Results from Compressible Aerodynamics Calculator 3.1 
+        Expected Results from Compressible Aerodynamics Calculator 3.1
         https://devenport.aoe.vt.edu/aoe3114/calc.html
         """
-        #instantiate object: 
+        #instantiate object:
         cone_ang = math.radians(12.5)
         M_inf = 2.5
-        
+
         class gasProps:
-            def __init__(self, gam, R, T0): 
+            def __init__(self, gam, R, T0):
                 self.gam, self.R, self.T0 = gam, R, T0
 
         gas = gasProps(1.4, 287.05, 288.15)
 
         cone_flow = taylor_maccoll_cpg.TaylorMaccoll_Cone(cone_ang, M_inf, gas)
-        #Compare calculated shock angle with expected angle: 
-        shock_ang_exp = math.radians(26.7351759) 
+        #Compare calculated shock angle with expected angle:
+        shock_ang_exp = math.radians(26.7351759)
         self.assertAlmostEqual(cone_flow.shock_ang, shock_ang_exp, places=1)
 
-        #compare mach number at cone surface 
+        #compare mach number at cone surface
         M_c_exp =  2.19924585
         self.assertAlmostEqual(cone_flow.M_c, M_c_exp, places=1)
 
